@@ -20,7 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv tool run mypy apps/ packag
-git add .
-git commit -m "feat: initial project structure"
-git push origin main
+      - run: uv tool run mypy apps/ packages/
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv tool run pytest --tb=short
