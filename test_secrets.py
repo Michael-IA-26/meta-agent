@@ -20,4 +20,7 @@ for secret in secrets:
         print(f"❌ {secret}: NON TROUVÉ")
         all_ok = False
 
-print("\n" + ("✅ Tous les secrets sont disponibles !" if all_ok else "⚠️  Des secrets manquent."))
+if all_ok:
+    print("\n✅ Tous les secrets sont disponibles !")
+else:
+    print("\n⚠️  Des secrets manquent.")
