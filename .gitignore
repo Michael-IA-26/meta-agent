@@ -35,3 +35,6 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+apps/email_agent/credentials.json
+apps/email_agent/token.json
+logs/*.log
