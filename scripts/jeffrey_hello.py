@@ -10,9 +10,11 @@ def read_json_file(filepath: str) -> dict:
         data = json.load(f)
     return data
 
+
 def count_top_level_keys(data: dict) -> int:
     """Retourne le nombre de cles au premier niveau du dictionnaire."""
     return len(data)
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
