@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.13.3",
     "python-dotenv>=1.2.2",
     "schedule>=1.2.2",
+    "sentry-sdk>=2.58.0",
     "supabase>=2.29.0",
 ]
 
