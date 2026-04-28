@@ -1,0 +1,9 @@
+.venv/
+.git/
+__pycache__/
+*.pyc
+logs/
+apps/email_agent/token.json
+apps/email_agent/credentials.json
+.doppler.yaml
+.env
