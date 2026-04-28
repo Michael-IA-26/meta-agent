@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Golden tests pour l'agent email - Sprint 1 J2
+# Teste que la sortie de l'agent respecte le format JSON attendu
+
+description: "Email agent - golden tests"
+
+prompts:
+  - |
+    Analyse cet email et reponds en JSON uniquement, sans markdown.
+
+    Email:
+    - De: {{email_from}}
+    - Sujet: {{email_subject}}
+    - Date: {{email_date}}
+    - Contenu: {{email_body}}
+
+    Reponds avec exactement ce format JSON:
+    {
+      "priority": "haute|moyenne|basse",
+      "category": "action_requise|reponse_requise|information|inutile",
+      "summary": "resume en 1 phrase",
+      "action": "action a faire ou null",
+      "suggested_reply": "suggestion de reponse ou null"
+    }
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-5
+    config:
+      max_tokens: 500
+      temperature: 0
+
+tests:
+  - description: "Email business prioritaire - creation de compte"
+    vars:
+      email_subject: "CREATION DE COMPTE VESPER BUSINESS FRANCE CHEZ ALSO FRANCE"
+      email_from: "Grace-Jeansy.Bakouetela@also.com"
+      email_date: "Mon, 28 Apr 2026 09:15:00 +0200"
+      email_body: "Bonjour, nous souhaitons creer un compte pour Vesper Business France sur le marche multi-editeurs VNode Modbus via SCC. Pouvez-vous nous indiquer la procedure ? Cordialement, Grace-Jeansy."
+    assert:
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          try { JSON.parse(cleaned); return true; }
+          catch (e) { return false; }
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          return ['haute', 'moyenne', 'basse'].includes(data.priority);
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          return ['action_requise', 'reponse_requise', 'information', 'inutile'].includes(data.category);
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          return data.summary.length > 10;
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          return ['haute', 'moyenne'].includes(data.priority);
