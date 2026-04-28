@@ -1,22 +1,20 @@
-import json
 import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import json
 import anthropic
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from storage import save_email
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
 
 def analyze_email(email: dict) -> dict:
     prompt = f"""Analyse cet email et reponds en JSON uniquement, sans markdown.
 
 Email:
-- De: {email["from"]}
-- Sujet: {email["subject"]}
-- Date: {email["date"]}
-- Contenu: {email["body"]}
+- De: {email['from']}
+- Sujet: {email['subject']}
+- Date: {email['date']}
+- Contenu: {email['body']}
 
 Reponds avec exactement ce format JSON:
 {{
@@ -30,7 +28,7 @@ Reponds avec exactement ce format JSON:
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=500,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": prompt}]
     )
 
     try:
@@ -41,12 +39,14 @@ Reponds avec exactement ce format JSON:
             "category": "information",
             "summary": "Impossible d analyser",
             "action": None,
-            "suggested_reply": None,
+            "suggested_reply": None
         }
 
     analyzed = {**email, **result}
-    result_save = save_email(analyzed)
-    print(f"  Supabase: {'OK' if result_save else 'ERREUR'}")
+
+    # Sauvegarde automatique dans Supabase
+    save_email(analyzed)
+
     return analyzed
 
 
@@ -54,7 +54,9 @@ def analyze_emails(emails: list) -> list:
     print(f"Analyse de {len(emails)} emails avec Claude...")
     results = []
     for i, email in enumerate(emails):
-        print(f"  [{i + 1}/{len(emails)}] {email['subject'][:50]}...")
+        print(f"  [{i+1}/{len(emails)}] {email['subject'][:50]}...")
         analyzed = analyze_email(email)
         results.append(analyzed)
     return results
+
+
