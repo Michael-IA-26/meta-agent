@@ -9,6 +9,7 @@ from email.mime.text import MIMEText
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_client import get_gmail_service
 from storage import calculate_and_save_kpis
+from telegram_sender import send_telegram_report
 
 
 def report_to_html(analyzed_emails):
@@ -35,19 +36,19 @@ Rapport Email du {today}</h1>
 De : {e["from"]}<br>{e["summary"]}</span><br>
 <span style="color:#d93025;">➡ {e.get("action", "")}</span></li><br>"""
 
-    html += """</ul><h2 style="color:#1a73e8;text-decoration:underline;">✅ Taches a faire</h2><ol>"""
+    html += """</ul><h2 style="color:#1a73e8;text-decoration:underline;">Taches a faire</h2><ol>"""
 
     for e in actions:
         html += f"""<li>{e.get("action")}<br>
 <span style="color:gray;font-size:0.85em;font-style:italic;">({e["subject"]})</span></li>"""
 
-    html += """</ol><h2 style="color:#1a73e8;text-decoration:underline;">💬 Suggestions de reponses</h2><ul>"""
+    html += """</ol><h2 style="color:#1a73e8;text-decoration:underline;">Suggestions de reponses</h2><ul>"""
 
     for e in reponses:
         html += f"""<li><b>{e["subject"]}</b><br>
 <span style="color:gray;font-size:0.85em;font-style:italic;">{e.get("suggested_reply")}</span></li><br>"""
 
-    html += """</ul><h2 style="color:#1a73e8;text-decoration:underline;">🗑 Emails inutiles</h2><ul>"""
+    html += """</ul><h2 style="color:#1a73e8;text-decoration:underline;">Emails inutiles</h2><ul>"""
 
     for e in inutiles:
         html += f"""<li><span style="color:gray;font-size:0.85em;font-style:italic;">
@@ -80,6 +81,8 @@ def send_report(analyzed_emails, temps_agent_sec=0):
         print(f"  Temps gagne      : {kpis.get('temps_gagne_min')} min")
         print(f"  Gain             : {kpis.get('gain_pourcentage')}%")
         print(f"  Valeur estimee   : {kpis.get('valeur_estimee_eur')} EUR")
+
+    send_telegram_report(analyzed_emails, kpis)
 
 
 if __name__ == "__main__":
