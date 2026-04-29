@@ -1,0 +1,9 @@
+{
+  "client_name": "Nom du client : TestClient",
+  "client_email": "Email de reception du rapport : michael@myvesper.fr",
+  "client_gmail": "Adresse Gmail a connecter : michael@myvesper.fr",
+  "hourly_rate": "TJM horaire du client (EUR) : 80",
+  "daily_email_time": "Heure du rapport quotidien : 08:45",
+  "icp": "ICP a utiliser : agence_conseil",
+  "agent_id": "email_nom_du_client_:_testclient"
+}
