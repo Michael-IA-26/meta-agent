@@ -13,6 +13,8 @@ dependencies = [
     "pydantic>=2.13.3",
     "python-dotenv>=1.2.2",
     "schedule>=1.2.2",
+    "sentry-sdk>=2.58.0",
+    "supabase>=2.29.0",
 ]
 
 [tool.ruff]
@@ -38,4 +40,5 @@ dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
     "ruff>=0.15.11",
+    "types-requests>=2.33.0.20260408",
 ]
