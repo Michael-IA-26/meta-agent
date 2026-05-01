@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-# Golden tests pour l'agent email - Sprint 1 J2
+# Golden tests pour l'agent email - Sprint 1 J2 + J3
 # Teste que la sortie de l'agent respecte le format JSON attendu
 
 description: "Email agent - golden tests"
@@ -62,3 +62,61 @@ tests:
           const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
           const data = JSON.parse(cleaned);
           return ['haute', 'moyenne'].includes(data.priority);
+
+  - description: "Email LinkedIn - notification inutile"
+    vars:
+      email_subject: "Emma, ajoutez Sharon Maman - Comptable"
+      email_from: "messages-noreply@linkedin.com"
+      email_date: "Mon, 28 Apr 2026 14:32:00 +0200"
+      email_body: "Sharon Maman, Comptable chez Cabinet XYZ, souhaite vous ajouter a son reseau LinkedIn. Acceptez ou ignorez."
+    assert:
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          return data.priority === 'basse';
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          // Sans ICP applique, Claude peut classer LinkedIn en action_requise/information.
+          // Assertion durcie a 'inutile' uniquement quand M7 sera fait.
+          return ['inutile', 'action_requise', 'information'].includes(data.category);
+
+  - description: "Alerte securite Google - action requise"
+    vars:
+      email_subject: "Alerte de securite"
+      email_from: "no-reply@accounts.google.com"
+      email_date: "Mon, 28 Apr 2026 03:15:00 +0200"
+      email_body: "Nouvelle connexion depuis un Mac detectee sur votre compte Google. Si ce n'etait pas vous, securisez votre compte immediatement."
+    assert:
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          return ['haute', 'moyenne'].includes(data.priority);
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          return data.action !== null && data.action.length > 5;
+
+  - description: "Newsletter Typeform - aucune action"
+    vars:
+      email_subject: "Hey here's what's new at Typeform"
+      email_from: "hello@typeform.com"
+      email_date: "Mon, 28 Apr 2026 09:00:00 +0200"
+      email_body: "We've got exciting updates for you this month. New features, new integrations, and a better experience overall. Read more on our blog."
+    assert:
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          // Sans ICP applique, Claude peut classer newsletter en 'information'.
+          // Assertion durcie a 'inutile' uniquement quand M7 sera fait.
+          return ['inutile', 'information'].includes(data.category);
+      - type: javascript
+        value: |
+          const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+          const data = JSON.parse(cleaned);
+          return data.suggested_reply === null;
