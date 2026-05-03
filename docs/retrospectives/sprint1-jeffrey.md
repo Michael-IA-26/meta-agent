@@ -50,6 +50,8 @@ Faute de frappe avec un `œ` collé en fin de nom. À supprimer dans une PR clea
 
 3. **ICP non câblé** : `packages/prompts/icps/agence_conseil.md` existe mais n'est pas injecté dans le prompt système d'`analyzer.py`. Sans lui, Claude classe LinkedIn en `action_requise` et newsletter en `information` au lieu de `inutile`. J'ai dû assouplir 2 assertions PR #13.
 
+4. **Force-push sur `main` détecté en fin de Sprint** : un force-push a réécrit l'historique de `main` (`9795be1` → `12db40c`), invalidant l'ancêtre commun de plusieurs branches feature en cours. Conséquence concrète : impossible de créer la PR J6 — GitHub Web et `gh` CLI ont retourné l'erreur `The jeffrey/sprint1-onboarding branch has no history in common with main`. Workaround appliqué : nouvelle branche `jeffrey/sprint1-onboarding-v2` créée depuis `origin/main`, cherry-pick du commit J6 (`68c7f1a`), push → PR #18. ~30 min perdues à diagnostiquer.
+
 ---
 
 ## 🔍 Questions pour la rétrospective
@@ -59,6 +61,11 @@ Faute de frappe avec un `œ` collé en fin de nom. À supprimer dans une PR clea
 2. **Charge S2 LeadCommercial** : sur S2 je dois faire Meta-Agent (schéma JSON brief, validate_brief.py, 5 tests) ET LeadCommercial (ICP JM Partners, scoring, Postman + Sirene). Si je dois prioriser, je commence par quoi ?
 
 3. **Onboarding cabinet Vesper** : pour S13, faudrait-il que je commence à rédiger un guide d'onboarding LC dès S2-S3, avant que la doc soit obsolète ?
+
+4. **Règle no-force-push sur `main`** : pour éviter que l'incident force-push se reproduise (ingérable quand on sera 3+ contributeurs avec les cabinets Vesper), on convient de :
+   - Ne plus jamais `git push --force` sur `main`
+   - Utiliser `git revert` pour annuler un commit fautif (commit inverse propre)
+   - Activer les **branch protection rules** sur `main` (Require PR, Require status checks, Restrict deletions, No force pushes) ?
 
 ---
 
