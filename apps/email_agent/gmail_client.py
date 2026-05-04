@@ -13,7 +13,7 @@ SCOPES = [
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CREDENTIALS_FILE = os.path.join(BASE_DIR, "credentials.json")
-TOKEN_FILE = os.path.join(BASE_DIR, "token.json")
+TOKEN_FILE = os.path.join(BASE_DIR, os.getenv("TOKEN_FILE", "token.json"))
 
 
 def get_gmail_service():
