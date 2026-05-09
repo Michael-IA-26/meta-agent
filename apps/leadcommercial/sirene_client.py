@@ -12,20 +12,14 @@ FORMES_JURIDIQUES = ["5710", "5720", "5499"]  # SAS, SASU, EURL
 
 def get_headers() -> dict:
     return {
-        "Authorization": f"Bearer {SIRENE_TOKEN}",
+        "X-INSEE-Api-Key-Integration": SIRENE_TOKEN,
         "Accept": "application/json",
     }
 
 
 def build_query() -> str:
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    dept_filter = " OR ".join([f"codePostalEtablissement:{d}*" for d in DEPT_IDF])
-    return (
-        f"dateCreationEtablissement:{yesterday} "
-        f"AND etablissementSiege:true "
-        f"AND etatAdministratifEtablissement:A "
-        f"AND ({dept_filter})"
-    )
+    return f"dateCreationEtablissement:{yesterday} AND etablissementSiege:true"
 
 
 def fetch_new_companies(max_results: int = 20) -> list[dict]:
@@ -35,7 +29,7 @@ def fetch_new_companies(max_results: int = 20) -> list[dict]:
         "nombre": max_results,
         "champs": (
             "siret,siren,denominationUniteLegale,"
-            "activitePrincipaleEtablissement,"
+            "activitePrincipaleEtablissement,prenomUsuelUniteLegale,nomUniteLegale,nomUsageUniteLegale,"
             "codePostalEtablissement,libelleCommuneEtablissement,"
             "dateCreationEtablissement,categorieJuridiqueUniteLegale"
         ),
@@ -61,11 +55,14 @@ def parse_company(etab: dict) -> dict:
         "siret": etab.get("siret"),
         "denomination": ul.get("denominationUniteLegale")
         or (
+            f"{ul.get('prenomUsuelUniteLegale') or ''} {ul.get('nomUsageUniteLegale') or ul.get('nomUniteLegale') or ''}".strip()
+        )
+        or (
             f"{ul.get('prenomUsuelUniteLegale', '')} "
             f"{ul.get('nomUniteLegale', '')}".strip()
         ),
         "forme_juridique": ul.get("categorieJuridiqueUniteLegale"),
-        "code_naf": etab.get("activitePrincipaleEtablissement"),
+        "code_naf": ul.get("activitePrincipaleUniteLegale"),
         "dept": adresse.get("codePostalEtablissement", "")[:2],
         "commune": adresse.get("libelleCommuneEtablissement"),
         "date_creation": etab.get("dateCreationEtablissement"),
