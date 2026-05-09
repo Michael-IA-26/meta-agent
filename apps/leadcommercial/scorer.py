@@ -1,4 +1,7 @@
+import logging
 from datetime import date, datetime
+
+logger = logging.getLogger(__name__)
 
 SCORING_RULES = {
     "creation": 100,
@@ -74,42 +77,7 @@ def score_batch(companies: list, signal_type: str = "creation") -> list:
         result = score_lead(company, signal_type)
         results.append(result)
         status = "QUALIFIE" if result["qualified"] else "rejete"
-        print(
+        logger.info(
             f"  {company.get('denomination', 'N/A')} — score {result['score']} — {status}"
         )
     return results
-
-
-if __name__ == "__main__":
-    test_companies = [
-        {
-            "siren": "123456789",
-            "denomination": "LE BON RESTO SAS",
-            "forme_juridique": "5710",
-            "code_naf": "56.10A",
-            "dept": "75",
-            "date_creation": datetime.now().strftime("%Y-%m-%d"),
-        },
-        {
-            "siren": "987654321",
-            "denomination": "DUPONT CONSULTING",
-            "forme_juridique": "5499",
-            "code_naf": "70.22Z",
-            "dept": "92",
-            "date_creation": "2026-04-01",
-        },
-        {
-            "siren": "111222333",
-            "denomination": "MARTIN SA",
-            "forme_juridique": "5599",
-            "code_naf": "62.01Z",
-            "dept": "69",
-            "date_creation": datetime.now().strftime("%Y-%m-%d"),
-        },
-    ]
-
-    print("Test scoring LeadCommercial:")
-    results = score_batch(test_companies)
-    print()
-    for r in results:
-        print(f"  {r['siren']}: {r['scoring_details']}")
