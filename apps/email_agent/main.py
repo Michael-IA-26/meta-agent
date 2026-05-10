@@ -1,9 +1,12 @@
+import logging
 import os
 import sys
 import time
 
 import schedule
 import sentry_sdk
+
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -19,22 +22,23 @@ sentry_sdk.init(
 
 
 def run_daily_report():
-    print("Lancement du rapport quotidien...")
+    logger.info("Lancement du rapport quotidien...")
     try:
         start = time.time()
         emails = get_emails(max_results=20)
         analyzed = analyze_emails(emails)
         elapsed = time.time() - start
         send_report(analyzed, temps_agent_sec=elapsed)
-        print("Rapport envoye avec succes !")
+        logger.info("Rapport envoye avec succes !")
     except Exception as e:
         sentry_sdk.capture_exception(e)
-        print(f"Erreur capturee par Sentry : {e}")
+        logger.error(f"Erreur capturee par Sentry : {e}")
 
 
 if __name__ == "__main__":
-    print("Agent email demarre - rapport envoye chaque jour a 08h45")
-    print(f"Sentry initialise : {bool(os.getenv('SENTRY_DSN'))}")
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logger.info("Agent email demarre - rapport envoye chaque jour a 08h45")
+    logger.info(f"Sentry initialise : {bool(os.getenv('SENTRY_DSN'))}")
     schedule.every().day.at("08:45").do(run_daily_report)
     while True:
         schedule.run_pending()
