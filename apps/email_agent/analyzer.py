@@ -6,7 +6,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import anthropic
 from anthropic.types import TextBlock
-from storage import save_email
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 logger = logging.getLogger(__name__)
@@ -80,10 +79,7 @@ Reponds avec exactement ce format JSON:
         }
 
     analyzed = {**email, **result}
-    if save_email(analyzed):
-        logger.info(f"Email analyse et sauvegarde : {email['subject'][:50]}")
-    else:
-        logger.error(f"Echec sauvegarde Supabase pour : {email['subject'][:50]}")
+    logger.debug("Email analyse : %s", email["subject"][:50])
     return analyzed
 
 

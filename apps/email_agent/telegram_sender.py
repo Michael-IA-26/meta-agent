@@ -62,13 +62,13 @@ def send_telegram_report(analyzed_emails: list, kpis: dict | None = None) -> boo
     try:
         response = requests.post(api_url, json=payload, timeout=10)
         if response.status_code == 200:
-            print("Rapport Telegram envoye !")
+            logger.info("Rapport Telegram envoye")
             return True
         else:
-            print("Erreur Telegram : " + response.text)
+            logger.error("Erreur Telegram : %s", response.text)
             return False
     except Exception as e:
-        print("Erreur : " + str(e))
+        logger.error("Erreur Telegram : %s", e)
         return False
 
 
