@@ -11,13 +11,13 @@ _DIR = os.path.dirname(os.path.abspath(__file__))
 if _DIR not in sys.path:
     sys.path.insert(0, _DIR)
 
-from agents import EmailAnalyzed  # noqa: E402
 import agents.email_analyzer as email_analyzer  # noqa: E402
 import agents.gmail_fetcher as gmail_fetcher  # noqa: E402
 import agents.gmail_reporter as gmail_reporter  # noqa: E402
 import agents.report_builder as report_builder  # noqa: E402
 import agents.supabase_writer as supabase_writer  # noqa: E402
 import agents.telegram_sender as telegram_sender  # noqa: E402
+from agents import EmailAnalyzed  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
