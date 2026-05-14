@@ -1,3 +1,5 @@
+"""Entry point for the LeadCommercial pipeline."""
+import argparse
 import logging
 import os
 
@@ -5,25 +7,19 @@ import sentry_sdk
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from apps.leadcommercial.pipeline import run_pipeline
+from apps.leadcommercial import orchestrator
 
 logger = logging.getLogger(__name__)
 
-SCHEDULER_ENABLED = os.getenv("SCHEDULER_ENABLED", "true").lower() not in {
-    "false",
-    "0",
-    "no",
-}
-
 
 def _run_job() -> None:
-    """Execute the pipeline and forward any exception to Sentry."""
+    """Execute the orchestrator and forward any exception to Sentry."""
     try:
-        leads = run_pipeline()
-        logger.info(f"Job termine : {len(leads)} leads qualifies")
+        leads = orchestrator.run()
+        logger.info("Job termine : %d leads qualifies", len(leads))
     except Exception as exc:
         sentry_sdk.capture_exception(exc)
-        logger.error(f"Erreur pipeline : {exc}", exc_info=True)
+        logger.error("Erreur orchestrateur : %s", exc, exc_info=True)
 
 
 def start_scheduler() -> None:
@@ -46,8 +42,16 @@ def start_scheduler() -> None:
         logger.info("Scheduler arrete proprement")
 
 
-def main() -> None:
-    """Entry point: blocking scheduler or single run depending on SCHEDULER_ENABLED."""
+def main(argv: list[str] | None = None) -> None:
+    """Entry point: blocking scheduler or single run with --once flag."""
+    parser = argparse.ArgumentParser(description="LeadCommercial pipeline")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Execute le pipeline une fois immediatement puis quitte",
+    )
+    args = parser.parse_args(argv)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -58,11 +62,12 @@ def main() -> None:
         environment=os.getenv("DOPPLER_ENVIRONMENT", "dev"),
         traces_sample_rate=0.1,
     )
-    if SCHEDULER_ENABLED:
-        start_scheduler()
-    else:
-        logger.info("SCHEDULER_ENABLED=false — execution immediate puis arret")
+
+    if args.once:
+        logger.info("--once : execution immediate puis arret")
         _run_job()
+    else:
+        start_scheduler()
 
 
 if __name__ == "__main__":

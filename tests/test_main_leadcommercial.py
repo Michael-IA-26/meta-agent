@@ -10,18 +10,18 @@ from apscheduler.triggers.cron import CronTrigger
 from apps.leadcommercial.main import _run_job, main, start_scheduler
 
 
-def test_run_job_calls_pipeline():
+def test_run_job_calls_orchestrator():
     with patch(
-        "apps.leadcommercial.main.run_pipeline", return_value=[{"siren": "123"}]
-    ) as mock_pipeline:
+        "apps.leadcommercial.orchestrator.run", return_value=[{"siren": "123"}]
+    ) as mock_run:
         _run_job()
-    mock_pipeline.assert_called_once_with()
+    mock_run.assert_called_once_with()
 
 
 def test_run_job_captures_sentry_on_error():
     with (
         patch(
-            "apps.leadcommercial.main.run_pipeline",
+            "apps.leadcommercial.orchestrator.run",
             side_effect=RuntimeError("boom"),
         ),
         patch(
@@ -53,37 +53,32 @@ def test_start_scheduler_job_config():
     mock_scheduler.start.assert_called_once()
 
 
-def test_main_scheduler_enabled_calls_start_scheduler():
+def test_main_once_flag_runs_job():
     with (
-        patch("apps.leadcommercial.main.SCHEDULER_ENABLED", True),
+        patch("apps.leadcommercial.orchestrator.run", return_value=[]),
         patch("apps.leadcommercial.main.start_scheduler") as mock_start,
         patch("apps.leadcommercial.main.sentry_sdk.init"),
     ):
-        main()
+        main(argv=["--once"])
+
+    mock_start.assert_not_called()
+
+
+def test_main_no_once_starts_scheduler():
+    with (
+        patch("apps.leadcommercial.main.start_scheduler") as mock_start,
+        patch("apps.leadcommercial.main.sentry_sdk.init"),
+    ):
+        main(argv=[])
 
     mock_start.assert_called_once()
 
 
-def test_main_scheduler_disabled_runs_pipeline_once():
-    with (
-        patch("apps.leadcommercial.main.SCHEDULER_ENABLED", False),
-        patch(
-            "apps.leadcommercial.main.run_pipeline", return_value=[]
-        ) as mock_pipeline,
-        patch("apps.leadcommercial.main.start_scheduler") as mock_start,
-        patch("apps.leadcommercial.main.sentry_sdk.init"),
-    ):
-        main()
-
-    mock_pipeline.assert_called_once()
-    mock_start.assert_not_called()
-
-
 if __name__ == "__main__":
-    test_run_job_calls_pipeline()
+    test_run_job_calls_orchestrator()
     test_run_job_captures_sentry_on_error()
     test_start_scheduler_job_config()
-    test_main_scheduler_enabled_calls_start_scheduler()
-    test_main_scheduler_disabled_runs_pipeline_once()
+    test_main_once_flag_runs_job()
+    test_main_no_once_starts_scheduler()
     print()
     print("5/5 tests passes !")
