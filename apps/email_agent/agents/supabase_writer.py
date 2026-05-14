@@ -10,7 +10,8 @@ _EMAIL_AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _EMAIL_AGENT_DIR not in sys.path:
     sys.path.insert(0, _EMAIL_AGENT_DIR)
 
-from storage import calculate_and_save_kpis, save_email as _save_email  # noqa: E402
+from storage import calculate_and_save_kpis  # noqa: E402
+from storage import save_email as _save_email  # noqa: E402
 
 if TYPE_CHECKING:
     from agents import EmailAnalyzed, KpiResult  # type: ignore[import]  # noqa: F401

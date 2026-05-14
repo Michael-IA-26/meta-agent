@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def send_telegram_report(analyzed_emails: list, kpis: dict | None = None) -> bool:
+    """Send a markdown summary of *analyzed_emails* (with optional KPI block) to Telegram."""
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -99,4 +100,4 @@ if __name__ == "__main__":
         "valeur_estimee_eur": 57.2,
     }
     result = send_telegram_report(test_emails, test_kpis)
-    print("Resultat : OK" if result else "Resultat : ERREUR")
+    logger.info("Resultat : %s", "OK" if result else "ERREUR")

@@ -10,10 +10,11 @@ _EMAIL_AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _EMAIL_AGENT_DIR not in sys.path:
     sys.path.insert(0, _EMAIL_AGENT_DIR)
 
-import anthropic  # noqa: E402
 import json  # noqa: E402
 
-from analyzer import _build_system_prompt, load_icp as _load_icp  # noqa: E402
+import anthropic  # noqa: E402
+from analyzer import _build_system_prompt  # noqa: E402
+from analyzer import load_icp as _load_icp  # noqa: E402
 
 if TYPE_CHECKING:
     from agents import EmailAnalyzed, EmailRaw  # type: ignore[import]  # noqa: F401
