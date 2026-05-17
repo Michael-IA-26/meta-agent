@@ -1,0 +1,148 @@
+description: "Golden tests — LeadCommercial Cold Email (leadcommercial_cold_email.md)"
+
+prompts:
+  - label: cold_email
+    messages:
+      - role: system
+        content: file://../assembled/leadcommercial_cold_email.md
+      - role: user
+        content: "{{lead_data}}"
+
+providers:
+  - id: anthropic:claude-haiku-4-5-20251001
+    config:
+      temperature: 0
+
+defaultTest:
+  assert:
+    - type: llm-rubric
+      value: "La réponse est entièrement rédigée en français."
+
+tests:
+  # Cas 1 : Signal création < 6 mois — restaurant Paris (75)
+  - description: "Restaurant Paris créé il y a 3 mois — email attendu"
+    vars:
+      lead_data: |
+        SIREN: 912345678
+        Raison sociale: BRASSERIE DU MARAIS
+        Forme juridique: SAS
+        Dirigeant: Pierre Moreau
+        Date d'immatriculation: 14/02/2026
+        Adresse: 42 Rue des Archives, 75003 Paris
+        Code NAF: 5610A — Restauration traditionnelle
+        Capital social: 5 000 €
+        Effectif déclaré: 2 salariés
+        Statut RCS: Actif
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse contient un email structuré selon la méthode PAS avec
+          trois parties identifiables : un Problème (besoin concret lié à la
+          création récente), une Agitation (conséquence si non traité), et
+          une Solution (accompagnement JM Partners).
+      - type: icontains
+        value: "vous"
+      - type: javascript
+        value: "output.split(/\\s+/).filter(w => w.length > 0).length < 150"
+        threshold: 1
+      - type: icontains
+        value: "20 min"
+
+  # Cas 2 : Signal création — SARL BTP en Hauts-de-Seine (92)
+  - description: "SARL BTP 92 créée il y a 5 mois — email attendu"
+    vars:
+      lead_data: |
+        SIREN: 923456789
+        Raison sociale: BATIPRO 92
+        Forme juridique: SARL
+        Dirigeant: Karim Benali
+        Date d'immatriculation: 08/12/2025
+        Adresse: 15 Avenue de la Paix, 92100 Boulogne-Billancourt
+        Code NAF: 4120A — Construction de maisons individuelles
+        Capital social: 10 000 €
+        Effectif déclaré: 3 salariés
+        Statut RCS: Actif
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse contient un email structuré selon la méthode PAS avec
+          trois parties identifiables : un Problème (besoin concret lié à la
+          création récente), une Agitation (conséquence si non traité), et
+          une Solution (accompagnement JM Partners).
+      - type: icontains
+        value: "vous"
+      - type: javascript
+        value: "output.split(/\\s+/).filter(w => w.length > 0).length < 150"
+        threshold: 1
+      - type: icontains
+        value: "20 min"
+
+  # Cas 3 : Lead hors IDF — Lyon (69) — doit être exclu, pas d'email
+  - description: "Lead à Lyon — exclusion attendue, pas d'email rédigé"
+    vars:
+      lead_data: |
+        SIREN: 934567890
+        Raison sociale: CONSEIL RHONE SAS
+        Forme juridique: SAS
+        Dirigeant: Sophie Lambert
+        Date d'immatriculation: 10/01/2026
+        Adresse: 8 Rue de la République, 69001 Lyon
+        Code NAF: 7022Z — Conseil pour les affaires et la gestion
+        Capital social: 3 000 €
+        Effectif déclaré: 1 salarié
+        Statut RCS: Actif
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse indique un motif d'exclusion (siège hors Île-de-France)
+          sans rédiger d'email de prospection. Aucun objet d'email ni corps
+          de message ne doit apparaître.
+      - type: javascript
+        value: "!output.toLowerCase().includes('20 min')"
+        threshold: 1
+
+  # Cas 4 : Lead > 49 salariés — doit être exclu
+  - description: "Entreprise de 55 salariés Paris — exclusion attendue"
+    vars:
+      lead_data: |
+        SIREN: 945678901
+        Raison sociale: LOGISTIQUE PARIS SAS
+        Forme juridique: SAS
+        Dirigeant: Marc Dupont
+        Date d'immatriculation: 03/03/2026
+        Adresse: 22 Rue de Rivoli, 75001 Paris
+        Code NAF: 4941B — Transports routiers de fret de proximité
+        Capital social: 50 000 €
+        Effectif déclaré: 55 salariés
+        Statut RCS: Actif
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse indique un motif d'exclusion (effectif déclaré supérieur
+          à 50 salariés) sans rédiger d'email de prospection.
+      - type: javascript
+        value: "!output.toLowerCase().includes('20 min')"
+        threshold: 1
+
+  # Cas 5 : Lead en procédure collective — doit être exclu
+  - description: "Entreprise en redressement judiciaire Paris — exclusion attendue"
+    vars:
+      lead_data: |
+        SIREN: 956789012
+        Raison sociale: BOUTIQUE MODE PARIS
+        Forme juridique: SARL
+        Dirigeant: Isabelle Renard
+        Date d'immatriculation: 15/11/2023
+        Adresse: 5 Rue du Commerce, 75015 Paris
+        Code NAF: 4771Z — Commerce de détail d'habillement en magasin spécialisé
+        Capital social: 8 000 €
+        Effectif déclaré: 4 salariés
+        Statut RCS: Redressement judiciaire ouvert le 02/04/2026
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse indique un motif d'exclusion (procédure collective en
+          cours) sans rédiger d'email de prospection.
+      - type: javascript
+        value: "!output.toLowerCase().includes('20 min')"
+        threshold: 1

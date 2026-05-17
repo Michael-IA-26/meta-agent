@@ -1,0 +1,178 @@
+description: "Golden tests — LeadCommercial Scoring (leadcommercial_scoring.md)"
+
+prompts:
+  - label: scoring
+    messages:
+      - role: system
+        content: file://../assembled/leadcommercial_scoring.md
+      - role: user
+        content: "{{lead_data}}"
+
+providers:
+  - id: anthropic:claude-haiku-4-5-20251001
+    config:
+      temperature: 0
+
+defaultTest:
+  assert:
+    - type: llm-rubric
+      value: "La réponse est entièrement rédigée en français."
+    - type: icontains
+      value: "SIREN"
+
+tests:
+  # Cas 1 : TPE IDF — score élevé (lead chaud ≥ 75)
+  # Score attendu : localisation 20 + taille 20 + forme jur. 15 + création 20 + secteur 10 = 85
+  - description: "SARL services Paris 5 salariés, création 3 mois — lead chaud ≥ 75 attendu"
+    vars:
+      lead_data: |
+        SIREN: 912345678
+        Raison sociale: DIGIT CONSEIL
+        Forme juridique: SARL
+        Dirigeant: Thomas Bernard
+        Date d'immatriculation: 01/02/2026
+        Adresse: 18 Rue du Temple, 75004 Paris
+        Code NAF: 6201Z — Programmation informatique
+        Capital social: 5 000 €
+        Effectif déclaré: 5 salariés
+        Statut RCS: Actif
+        Procédure collective: aucune
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse produit une fiche lead structurée contenant les champs
+          Score ICP, Qualification et Séquence.
+      - type: llm-rubric
+        value: >
+          Le score ICP calculé est supérieur ou égal à 75 et la qualification
+          est « chaud ». La séquence recommandée inclut un email J+0 et une
+          relance J+7.
+      - type: llm-rubric
+        value: >
+          Le signal création récente est détecté (oui) avec la date
+          01/02/2026 mentionnée dans la fiche.
+
+  # Cas 2 : PME IDF — score moyen (lead tiède 50-74)
+  # Score attendu : localisation 20 + taille 15 + forme jur. 15 + création 0 + secteur 10 = 60
+  - description: "SAS transports Bagnolet 25 salariés, création 2020 — lead tiède 50-74 attendu"
+    vars:
+      lead_data: |
+        SIREN: 923456789
+        Raison sociale: TRANSPORT IDF
+        Forme juridique: SAS
+        Dirigeant: Nathalie Chevalier
+        Date d'immatriculation: 15/06/2020
+        Adresse: 30 Avenue Gallieni, 93170 Bagnolet
+        Code NAF: 4941A — Transports routiers de fret interurbains
+        Capital social: 20 000 €
+        Effectif déclaré: 25 salariés
+        Statut RCS: Actif
+        Procédure collective: aucune
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse produit une fiche lead structurée contenant les champs
+          Score ICP, Qualification et Séquence.
+      - type: llm-rubric
+        value: >
+          Le score ICP calculé est compris entre 50 et 74 et la qualification
+          est « tiède ». La séquence recommandée inclut un email J+0 et une
+          relance J+14.
+      - type: llm-rubric
+        value: >
+          Le signal création récente est absent (non) car la date
+          d'immatriculation 15/06/2020 dépasse 6 mois.
+
+  # Cas 3 : Hors IDF — score forcé à 0, tag exclu
+  - description: "SARL immobilier Marseille — exclusion hors IDF, score 0 attendu"
+    vars:
+      lead_data: |
+        SIREN: 934567890
+        Raison sociale: SUD IMMOBILIER
+        Forme juridique: SARL
+        Dirigeant: Jean-Luc Fabre
+        Date d'immatriculation: 20/03/2025
+        Adresse: 12 Cours Julien, 13006 Marseille
+        Code NAF: 6831Z — Agences immobilières
+        Capital social: 15 000 €
+        Effectif déclaré: 3 salariés
+        Statut RCS: Actif
+        Procédure collective: aucune
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse attribue un score forcé à 0 et mentionne explicitement
+          le motif d'exclusion « hors Île-de-France » ou « siège hors IDF ».
+      - type: llm-rubric
+        value: >
+          La fiche lead porte le tag « exclu » et indique qu'aucune séquence
+          de prospection ne doit être lancée.
+      - type: icontains
+        value: "exclu"
+      - type: javascript
+        value: "!output.toLowerCase().includes('chaud') && !output.toLowerCase().includes('tiède')"
+        threshold: 1
+
+  # Cas 4 : Procédure collective — score forcé à 0, tag exclu
+  - description: "SARL restauration Paris en liquidation judiciaire — score 0 attendu"
+    vars:
+      lead_data: |
+        SIREN: 845678901
+        Raison sociale: RESTO RAPIDE PARIS
+        Forme juridique: SARL
+        Dirigeant: Ahmed Khelif
+        Date d'immatriculation: 10/05/2018
+        Adresse: 7 Boulevard Voltaire, 75011 Paris
+        Code NAF: 5610C — Restauration de type rapide
+        Capital social: 2 000 €
+        Effectif déclaré: 6 salariés
+        Statut RCS: Liquidation judiciaire ouverte le 15/03/2026
+    assert:
+      - type: llm-rubric
+        value: >
+          La réponse attribue un score forcé à 0 et mentionne explicitement
+          le motif d'exclusion « procédure collective » ou « liquidation
+          judiciaire ».
+      - type: llm-rubric
+        value: >
+          La fiche lead porte le tag « exclu » et aucun email de prospection
+          ne doit être déclenché.
+      - type: icontains
+        value: "exclu"
+      - type: javascript
+        value: "!output.toLowerCase().includes('chaud')"
+        threshold: 1
+
+  # Cas 5 : Création très récente < 7 jours — bonus signal création max
+  # Score attendu : localisation 20 + taille 10 + forme jur. 15 + création 20 + secteur 10 = 75
+  # Date d'immatriculation : 12/05/2026 (5 jours avant le 17/05/2026)
+  - description: "SASU conseil Paris 0 salarié, création il y a 5 jours — signal création détecté, score élevé"
+    vars:
+      lead_data: |
+        SIREN: 956789012
+        Raison sociale: FRESH START CONSEIL
+        Forme juridique: SASU
+        Dirigeant: Clara Fontaine
+        Date d'immatriculation: 12/05/2026
+        Adresse: 9 Rue Championnet, 75018 Paris
+        Code NAF: 7022Z — Conseil pour les affaires et la gestion
+        Capital social: 1 000 €
+        Effectif déclaré: 0 salarié
+        Statut RCS: Actif
+        Procédure collective: aucune
+    assert:
+      - type: llm-rubric
+        value: >
+          Le signal création récente est détecté (oui) avec la date
+          12/05/2026 mentionnée. La fenêtre d'opportunité M+1 à M+5 est
+          signalée comme optimale.
+      - type: llm-rubric
+        value: >
+          Le score ICP est supérieur ou égal à 60 grâce au cumul signal
+          création (20 pts) et localisation IDF (20 pts).
+      - type: llm-rubric
+        value: >
+          La qualification est « chaud » ou « tiède » et la séquence
+          recommandée inclut un email J+0.
+      - type: icontains
+        value: "création"
