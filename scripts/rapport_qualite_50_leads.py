@@ -40,12 +40,25 @@ TRANCHES_ICP = {"00", "01", "02", "03", "11", "12"}
 
 # Secteurs exclus (NAF)
 SECTEURS_EXCLUS = {
-    "94.99Z", "94.11Z", "94.12Z", "94.20Z", "94.91Z", "94.92Z", "94.99Z",  # associations
-    "47.11A", "47.11B",  # grandes surfaces
-    "85.10Z", "85.20Z", "85.31Z", "85.32Z", "85.41Z", "85.42Z",  # enseignement public
+    "94.99Z",
+    "94.11Z",
+    "94.12Z",
+    "94.20Z",
+    "94.91Z",
+    "94.92Z",
+    "94.99Z",  # associations
+    "47.11A",
+    "47.11B",  # grandes surfaces
+    "85.10Z",
+    "85.20Z",
+    "85.31Z",
+    "85.32Z",
+    "85.41Z",
+    "85.42Z",  # enseignement public
 }
 
 # ── Helpers API ───────────────────────────────────────────────────────────────
+
 
 def get_dept(company: dict) -> str:
     cp = company.get("siege", {}).get("code_postal", "") or ""
@@ -90,6 +103,7 @@ def get_full_company(siren: str) -> dict | None:
 
 # ── Filtres ICP ───────────────────────────────────────────────────────────────
 
+
 def apply_icp(company: dict) -> tuple[bool, str]:
     """
     Applique les critères ICP JM Partners.
@@ -115,7 +129,10 @@ def apply_icp(company: dict) -> tuple[bool, str]:
     if effectif_min is not None:
         try:
             if int(effectif_min) >= 50:
-                return False, f"Effectif hors ICP — {company.get('effectif', effectif_min)} salariés"
+                return (
+                    False,
+                    f"Effectif hors ICP — {company.get('effectif', effectif_min)} salariés",
+                )
         except (ValueError, TypeError):
             pass
     else:
@@ -129,7 +146,10 @@ def apply_icp(company: dict) -> tuple[bool, str]:
                 tranche = str(tranche_raw).strip()
             if tranche and tranche not in TRANCHES_ICP:
                 effectif_label = company.get("effectif", f"tranche {tranche}")
-                return False, f"Effectif hors ICP — {effectif_label} (tranche {tranche})"
+                return (
+                    False,
+                    f"Effectif hors ICP — {effectif_label} (tranche {tranche})",
+                )
 
     # 5. Secteur exclu
     naf = (company.get("code_naf") or "").strip()
@@ -140,6 +160,7 @@ def apply_icp(company: dict) -> tuple[bool, str]:
 
 
 # ── Fetch 50 leads ────────────────────────────────────────────────────────────
+
 
 def fetch_leads(target: int = 50) -> list[dict]:
     date_min = (date.today() - timedelta(days=180)).isoformat()
@@ -188,6 +209,7 @@ def fetch_leads(target: int = 50) -> list[dict]:
 
 
 # ── Rapport markdown ──────────────────────────────────────────────────────────
+
 
 def build_report(leads: list[dict]) -> str:
     today = date.today().isoformat()
@@ -369,4 +391,6 @@ if __name__ == "__main__":
 
     # Résumé console
     qualified_count = sum(1 for c in leads if apply_icp(c)[0])
-    print(f"Qualifiés ICP : {qualified_count}/{len(leads)} ({round(qualified_count/len(leads)*100,1)} %)")
+    print(
+        f"Qualifiés ICP : {qualified_count}/{len(leads)} ({round(qualified_count / len(leads) * 100, 1)} %)"
+    )

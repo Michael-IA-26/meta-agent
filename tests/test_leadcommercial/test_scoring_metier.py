@@ -25,6 +25,7 @@ def make_company(**kwargs):
 
 # ── 1. Malus forme juridique non prioritaire ──────────────────────────────────
 
+
 def test_forme_non_prioritaire_malus_10pts():
     """Forme hors FORMES_PRIORITAIRES → -10 pts sur signal creation (100 → 90)."""
     company = make_company(siren="001", forme_juridique="8110")
@@ -34,6 +35,7 @@ def test_forme_non_prioritaire_malus_10pts():
 
 
 # ── 2. Bonus création très récente (≤ 7 jours) ───────────────────────────────
+
 
 def test_creation_tres_recente_bonus_10pts():
     """Création il y a 3 jours + signal rattrapage (80) → 80+10=90."""
@@ -48,6 +50,7 @@ def test_creation_tres_recente_bonus_10pts():
 
 # ── 3. Bonus création récente (7 < jours ≤ 14) ───────────────────────────────
 
+
 def test_creation_recente_bonus_5pts():
     """Création il y a 10 jours + signal rattrapage (80) → 80+5=85."""
     company = make_company(
@@ -61,6 +64,7 @@ def test_creation_recente_bonus_5pts():
 
 # ── 4. Signal intention → qualifié au seuil 50 ───────────────────────────────
 
+
 def test_signal_intention_qualifie():
     """Signal intention = 60 pts → score 60, qualified=True (≥ 50)."""
     company = make_company(siren="004")
@@ -71,6 +75,7 @@ def test_signal_intention_qualifie():
 
 # ── 5. Seuil de qualification exact à 50 (edge case) ─────────────────────────
 
+
 def test_seuil_qualification_exactement_50():
     """intention (60) + forme non prioritaire (-10) = 50 → qualified=True."""
     company = make_company(siren="005", forme_juridique="8110")
@@ -80,6 +85,7 @@ def test_seuil_qualification_exactement_50():
 
 
 # ── 6. Tous les départements IDF produisent un score positif ─────────────────
+
 
 @pytest.mark.parametrize("dept", ["75", "77", "78", "91", "92", "93", "94", "95"])
 def test_tous_depts_idf_qualifies(dept):
@@ -93,7 +99,10 @@ def test_tous_depts_idf_qualifies(dept):
 # ── 7. Procédure collective → score forcé à 0 ────────────────────────────────
 # TDD : exclusion métier non encore implémentée dans scorer.py
 
-@pytest.mark.xfail(reason="Exclusion procédure collective non implémentée dans scorer.py", strict=True)
+
+@pytest.mark.xfail(
+    reason="Exclusion procédure collective non implémentée dans scorer.py", strict=True
+)
 def test_procedure_collective_score_zero():
     """Société en procédure collective → score 0, qualified=False (règle métier ICP)."""
     company = make_company(siren="007", procedure_collective=True)
@@ -105,7 +114,10 @@ def test_procedure_collective_score_zero():
 # ── 8. Effectif > 50 salariés → hors ICP ─────────────────────────────────────
 # TDD : filtre effectif non encore implémenté dans scorer.py
 
-@pytest.mark.xfail(reason="Filtre effectif > 50 non implémenté dans scorer.py", strict=True)
+
+@pytest.mark.xfail(
+    reason="Filtre effectif > 50 non implémenté dans scorer.py", strict=True
+)
 def test_effectif_superieur_50_exclu():
     """Effectif 75 salariés → hors cible TPE JM Partners, qualified=False."""
     company = make_company(siren="008", effectif=75)
@@ -116,7 +128,10 @@ def test_effectif_superieur_50_exclu():
 # ── 9. Secteur exclu (association NAF 94.99Z) → score 0 ──────────────────────
 # TDD : liste de NAF exclus non encore implémentée dans scorer.py
 
-@pytest.mark.xfail(reason="Exclusion par secteur NAF non implémentée dans scorer.py", strict=True)
+
+@pytest.mark.xfail(
+    reason="Exclusion par secteur NAF non implémentée dans scorer.py", strict=True
+)
 def test_secteur_exclu_association_score_zero():
     """NAF 94.99Z (association loi 1901) est un secteur exclu → score 0."""
     company = make_company(siren="009", code_naf="94.99Z")
@@ -128,7 +143,10 @@ def test_secteur_exclu_association_score_zero():
 # ── 10. Déduplication : SIREN doublon → une seule entrée en sortie ───────────
 # TDD : déduplication non encore implémentée dans score_batch
 
-@pytest.mark.xfail(reason="Déduplication par SIREN non implémentée dans score_batch", strict=True)
+
+@pytest.mark.xfail(
+    reason="Déduplication par SIREN non implémentée dans score_batch", strict=True
+)
 def test_deduplication_siren_doublon_batch():
     """score_batch avec le même SIREN deux fois ne doit retourner qu'un résultat."""
     company = make_company(siren="010")
