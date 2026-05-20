@@ -239,32 +239,32 @@ def build_report(leads: list[dict]) -> str:
     lines = []
 
     lines += [
-        f"# Rapport qualité — 50 leads Sirene IDF réels",
-        f"",
+        "# Rapport qualité — 50 leads Sirene IDF réels",
+        "",
         f"**Date** : {today}  ",
-        f"**Source** : API Pappers v2  ",
+        "**Source** : API Pappers v2  ",
         f"**Périmètre** : entreprises IDF créées entre {date_min} et {today}  ",
-        f"**Critères ICP** : TPE/PME IDF (0-49 sal.), non cessée, hors procédure collective, hors secteurs exclus  ",
-        f"",
-        f"---",
-        f"",
-        f"## 1. Résumé exécutif",
-        f"",
-        f"| Indicateur | Valeur |",
-        f"|---|---|",
+        "**Critères ICP** : TPE/PME IDF (0-49 sal.), non cessée, hors procédure collective, hors secteurs exclus  ",
+        "",
+        "---",
+        "",
+        "## 1. Résumé exécutif",
+        "",
+        "| Indicateur | Valeur |",
+        "|---|---|",
         f"| Leads Sirene récupérés | {nb_total} |",
         f"| Leads qualifiés ICP | **{nb_qualifies}** |",
         f"| Leads exclus | {nb_exclus} |",
         f"| Taux de passage ICP | **{taux} %** |",
-        f"",
+        "",
     ]
 
     if motifs_sorted:
         lines += [
-            f"### Motifs d'exclusion",
-            f"",
-            f"| Motif | Nb |",
-            f"|---|---|",
+            "### Motifs d'exclusion",
+            "",
+            "| Motif | Nb |",
+            "|---|---|",
         ]
         for motif, nb in motifs_sorted:
             lines.append(f"| {motif} | {nb} |")
@@ -272,20 +272,20 @@ def build_report(leads: list[dict]) -> str:
 
     if depts_qualifies:
         lines += [
-            f"### Répartition des leads qualifiés par département",
-            f"",
-            f"| Département | Nb qualifiés |",
-            f"|---|---|",
+            "### Répartition des leads qualifiés par département",
+            "",
+            "| Département | Nb qualifiés |",
+            "|---|---|",
         ]
         for d in sorted(depts_qualifies):
             lines.append(f"| {d} | {depts_qualifies[d]} |")
         lines.append("")
 
     lines += [
-        f"---",
-        f"",
+        "---",
+        "",
         f"## 2. Leads qualifiés ICP ({nb_qualifies})",
-        f"",
+        "",
     ]
 
     if qualified:
@@ -303,10 +303,10 @@ def build_report(leads: list[dict]) -> str:
         lines += ["*Aucun lead qualifié.*", ""]
 
     lines += [
-        f"---",
-        f"",
+        "---",
+        "",
         f"## 3. Leads exclus ({nb_exclus})",
-        f"",
+        "",
     ]
 
     if excluded:
@@ -324,28 +324,28 @@ def build_report(leads: list[dict]) -> str:
         lines += ["*Aucun lead exclu.*", ""]
 
     lines += [
-        f"---",
-        f"",
-        f"## 4. Méthodologie",
-        f"",
+        "---",
+        "",
+        "## 4. Méthodologie",
+        "",
         f"**Collecte** : endpoint `/v2/recherche` Pappers avec filtre `date_creation_min={date_min}` et `entreprise_cessee=false`.  ",
-        f"Enrichissement individuel via `/v2/entreprise` pour récupérer `procedure_collective_en_cours` et `tranche_effectif`.",
-        f"",
-        f"**Critères ICP appliqués (dans l'ordre) :**",
-        f"",
-        f"1. Entreprise non cessée (`entreprise_cessee = false`)",
-        f"2. Siège social en Île-de-France (dept 75, 77, 78, 91, 92, 93, 94, 95)",
-        f"3. Aucune procédure collective en cours",
-        f"4. Effectif ≤ 49 salariés (tranches INSEE 00 à 12)",
-        f"5. Secteur hors exclusions (associations, grandes surfaces, enseignement public)",
-        f"",
-        f"**Limites de cette analyse :**",
-        f"- Les entreprises sans `tranche_effectif` renseignée sont considérées éligibles (effectif inconnu).",
-        f"- Le signal « changement de dirigeant » (BODACC) n'est pas inclus dans ce rapport (prévu S3).",
-        f"- Déduplication simple par SIREN — aucun rapprochement CRM effectué.",
-        f"",
-        f"---",
-        f"",
+        "Enrichissement individuel via `/v2/entreprise` pour récupérer `procedure_collective_en_cours` et `tranche_effectif`.",
+        "",
+        "**Critères ICP appliqués (dans l'ordre) :**",
+        "",
+        "1. Entreprise non cessée (`entreprise_cessee = false`)",
+        "2. Siège social en Île-de-France (dept 75, 77, 78, 91, 92, 93, 94, 95)",
+        "3. Aucune procédure collective en cours",
+        "4. Effectif ≤ 49 salariés (tranches INSEE 00 à 12)",
+        "5. Secteur hors exclusions (associations, grandes surfaces, enseignement public)",
+        "",
+        "**Limites de cette analyse :**",
+        "- Les entreprises sans `tranche_effectif` renseignée sont considérées éligibles (effectif inconnu).",
+        "- Le signal « changement de dirigeant » (BODACC) n'est pas inclus dans ce rapport (prévu S3).",
+        "- Déduplication simple par SIREN — aucun rapprochement CRM effectué.",
+        "",
+        "---",
+        "",
         f"*Rapport généré automatiquement le {today} — JM Partners / Signal Agent v0.1*",
     ]
 
