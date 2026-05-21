@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import sys
 import time
@@ -7,9 +8,11 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gmail_client import get_gmail_service
-from storage import calculate_and_save_kpis
-from telegram_sender import send_telegram_report
+
+logger = logging.getLogger(__name__)
+from gmail_client import get_gmail_service  # noqa: E402
+from storage import calculate_and_save_kpis  # noqa: E402
+from telegram_sender import send_telegram_report  # noqa: E402
 
 
 def report_to_html(analyzed_emails):
@@ -71,16 +74,13 @@ def send_report(analyzed_emails, temps_agent_sec=0):
     message.attach(MIMEText(html_content, "html", "utf-8"))
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     service.users().messages().send(userId="me", body={"raw": raw}).execute()
-    print(f"Rapport HTML envoye a {recipient} !")
+    logger.info(f"Rapport HTML envoye a {recipient} !")
 
     kpis = calculate_and_save_kpis(analyzed_emails, temps_agent_sec)
     if kpis:
-        print("\n📊 KPIs du jour :")
-        print(f"  Emails analyses  : {kpis.get('emails_analyses')}")
-        print(f"  Temps agent      : {kpis.get('temps_agent_min')} min")
-        print(f"  Temps gagne      : {kpis.get('temps_gagne_min')} min")
-        print(f"  Gain             : {kpis.get('gain_pourcentage')}%")
-        print(f"  Valeur estimee   : {kpis.get('valeur_estimee_eur')} EUR")
+        logger.info(
+            f"KPIs — analyses: {kpis.get('emails_analyses')} | gagne: {kpis.get('temps_gagne_min')}min | valeur: {kpis.get('valeur_estimee_eur')}EUR"
+        )
 
     send_telegram_report(analyzed_emails, kpis)
 

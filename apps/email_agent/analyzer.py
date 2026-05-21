@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import anthropic
 from storage import save_email
+
+logger = logging.getLogger(__name__)
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -49,8 +52,7 @@ Reponds avec exactement ce format JSON:
 
     try:
         block = response.content[0]
-        raw_text = block.text if hasattr(block, "text") else ""
-        result = json.loads(raw_text)
+        result = json.loads(block.text if hasattr(block, "text") else "{}")
     except Exception:
         result = {
             "priority": "moyenne",
@@ -62,18 +64,18 @@ Reponds avec exactement ce format JSON:
 
     analyzed = {**email, **result}
     result_save = save_email(analyzed)
-    print(f"  Supabase: {'OK' if result_save else 'ERREUR'}")
+    logger.info(f"  Supabase: {'OK' if result_save else 'ERREUR'}")
     return analyzed
 
 
 def analyze_emails(emails: list, icp_name: str = "agence_conseil") -> list:
     icp_context = load_icp(icp_name)
     if icp_context:
-        print(f"ICP charge : {icp_name}")
-    print(f"Analyse de {len(emails)} emails avec Claude...")
+        logger.info(f"ICP charge : {icp_name}")
+    logger.info(f"Analyse de {len(emails)} emails avec Claude...")
     results = []
     for i, email in enumerate(emails):
-        print(f"  [{i + 1}/{len(emails)}] {email['subject'][:50]}...")
+        logger.info(f"  [{i + 1}/{len(emails)}] {email['subject'][:50]}...")
         analyzed = analyze_email(email, icp_context)
         results.append(analyzed)
     return results

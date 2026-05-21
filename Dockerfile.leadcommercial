@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    TZ=Europe/Paris
+
+# tzdata needed for system TZ env var; pytz bundles its own data but the
+# system clock display in logs benefits from a correct /etc/localtime.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install uv --no-cache-dir
+
+RUN useradd -m -u 1000 appuser
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --frozen --no-dev
+
+COPY apps/ ./apps/
+COPY packages/ ./packages/
+
+RUN mkdir -p logs && chown -R appuser:appuser /app
+
+USER appuser
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=15s --retries=3 \
+    CMD python3.11 -c "from apscheduler.schedulers.blocking import BlockingScheduler" || exit 1
+
+CMD ["uv", "run", "python3.11", "-m", "apps.leadcommercial.main"]

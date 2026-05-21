@@ -1,0 +1,5 @@
+[services.email-agent]
+dockerfilePath = "Dockerfile"
+
+[services.leadcommercial]
+dockerfilePath = "Dockerfile.leadcommercial"
