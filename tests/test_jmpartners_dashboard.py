@@ -291,3 +291,143 @@ def test_get_dossiers_from_supabase(client: TestClient) -> None:
     assert len(data) == 1
     assert data[0]["contact_nom"] == "Test Corp"
     assert "Grand Livre" in data[0]["documents_manquants"]
+
+
+# ---------------------------------------------------------------------------
+# Test 9 — GET /api/dossiers fallback Supabase down
+# ---------------------------------------------------------------------------
+
+
+def test_get_dossiers_supabase_down(client: TestClient) -> None:
+    """GET /api/dossiers doit retourner les données mock si Supabase est down."""
+    with (
+        patch("apps.jmpartners.dashboard._supabase_available", return_value=True),
+        patch(
+            "apps.jmpartners.dashboard._fetch_dossiers_from_supabase",
+            side_effect=Exception("Connection refused"),
+        ),
+    ):
+        resp = client.get("/api/dossiers")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    # Doit retourner les données mock (au moins 1 dossier)
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    # Structure valide
+    first = data[0]
+    assert "id" in first
+    assert "contact_nom" in first
+    assert "documents_manquants" in first
+    assert "alertes" in first
+
+
+# ---------------------------------------------------------------------------
+# Test 10 — GET /api/dossiers données réelles structurées
+# ---------------------------------------------------------------------------
+
+
+def test_get_dossiers_real_data(client: TestClient) -> None:
+    """GET /api/dossiers avec données réelles retourne la structure attendue."""
+    real_dossiers = [
+        {
+            "id": "d-real-001",
+            "contact_id": "c-real-001",
+            "contact_nom": "Gamma SAS",
+            "type": "tva",
+            "statut": "actif",
+            "deadline": (date.today() + timedelta(days=5)).isoformat(),
+            "documents_manquants": ["CA Mensuel"],
+            "documents_presents": ["Factures TVA"],
+            "alertes": ["J-7"],
+        }
+    ]
+
+    with (
+        patch("apps.jmpartners.dashboard._supabase_available", return_value=True),
+        patch(
+            "apps.jmpartners.dashboard._fetch_dossiers_from_supabase",
+            return_value=real_dossiers,
+        ),
+    ):
+        resp = client.get("/api/dossiers")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["contact_nom"] == "Gamma SAS"
+    assert data[0]["type"] == "tva"
+    assert "J-7" in data[0]["alertes"]
+    assert "CA Mensuel" in data[0]["documents_manquants"]
+
+
+# ---------------------------------------------------------------------------
+# Test 11 — GET /api/echeances fallback Supabase down
+# ---------------------------------------------------------------------------
+
+
+def test_get_echeances_supabase_down(client: TestClient) -> None:
+    """GET /api/echeances doit utiliser le calcul algorithmique si Supabase est down."""
+    with patch(
+        "apps.jmpartners.dashboard._get_supabase_client",
+        side_effect=Exception("Supabase unreachable"),
+    ):
+        resp = client.get("/api/echeances")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    # Le fallback algorithmique doit fournir une réponse valide
+    assert "total" in data
+    assert "echeances" in data
+    assert isinstance(data["echeances"], list)
+
+
+# ---------------------------------------------------------------------------
+# Test 12 — GET /api/echeances données réelles depuis Supabase
+# ---------------------------------------------------------------------------
+
+
+def test_get_echeances_real_data(client: TestClient) -> None:
+    """GET /api/echeances avec Supabase mocké retourne les vraies données."""
+    today = date.today()
+    tva_row = {
+        "id": "tva-001",
+        "dossier_id": "d-001",
+        "periode": "2026-04",
+        "statut": "a_preparer",
+        "deadline": (today + timedelta(days=8)).isoformat(),
+        "montant_tva": 1500.0,
+    }
+    is_row = {
+        "id": "is-001",
+        "dossier_id": "d-002",
+        "exercice": "2026",
+        "statut": "a_payer",
+        "deadline": (today + timedelta(days=4)).isoformat(),
+        "montant": 3000.0,
+    }
+
+    mock_tva_resp = MagicMock()
+    mock_tva_resp.data = [tva_row]
+    mock_is_resp = MagicMock()
+    mock_is_resp.data = [is_row]
+
+    mock_client = MagicMock()
+    # Premier appel → TVA, deuxième appel → IS
+    mock_client.table.return_value.select.return_value.gte.return_value.lte.return_value.neq.return_value.execute.side_effect = [
+        mock_tva_resp,
+        mock_is_resp,
+    ]
+
+    with patch(
+        "apps.jmpartners.dashboard._get_supabase_client",
+        return_value=mock_client,
+    ):
+        resp = client.get("/api/echeances")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "echeances" in data
+    types_found = {e["type"] for e in data["echeances"]}
+    # Au moins un des types doit être présent
+    assert types_found & {"TVA", "IS"}

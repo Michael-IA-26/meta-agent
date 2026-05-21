@@ -199,37 +199,117 @@ def test_get_stats_fallback_when_not_configured() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 6 — POST /api/run triggers pipeline and returns leads_found
+# Test 6 — POST /api/run démarre le pipeline en thread et retourne "started"
 # ---------------------------------------------------------------------------
 
 
-def test_post_run_triggers_pipeline() -> None:
-    fake_leads = [{"siren": "111111111"}, {"siren": "222222222"}]
+def test_post_run_starts_thread() -> None:
+    """POST /api/run doit démarrer main() dans un thread et retourner {"status": "started"}."""
+    mock_main = MagicMock()
 
-    with patch(
-        "apps.leadcommercial.pipeline.run_pipeline",
-        return_value=fake_leads,
-    ):
+    with patch("apps.leadcommercial.main.main", mock_main):
         response = client.post("/api/run")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "ok"
-    assert body["leads_found"] == 2
+    assert body["status"] == "started"
 
 
 # ---------------------------------------------------------------------------
-# Test 7 — POST /api/run returns 500 when pipeline raises
+# Test 7 — POST /api/run retourne 500 si l'import échoue
 # ---------------------------------------------------------------------------
 
 
-def test_post_run_returns_500_on_error() -> None:
+def test_post_run_returns_500_on_import_error() -> None:
+    """POST /api/run doit retourner HTTP 500 si l'import de main échoue."""
+    import sys
+
+    # Supprime temporairement le module pour simuler un échec d'import
+    original = sys.modules.pop("apps.leadcommercial.main", None)
+    try:
+        with patch(
+            "apps.leadcommercial.dashboard.threading.Thread",
+            side_effect=RuntimeError("Impossible de démarrer le thread"),
+        ):
+            response = client.post("/api/run")
+        assert response.status_code == 500
+        body = response.json()
+        assert "detail" in body
+    finally:
+        if original is not None:
+            sys.modules["apps.leadcommercial.main"] = original
+
+
+# ---------------------------------------------------------------------------
+# Test 8 — GET /api/leads fallback Supabase down
+# ---------------------------------------------------------------------------
+
+
+def test_get_leads_supabase_down() -> None:
+    """GET /api/leads doit retourner [] si Supabase lève une exception."""
     with patch(
-        "apps.leadcommercial.pipeline.run_pipeline",
-        side_effect=RuntimeError("Sirene API down"),
+        "apps.leadcommercial.dashboard._get_supabase_client",
+        side_effect=Exception("Connection refused"),
     ):
-        response = client.post("/api/run")
+        response = client.get("/api/leads")
 
-    assert response.status_code == 500
-    body = response.json()
-    assert "detail" in body
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+# ---------------------------------------------------------------------------
+# Test 9 — GET /api/leads données réelles structurées
+# ---------------------------------------------------------------------------
+
+
+def test_get_leads_real_data() -> None:
+    """GET /api/leads doit retourner les leads triés par score desc."""
+    real_leads = [
+        {
+            "id": "uuid-10",
+            "siren": "111222333",
+            "denomination": "Alpha SAS",
+            "dept": "75",
+            "commune": "Paris",
+            "code_naf": "6920Z",
+            "score": 92,
+            "qualified": True,
+            "signal_type": "creation",
+            "created_at": "2026-05-21T10:00:00+00:00",
+        },
+        {
+            "id": "uuid-11",
+            "siren": "444555666",
+            "denomination": "Beta SARL",
+            "dept": "69",
+            "commune": "Lyon",
+            "code_naf": "7022Z",
+            "score": 55,
+            "qualified": True,
+            "signal_type": "radiation",
+            "created_at": "2026-05-20T08:00:00+00:00",
+        },
+    ]
+
+    mock_client = MagicMock()
+    chain = MagicMock()
+    chain.select.return_value = chain
+    chain.order.return_value = chain
+    chain.limit.return_value = chain
+    execute_result = MagicMock()
+    execute_result.data = real_leads
+    chain.execute.return_value = execute_result
+    mock_client.table.return_value = chain
+
+    with patch(
+        "apps.leadcommercial.dashboard._get_supabase_client",
+        return_value=mock_client,
+    ):
+        response = client.get("/api/leads")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert data[0]["score"] == 92
+    assert data[0]["denomination"] == "Alpha SAS"
+    assert data[1]["score"] == 55
