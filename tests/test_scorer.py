@@ -113,7 +113,7 @@ def test_score_batch():
 
 
 def _base_icp(**overrides) -> dict:
-    base = {
+    base: dict = {
         "secteurs": [],
         "zone_deps": [],
         "forme_juridique": [],

@@ -92,7 +92,7 @@ def test_run_aborts_on_fetch_failure() -> None:
     mocks: dict[str, MagicMock] = {}
     with (
         patch.object(orch.gmail_fetcher, "fetch_emails", side_effect=RuntimeError("API down")),
-        patch.object(orch.email_analyzer, "load_icp", return_value="icp") as m_icp,
+        patch.object(orch.email_analyzer, "load_icp", return_value="icp"),
         patch.object(orch.email_analyzer, "analyze_email", return_value=_ANALYZED_ONE) as m_analyze,
         patch.object(orch.supabase_writer, "write_email", return_value=True),
         patch.object(orch.supabase_writer, "write_kpis", return_value=_KPIS),
