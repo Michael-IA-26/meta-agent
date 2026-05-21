@@ -1,4 +1,5 @@
 """Supabase writer agent — persists a single analyzed email and KPI stats."""
+
 from __future__ import annotations
 
 import logging
@@ -38,7 +39,9 @@ def write_email(analyzed: EmailAnalyzed) -> bool:
     return success
 
 
-def write_kpis(analyzed_emails: list[EmailAnalyzed], temps_agent_sec: float) -> KpiResult:
+def write_kpis(
+    analyzed_emails: list[EmailAnalyzed], temps_agent_sec: float
+) -> KpiResult:
     """Calculate KPIs and persist them to Supabase.
 
     Returns a KpiResult dict; returns an empty dict cast on Supabase failure.

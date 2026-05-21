@@ -1,4 +1,5 @@
 """Agent: score 1 entreprise via scorer.py → ScoredLead."""
+
 import logging
 from typing import TypedDict
 

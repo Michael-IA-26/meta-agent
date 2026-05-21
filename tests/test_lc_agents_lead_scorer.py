@@ -1,4 +1,5 @@
 """Tests for apps.leadcommercial.agents.lead_scorer."""
+
 import os
 import sys
 
@@ -23,7 +24,9 @@ def _company(**overrides) -> dict:
 
 
 def test_score_company_qualified():
-    result = score_company(ScoreInput(company=_company(), signal_type="creation", icp=None))
+    result = score_company(
+        ScoreInput(company=_company(), signal_type="creation", icp=None)
+    )
     assert result["score"] == 100
     assert result["qualified"] is True
 
@@ -37,7 +40,9 @@ def test_score_company_hors_idf_score_zero():
 
 
 def test_score_company_returns_empty_enrichment_placeholders():
-    result = score_company(ScoreInput(company=_company(), signal_type="creation", icp=None))
+    result = score_company(
+        ScoreInput(company=_company(), signal_type="creation", icp=None)
+    )
     assert result["dirigeant_nom"] == ""
     assert result["dirigeant_prenom"] == ""
     assert result["dirigeant_email"] == ""
@@ -78,5 +83,7 @@ def test_score_company_with_icp():
         "signaux_exclus": [],
         "scoring_rules": {},
     }
-    result = score_company(ScoreInput(company=_company(), signal_type="creation", icp=icp))
+    result = score_company(
+        ScoreInput(company=_company(), signal_type="creation", icp=icp)
+    )
     assert result["score"] > 0

@@ -3,6 +3,7 @@
 Enchaîne les 5 agents spécialisés sans logique métier :
 sirene_fetcher → lead_scorer → pappers_enricher → supabase_writer → telegram_notifier.
 """
+
 import logging
 import os
 from typing import TypedDict

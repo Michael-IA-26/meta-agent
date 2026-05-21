@@ -5,14 +5,20 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import anthropic
+from anthropic.types import TextBlock
 from storage import save_email
 
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 logger = logging.getLogger(__name__)
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+SYSTEM_BASE = (
+    "Tu es un assistant expert en classification d'emails professionnels. "
+    "Reponds uniquement en JSON valide, sans balises markdown."
+)
 
 
 def load_icp(icp_name: str = "agence_conseil") -> str:
+    """Load ICP markdown context from packages/prompts/icps/."""
     base_dir = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
@@ -21,13 +27,22 @@ def load_icp(icp_name: str = "agence_conseil") -> str:
         with open(icp_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
+        logger.warning(f"ICP introuvable : {icp_path}")
         return ""
 
 
-def analyze_email(email: dict, icp_context: str = "") -> dict:
-    icp_section = f"\n\nCONTEXTE METIER:\n{icp_context}" if icp_context else ""
+def _build_system_prompt(icp_context: str) -> str:
+    """Assemble system prompt, injecting ICP context when available."""
+    if icp_context:
+        return f"{SYSTEM_BASE}\n\n{icp_context}"
+    return SYSTEM_BASE
 
-    prompt = f"""Analyse cet email et reponds en JSON uniquement, sans markdown.{icp_section}
+
+def analyze_email(email: dict, icp_context: str = "") -> dict:
+    """Analyze a single email and classify it; ICP is passed as Claude system prompt."""
+    system = _build_system_prompt(icp_context)
+
+    prompt = f"""Analyse cet email et reponds en JSON uniquement, sans markdown.
 
 Email:
 - De: {email["from"]}
@@ -47,12 +62,14 @@ Reponds avec exactement ce format JSON:
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=500,
+        system=system,
         messages=[{"role": "user", "content": prompt}],
     )
 
     try:
         block = response.content[0]
-        result = json.loads(block.text if hasattr(block, "text") else "{}")
+        raw = block.text if isinstance(block, TextBlock) else ""
+        result = json.loads(raw)
     except Exception:
         result = {
             "priority": "moyenne",
@@ -63,19 +80,26 @@ Reponds avec exactement ce format JSON:
         }
 
     analyzed = {**email, **result}
-    result_save = save_email(analyzed)
-    logger.info(f"  Supabase: {'OK' if result_save else 'ERREUR'}")
+    if save_email(analyzed):
+        logger.info(f"Email analyse et sauvegarde : {email['subject'][:50]}")
+    else:
+        logger.error(f"Echec sauvegarde Supabase pour : {email['subject'][:50]}")
     return analyzed
 
 
 def analyze_emails(emails: list, icp_name: str = "agence_conseil") -> list:
+    """Batch-analyze emails with the named ICP injected as Claude system prompt."""
     icp_context = load_icp(icp_name)
     if icp_context:
         logger.info(f"ICP charge : {icp_name}")
-    logger.info(f"Analyse de {len(emails)} emails avec Claude...")
+    else:
+        logger.warning(
+            f"ICP absent ou vide — analyse sans contexte metier : {icp_name}"
+        )
+    logger.info(f"Analyse de {len(emails)} emails avec Claude")
     results = []
     for i, email in enumerate(emails):
-        logger.info(f"  [{i + 1}/{len(emails)}] {email['subject'][:50]}...")
+        logger.debug(f"[{i + 1}/{len(emails)}] {email['subject'][:50]}...")
         analyzed = analyze_email(email, icp_context)
         results.append(analyzed)
     return results

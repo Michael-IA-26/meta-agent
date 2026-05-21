@@ -1,4 +1,5 @@
 """Tests for agents/gmail_reporter."""
+
 import os
 import sys
 from unittest.mock import MagicMock, patch
@@ -36,9 +37,11 @@ def test_send_email_report_uses_env_recipient(monkeypatch) -> None:
 
     def fake_service():
         svc = MagicMock()
+
         def capture_send(userId, body):
             captured["body"] = body
             return MagicMock()
+
         svc.users().messages().send.side_effect = capture_send
         svc.users().messages().send().execute.return_value = {}
         return svc

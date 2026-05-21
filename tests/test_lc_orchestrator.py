@@ -1,4 +1,5 @@
 """Tests for apps.leadcommercial.orchestrator."""
+
 import os
 import sys
 
@@ -64,7 +65,9 @@ def test_run_returns_empty_on_sirene_failure():
 def test_run_skips_low_score_leads():
     with (
         patch.object(orch, "fetch_idf_companies", return_value=[_company()]),
-        patch.object(orch, "score_company", return_value=_score(score=30, qualified=False)),
+        patch.object(
+            orch, "score_company", return_value=_score(score=30, qualified=False)
+        ),
     ):
         result = orch.run(dry_run=True)
     assert result == []

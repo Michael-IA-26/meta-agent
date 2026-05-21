@@ -1,4 +1,5 @@
 """Tests for orchestrator.run() — verifies sequencing and error handling."""
+
 import os
 import sys
 from unittest.mock import MagicMock, patch
@@ -8,7 +9,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import apps.email_agent.orchestrator as orch
 
 _EMAILS = [
-    {"id": "1", "subject": "Test", "from": "a@b.com", "date": "2026-05-14", "body": "hi"},
+    {
+        "id": "1",
+        "subject": "Test",
+        "from": "a@b.com",
+        "date": "2026-05-14",
+        "body": "hi",
+    },
 ]
 _ANALYZED_ONE = {
     **_EMAILS[0],
@@ -47,18 +54,34 @@ def _run_with_mocks(
 
     mocks: dict[str, MagicMock] = {}
     with (
-        patch.object(orch.gmail_fetcher, "fetch_emails", return_value=fetch_return) as m_fetch,
+        patch.object(
+            orch.gmail_fetcher, "fetch_emails", return_value=fetch_return
+        ) as m_fetch,
         patch.object(orch.email_analyzer, "load_icp", return_value=icp_return) as m_icp,
         patch.object(
             orch.email_analyzer,
             "analyze_email",
-            **({"side_effect": analyze_side_effect} if analyze_side_effect else {"return_value": analyze_return}),
+            **(
+                {"side_effect": analyze_side_effect}
+                if analyze_side_effect
+                else {"return_value": analyze_return}
+            ),
         ) as m_analyze,
-        patch.object(orch.supabase_writer, "write_email", return_value=write_email_return) as m_write,
-        patch.object(orch.supabase_writer, "write_kpis", return_value=write_kpis_return) as m_kpis,
-        patch.object(orch.report_builder, "build_report", return_value=build_return) as m_build,
-        patch.object(orch.gmail_reporter, "send_email_report", return_value=send_email_return) as m_email,
-        patch.object(orch.telegram_sender, "send_telegram", return_value=send_telegram_return) as m_tg,
+        patch.object(
+            orch.supabase_writer, "write_email", return_value=write_email_return
+        ) as m_write,
+        patch.object(
+            orch.supabase_writer, "write_kpis", return_value=write_kpis_return
+        ) as m_kpis,
+        patch.object(
+            orch.report_builder, "build_report", return_value=build_return
+        ) as m_build,
+        patch.object(
+            orch.gmail_reporter, "send_email_report", return_value=send_email_return
+        ) as m_email,
+        patch.object(
+            orch.telegram_sender, "send_telegram", return_value=send_telegram_return
+        ) as m_tg,
     ):
         orch.run()
         mocks = {
@@ -91,9 +114,13 @@ def test_run_calls_all_agents_in_order() -> None:
 def test_run_aborts_on_fetch_failure() -> None:
     mocks: dict[str, MagicMock] = {}
     with (
-        patch.object(orch.gmail_fetcher, "fetch_emails", side_effect=RuntimeError("API down")),
+        patch.object(
+            orch.gmail_fetcher, "fetch_emails", side_effect=RuntimeError("API down")
+        ),
         patch.object(orch.email_analyzer, "load_icp", return_value="icp"),
-        patch.object(orch.email_analyzer, "analyze_email", return_value=_ANALYZED_ONE) as m_analyze,
+        patch.object(
+            orch.email_analyzer, "analyze_email", return_value=_ANALYZED_ONE
+        ) as m_analyze,
         patch.object(orch.supabase_writer, "write_email", return_value=True),
         patch.object(orch.supabase_writer, "write_kpis", return_value=_KPIS),
         patch.object(orch.report_builder, "build_report", return_value="<html/>"),
@@ -111,7 +138,9 @@ def test_run_aborts_when_inbox_empty() -> None:
     with (
         patch.object(orch.gmail_fetcher, "fetch_emails", return_value=[]),
         patch.object(orch.email_analyzer, "load_icp", return_value="icp"),
-        patch.object(orch.email_analyzer, "analyze_email", return_value=_ANALYZED_ONE) as m_analyze,
+        patch.object(
+            orch.email_analyzer, "analyze_email", return_value=_ANALYZED_ONE
+        ) as m_analyze,
         patch.object(orch.supabase_writer, "write_email", return_value=True),
         patch.object(orch.supabase_writer, "write_kpis", return_value=_KPIS),
         patch.object(orch.report_builder, "build_report", return_value="<html/>"),
@@ -137,7 +166,9 @@ def test_run_skips_failed_emails_but_continues() -> None:
         ),
         patch.object(orch.supabase_writer, "write_email", return_value=True) as m_write,
         patch.object(orch.supabase_writer, "write_kpis", return_value=_KPIS),
-        patch.object(orch.report_builder, "build_report", return_value="<html/>") as m_build,
+        patch.object(
+            orch.report_builder, "build_report", return_value="<html/>"
+        ) as m_build,
         patch.object(orch.gmail_reporter, "send_email_report", return_value=True),
         patch.object(orch.telegram_sender, "send_telegram", return_value=True),
     ):
@@ -168,7 +199,9 @@ def test_run_icp_loaded_once_for_multiple_emails() -> None:
     with (
         patch.object(orch.gmail_fetcher, "fetch_emails", return_value=three_emails),
         patch.object(orch.email_analyzer, "load_icp", return_value="icp") as m_icp,
-        patch.object(orch.email_analyzer, "analyze_email", return_value=_ANALYZED_ONE) as m_analyze,
+        patch.object(
+            orch.email_analyzer, "analyze_email", return_value=_ANALYZED_ONE
+        ) as m_analyze,
         patch.object(orch.supabase_writer, "write_email", return_value=True),
         patch.object(orch.supabase_writer, "write_kpis", return_value=_KPIS),
         patch.object(orch.report_builder, "build_report", return_value="<html/>"),

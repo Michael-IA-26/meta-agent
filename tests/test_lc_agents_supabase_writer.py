@@ -1,4 +1,5 @@
 """Tests for apps.leadcommercial.agents.supabase_writer (LeadCommercial)."""
+
 import os
 import sys
 

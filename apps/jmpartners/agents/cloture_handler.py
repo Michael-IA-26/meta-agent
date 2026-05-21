@@ -131,9 +131,7 @@ class ClotureHandler:
             self._send_telegram(message)
 
         statut = "ok" if clotures else "aucun_dossier"
-        logger.info(
-            f"cloture_handler terminé : {len(clotures)} dossier(s) clôturé(s)"
-        )
+        logger.info(f"cloture_handler terminé : {len(clotures)} dossier(s) clôturé(s)")
         return ClotureResult(
             cabinet_id=self.cabinet_id,
             mois=mois,

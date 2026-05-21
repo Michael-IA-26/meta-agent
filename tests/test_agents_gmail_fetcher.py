@@ -1,4 +1,5 @@
 """Tests for agents/gmail_fetcher."""
+
 import os
 import sys
 from unittest.mock import patch
@@ -12,7 +13,13 @@ from apps.email_agent.agents.gmail_fetcher import fetch_emails
 _MOD = "apps.email_agent.agents.gmail_fetcher"
 
 _FAKE_EMAILS = [
-    {"id": "1", "subject": "Test", "from": "a@b.com", "date": "2026-01-01", "body": "hi"},
+    {
+        "id": "1",
+        "subject": "Test",
+        "from": "a@b.com",
+        "date": "2026-01-01",
+        "body": "hi",
+    },
 ]
 
 

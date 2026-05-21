@@ -98,9 +98,7 @@ def test_run_cloture_dossiers_et_telegram():
             "apps.jmpartners.agents.cloture_handler.create_client",
             return_value=mock_sb,
         ),
-        patch(
-            "apps.jmpartners.agents.cloture_handler.httpx.post"
-        ) as mock_post,
+        patch("apps.jmpartners.agents.cloture_handler.httpx.post") as mock_post,
     ):
         mock_post.return_value.raise_for_status = MagicMock()
         handler = ClotureHandler(cabinet_id="cab-2")
@@ -118,7 +116,9 @@ def test_run_cloture_dossiers_et_telegram():
 
 def test_cloture_dossier_erreur_supabase():
     mock_sb = MagicMock()
-    mock_sb.table.return_value.update.return_value.eq.return_value.execute.side_effect = Exception("DB error")
+    mock_sb.table.return_value.update.return_value.eq.return_value.execute.side_effect = Exception(
+        "DB error"
+    )
 
     with patch(
         "apps.jmpartners.agents.cloture_handler.create_client",

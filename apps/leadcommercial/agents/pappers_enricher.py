@@ -1,4 +1,5 @@
 """Agent: enrichit 1 lead avec l'API Pappers → PappersEnrichment."""
+
 import logging
 from typing import TypedDict
 
