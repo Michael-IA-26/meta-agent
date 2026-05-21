@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-# Golden tests pour l'agent email - Sprint 1 J2 + J3
-# Teste que la sortie de l'agent respecte le format JSON attendu
+# Golden tests pour l'agent email — ICP câblé (Sprint 2)
+# Assertions LinkedIn et Newsletter durcies après correction bug Jeff (M7).
 
 description: "Email agent - golden tests"
 
@@ -28,6 +28,41 @@ providers:
     config:
       max_tokens: 500
       temperature: 0
+      system: |
+        Tu es un assistant expert en classification d'emails professionnels.
+        Reponds uniquement en JSON valide, sans balises markdown.
+
+        # ICP — Agence de Conseil / Agence IA
+
+        ## Contexte
+        Profil client : agence de conseil, agence IA, cabinet de consulting.
+        Activite principale : accompagnement clients, livrables projets, developpement commercial.
+
+        ## Emails HAUTE priorite
+        Classer en "haute" si l'email contient :
+        - Demande de devis ou proposition commerciale
+        - Nouveau client ou prospect entrant
+        - Validation ou refus d'un livrable
+        - Probleme urgent signale par un client
+        - Facture impayee ou demande de reglement
+        - Demande de reunion avec un decideur
+        - Opportunite de partenariat strategique
+
+        ## Emails MOYENNE priorite
+        Classer en "moyenne" si l'email contient :
+        - Suivi de projet en cours
+        - Questions techniques d'un client existant
+        - Demande de reunion de suivi
+        - Retour sur une proposition envoyee
+        - Coordination avec un prestataire
+
+        ## Emails BASSE priorite / INUTILES
+        Classer en "basse" ou "inutile" si :
+        - Newsletter commerciale ou marketing
+        - Notification automatique (LinkedIn, reseaux sociaux)
+        - Promotion ou offre commerciale non sollicitee
+        - Invitation a un evenement non pertinent
+        - Email sans objet clair ou spam
 
 tests:
   - description: "Email business prioritaire - creation de compte"
@@ -79,9 +114,7 @@ tests:
         value: |
           const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
           const data = JSON.parse(cleaned);
-          // Sans ICP applique, Claude peut classer LinkedIn en action_requise/information.
-          // Assertion durcie a 'inutile' uniquement quand M7 sera fait.
-          return ['inutile', 'action_requise', 'information'].includes(data.category);
+          return data.category === 'inutile';
 
   - description: "Alerte securite Google - action requise"
     vars:
@@ -112,9 +145,7 @@ tests:
         value: |
           const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();
           const data = JSON.parse(cleaned);
-          // Sans ICP applique, Claude peut classer newsletter en 'information'.
-          // Assertion durcie a 'inutile' uniquement quand M7 sera fait.
-          return ['inutile', 'information'].includes(data.category);
+          return data.category === 'inutile';
       - type: javascript
         value: |
           const cleaned = output.replace(/```json\n?/g, '').replace(/```/g, '').trim();

@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>meta-agent — Documentation</title>
+  <style>
+    /* ── Reset & Custom Properties ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-w: 260px;
+      --radius: 10px;
+      --transition: 0.2s ease;
+
+      /* Light theme */
+      --bg:         #f8f9fc;
+      --surface:    #ffffff;
+      --surface-2:  #f1f3f8;
+      --border:     #e2e6ef;
+      --text:       #1a1d27;
+      --text-2:     #5a607a;
+      --accent:     #6366f1;
+      --accent-2:   #818cf8;
+      --green:      #22c55e;
+      --orange:     #f59e0b;
+      --red:        #ef4444;
+      --blue:       #3b82f6;
+      --purple:     #a855f7;
+      --sidebar-bg: #ffffff;
+      --sidebar-border: #e2e6ef;
+      --code-bg:    #f1f3f8;
+      --shadow:     0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+      --shadow-lg:  0 4px 24px rgba(0,0,0,.10);
+    }
+
+    [data-theme="dark"] {
+      --bg:         #0d0f18;
+      --surface:    #151824;
+      --surface-2:  #1c1f30;
+      --border:     #252840;
+      --text:       #e8eaf6;
+      --text-2:     #7b82a8;
+      --accent:     #818cf8;
+      --accent-2:   #a5b4fc;
+      --sidebar-bg: #10121e;
+      --sidebar-border: #1e2135;
+      --code-bg:    #1c1f30;
+      --shadow:     0 1px 4px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
+      --shadow-lg:  0 4px 24px rgba(0,0,0,.4);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── Sidebar ────────────────────────────────────────────────────────── */
+    #sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 100;
+      transition: transform var(--transition);
+    }
+
+    .sidebar-header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .sidebar-logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .sidebar-logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .sidebar-logo-sub  { font-size: 11px; color: var(--text-2); margin-top: 1px; }
+
+    .sidebar-nav { padding: 12px 12px; flex: 1; }
+
+    .nav-section { margin-bottom: 8px; }
+
+    .nav-section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-2);
+      padding: 8px 8px 4px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      border-radius: 7px;
+      text-decoration: none;
+      color: var(--text-2);
+      font-size: 13.5px;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+
+    .nav-link:hover { background: var(--surface-2); color: var(--text); }
+    .nav-link.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 500; }
+    .nav-link .nav-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--sidebar-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .github-link {
+      display: flex; align-items: center; gap: 6px;
+      text-decoration: none;
+      color: var(--text-2);
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      transition: all var(--transition);
+    }
+    .github-link:hover { color: var(--text); border-color: var(--accent); }
+
+    /* ── Theme Toggle ───────────────────────────────────────────────────── */
+    #theme-toggle {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      cursor: pointer;
+      padding: 7px 9px;
+      border-radius: 7px;
+      font-size: 14px;
+      transition: all var(--transition);
+      flex-shrink: 0;
+    }
+    #theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── Mobile Burger ──────────────────────────────────────────────────── */
+    #burger {
+      display: none;
+      position: fixed;
+      top: 14px; left: 14px;
+      z-index: 200;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 99;
+    }
+
+    /* ── Main Content ───────────────────────────────────────────────────── */
+    #main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      min-width: 0;
+      padding: 48px 48px 80px;
+      max-width: 1100px;
+    }
+
+    /* ── Section ────────────────────────────────────────────────────────── */
+    .section { margin-bottom: 72px; }
+
+    .section-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .section-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .icon-indigo  { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+    .icon-green   { background: color-mix(in srgb, var(--green)  15%, transparent); }
+    .icon-orange  { background: color-mix(in srgb, var(--orange) 15%, transparent); }
+    .icon-blue    { background: color-mix(in srgb, var(--blue)   15%, transparent); }
+    .icon-purple  { background: color-mix(in srgb, var(--purple) 15%, transparent); }
+
+    .section-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; }
+    .section-desc  { font-size: 14px; color: var(--text-2); margin-top: 4px; line-height: 1.5; }
+
+    h2.sub { font-size: 16px; font-weight: 600; margin-bottom: 14px; color: var(--text-2); text-transform: uppercase; letter-spacing: .5px; }
+    h3.card-title { font-size: 15px; font-weight: 600; }
+
+    /* ── Stats Row ──────────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+
+    .stat-indigo { color: var(--accent); }
+    .stat-green  { color: var(--green);  }
+    .stat-orange { color: var(--orange); }
+    .stat-blue   { color: var(--blue);   }
+    .stat-purple { color: var(--purple); }
+
+    /* ── Cards ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .agent-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      letter-spacing: .3px;
+    }
+
+    .badge-indigo { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+    .badge-green  { background: color-mix(in srgb, var(--green)  15%, transparent); color: var(--green);  }
+    .badge-orange { background: color-mix(in srgb, var(--orange) 15%, transparent); color: var(--orange); }
+    .badge-blue   { background: color-mix(in srgb, var(--blue)   15%, transparent); color: var(--blue);   }
+    .badge-purple { background: color-mix(in srgb, var(--purple) 15%, transparent); color: var(--purple); }
+    .badge-red    { background: color-mix(in srgb, var(--red)    15%, transparent); color: var(--red);    }
+
+    /* ── IO Grid ────────────────────────────────────────────────────────── */
+    .io-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .io-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 12px 14px;
+    }
+
+    .io-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-2);
+      margin-bottom: 6px;
+    }
+
+    .io-label.input  { color: var(--blue);   }
+    .io-label.output { color: var(--green);  }
+
+    .io-items { list-style: none; }
+    .io-items li { font-size: 12.5px; color: var(--text); padding: 2px 0; display: flex; align-items: baseline; gap: 6px; }
+    .io-items li::before { content: "→"; color: var(--text-2); font-size: 11px; flex-shrink: 0; }
+
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--accent-2);
+    }
+
+    /* ── Env Vars Table ─────────────────────────────────────────────────── */
+    .env-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .env-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      color: var(--text-2);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .env-table th:first-child { border-radius: 6px 0 0 0; }
+    .env-table th:last-child  { border-radius: 0 6px 0 0; }
+
+    .env-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .env-table tr:last-child td { border-bottom: none; }
+    .env-table tr:hover td { background: var(--surface-2); }
+
+    .env-table .var-name { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--orange); }
+    .env-table .var-desc { color: var(--text-2); }
+
+    .req-badge, .opt-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+    .req-badge { background: color-mix(in srgb, var(--red)   15%, transparent); color: var(--red);   }
+    .opt-badge { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+
+    /* ── Flow Diagram ───────────────────────────────────────────────────── */
+    .flow-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+
+    .flow-steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: nowrap;
+      min-width: max-content;
+    }
+
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+
+    .flow-node {
+      width: 110px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+      transition: all var(--transition);
+      cursor: default;
+    }
+
+    .flow-node:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+      transform: translateY(-2px);
+    }
+
+    .flow-node .fn-num {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-2);
+      margin-bottom: 3px;
+    }
+
+    .flow-node .fn-name {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .flow-node .fn-emoji {
+      font-size: 18px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .flow-node .fn-desc {
+      font-size: 10px;
+      color: var(--text-2);
+      margin-top: 3px;
+      line-height: 1.3;
+    }
+
+    .flow-arrow {
+      font-size: 18px;
+      color: var(--border);
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+
+    .flow-note {
+      font-size: 11px;
+      color: var(--text-2);
+      text-align: center;
+      max-width: 110px;
+      line-height: 1.3;
+    }
+
+    .flow-schedule {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+
+    .flow-schedule code { font-size: 12px; }
+
+    /* ── Stack Badges ───────────────────────────────────────────────────── */
+    .stack-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .stack-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: var(--shadow);
+    }
+
+    .stack-item .si-icon { font-size: 18px; }
+    .stack-item .si-name { font-weight: 600; }
+    .stack-item .si-ver  { font-size: 11px; color: var(--text-2); }
+
+    /* ── Project Cards ──────────────────────────────────────────────────── */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .project-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      transition: all var(--transition);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .project-card:hover {
+      box-shadow: var(--shadow-lg);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .project-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .project-card-icon { font-size: 28px; }
+    .project-card-name { font-size: 16px; font-weight: 700; }
+    .project-card-status { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--green); margin-top: 2px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .project-card-desc { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 12px; }
+    .project-card-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .meta-tag { font-size: 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; color: var(--text-2); }
+
+    /* ── Agent Grid ─────────────────────────────────────────────────────── */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Divider ────────────────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 32px 0;
+    }
+
+    /* ── Anchor offset for fixed header ─────────────────────────────────── */
+    [id] { scroll-margin-top: 24px; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      #sidebar {
+        transform: translateX(calc(-1 * var(--sidebar-w)));
+      }
+      #sidebar.open {
+        transform: translateX(0);
+        box-shadow: var(--shadow-lg);
+      }
+      #main {
+        margin-left: 0;
+        padding: 64px 22px 60px;
+      }
+      #burger { display: block; }
+      #overlay.open { display: block; }
+      .io-grid { grid-template-columns: 1fr; }
+      .flow-steps { gap: 0; }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .agents-grid { grid-template-columns: 1fr; }
+      .flow-steps { flex-direction: column; align-items: flex-start; gap: 4px; }
+      .flow-arrow { transform: rotate(90deg); }
+      #main { padding: 64px 16px 60px; }
+    }
+
+    /* ── Print ──────────────────────────────────────────────────────────── */
+    @media print {
+      #sidebar, #burger, #overlay { display: none !important; }
+      #main { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Mobile overlay ───────────────────────────── -->
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<!-- ── Mobile burger ────────────────────────────── -->
+<button id="burger" onclick="toggleSidebar()">☰</button>
+
+<!-- ═══════════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════════════ -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <a class="sidebar-logo" href="#overview">
+      <div class="sidebar-logo-icon">⚡</div>
+      <div>
+        <div class="sidebar-logo-text">meta-agent</div>
+        <div class="sidebar-logo-sub">Bibliothèque d'agents IA</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-title">Vue d'ensemble</div>
+      <a href="#overview"      class="nav-link active"><span class="nav-icon">🏠</span> Présentation</a>
+      <a href="#stack"         class="nav-link"><span class="nav-icon">🔧</span> Stack technique</a>
+      <a href="#infrastructure" class="nav-link"><span class="nav-icon">☁️</span> Infrastructure</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Email Agent</div>
+      <a href="#email-overview"    class="nav-link"><span class="nav-icon">📧</span> Vue d'ensemble</a>
+      <a href="#email-agents"      class="nav-link"><span class="nav-icon">🤖</span> 6 agents</a>
+      <a href="#email-flow"        class="nav-link"><span class="nav-icon">🔀</span> Flow orchestrateur</a>
+      <a href="#email-env"         class="nav-link"><span class="nav-icon">🔑</span> Variables d'env</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">LeadCommercial</div>
+      <a href="#lead-overview"     class="nav-link"><span class="nav-icon">🎯</span> Vue d'ensemble</a>
+      <a href="#lead-agents"       class="nav-link"><span class="nav-icon">🤖</span> 5 agents</a>
+      <a href="#lead-flow"         class="nav-link"><span class="nav-icon">🔀</span> Flow orchestrateur</a>
+      <a href="#lead-env"          class="nav-link"><span class="nav-icon">🔑</span> Variables d'env</a>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <a class="github-link" href="https://github.com/Michael-IA-26/meta-agent" target="_blank" rel="noopener">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub
+    </a>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Basculer le thème">🌙</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════════════ -->
+<main id="main">
+
+  <!-- ── OVERVIEW ──────────────────────────────── -->
+  <section class="section" id="overview">
+    <div class="section-header">
+      <div class="section-icon icon-indigo">⚡</div>
+      <div>
+        <h1 class="section-title">meta-agent</h1>
+        <p class="section-desc">Bibliothèque d'agents IA spécialisés — Python 3.11 · Claude Sonnet 4.6 · Supabase · Railway</p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value stat-indigo">2</div>
+        <div class="stat-label">Applications actives</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value stat-green">11</div>
+        <div class="stat-label">Agents spécialisés</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value stat-orange">2</div>
+        <div class="stat-label">Pipelines automatisés</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value stat-blue">3.11</div>
+        <div class="stat-label">Python</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value stat-purple">11</div>
+        <div class="stat-label">ADRs</div>
+      </div>
+    </div>
+
+    <div class="projects-grid">
+      <a href="#email-overview" class="project-card">
+        <div class="project-card-header">
+          <div class="project-card-icon">📧</div>
+          <div>
+            <div class="project-card-name">Email Agent</div>
+            <div class="project-card-status"><span class="dot"></span>Actif · 08h45 quotidien</div>
+          </div>
+        </div>
+        <p class="project-card-desc">Analyse automatisée des emails entrants par Claude, classement par priorité, rapport HTML et envoi Telegram.</p>
+        <div class="project-card-meta">
+          <span class="meta-tag">6 agents</span>
+          <span class="meta-tag">Gmail API</span>
+          <span class="meta-tag">Claude</span>
+          <span class="meta-tag">Supabase</span>
+        </div>
+      </a>
+      <a href="#lead-overview" class="project-card">
+        <div class="project-card-header">
+          <div class="project-card-icon">🎯</div>
+          <div>
+            <div class="project-card-name">LeadCommercial</div>
+            <div class="project-card-status"><span class="dot"></span>Actif · 02h00 nightly</div>
+          </div>
+        </div>
+        <p class="project-card-desc">Détection automatique de leads B2B : entreprises créées en IDF, scoring ICP, enrichissement Pappers, alerte Telegram.</p>
+        <div class="project-card-meta">
+          <span class="meta-tag">5 agents</span>
+          <span class="meta-tag">Sirene API</span>
+          <span class="meta-tag">Pappers</span>
+          <span class="meta-tag">Supabase</span>
+        </div>
+      </a>
+    </div>
+
+    <h2 class="sub" id="stack">Stack technique</h2>
+    <div class="stack-grid">
+      <div class="stack-item"><span class="si-icon">🐍</span><div><div class="si-name">Python</div><div class="si-ver">3.11</div></div></div>
+      <div class="stack-item"><span class="si-icon">🤖</span><div><div class="si-name">Anthropic SDK</div><div class="si-ver">≥ 0.96</div></div></div>
+      <div class="stack-item"><span class="si-icon">🗄️</span><div><div class="si-name">Supabase</div><div class="si-ver">≥ 2.29</div></div></div>
+      <div class="stack-item"><span class="si-icon">📬</span><div><div class="si-name">Gmail API</div><div class="si-ver">google-api-client</div></div></div>
+      <div class="stack-item"><span class="si-icon">⏰</span><div><div class="si-name">APScheduler</div><div class="si-ver">≥ 3.10</div></div></div>
+      <div class="stack-item"><span class="si-icon">📊</span><div><div class="si-name">Langfuse</div><div class="si-ver">≥ 4.5 · LLM observability</div></div></div>
+      <div class="stack-item"><span class="si-icon">🐞</span><div><div class="si-name">Sentry</div><div class="si-ver">≥ 2.58 · Error tracking</div></div></div>
+      <div class="stack-item"><span class="si-icon">✅</span><div><div class="si-name">Pydantic</div><div class="si-ver">≥ 2.13 · Validation</div></div></div>
+    </div>
+
+    <hr class="divider">
+
+    <h2 class="sub" id="infrastructure">Infrastructure</h2>
+    <div class="card">
+      <div class="io-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="io-box">
+          <div class="io-label">Déploiement</div>
+          <ul class="io-items">
+            <li>Railway (Docker containers)</li>
+            <li>Dockerfile par app</li>
+            <li><code>railway.toml</code> config</li>
+          </ul>
+        </div>
+        <div class="io-box">
+          <div class="io-label">Secrets</div>
+          <ul class="io-items">
+            <li>Doppler (gestion des secrets)</li>
+            <li><code>.env.example</code> fourni</li>
+          </ul>
+        </div>
+        <div class="io-box">
+          <div class="io-label">Observabilité</div>
+          <ul class="io-items">
+            <li>Sentry — erreurs runtime</li>
+            <li>Langfuse — traces LLM</li>
+            <li>Logs structurés dans <code>/logs/</code></li>
+          </ul>
+        </div>
+        <div class="io-box">
+          <div class="io-label">Qualité</div>
+          <ul class="io-items">
+            <li>Pytest · <code>tests/</code></li>
+            <li>Ruff (linting)</li>
+            <li>Mypy (type checking)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       EMAIL AGENT
+  ══════════════════════════════════════════════ -->
+  <section class="section" id="email-overview">
+    <div class="section-header">
+      <div class="section-icon icon-blue">📧</div>
+      <div>
+        <h1 class="section-title">Email Agent</h1>
+        <p class="section-desc">Pipeline quotidien de traitement des emails par IA — analyse, classement, rapport &amp; alertes.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <p style="font-size:14px; color:var(--text-2); line-height:1.7;">
+        L'Email Agent tourne chaque matin à <strong>08h45</strong>. Il récupère les emails non lus depuis Gmail,
+        les analyse un par un avec Claude Sonnet 4.6 (priorité, catégorie, résumé, action suggérée, brouillon de réponse),
+        persist les résultats dans Supabase, génère un rapport HTML envoyé par email, puis pousse un résumé Telegram
+        avec les KPIs de la semaine (temps gagné, valeur estimée).
+      </p>
+    </div>
+
+    <!-- 6 Agents -->
+    <h2 class="sub" id="email-agents" style="margin-top:28px;">Les 6 agents</h2>
+    <div class="agents-grid">
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">📥</span>
+          <h3 class="card-title">GmailFetcher</h3>
+          <span class="agent-badge badge-blue">1 · Fetch</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Récupère les emails non lus via l'API Gmail (OAuth prod base64 ou token local).</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>max_results</code> int (défaut 20)</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>list[EmailRaw]</code></li>
+              <li>id, subject, from, date, body</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">🧠</span>
+          <h3 class="card-title">EmailAnalyzer</h3>
+          <span class="agent-badge badge-indigo">2 · Analyze</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Classifie chaque email avec Claude Sonnet 4.6 et le contexte ICP du cabinet.</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>EmailRaw</code></li>
+              <li><code>IcpContext</code> (chargé 1×)</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>EmailAnalyzed</code></li>
+              <li>priority, category, summary</li>
+              <li>action, suggested_reply</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">💾</span>
+          <h3 class="card-title">SupabaseWriter</h3>
+          <span class="agent-badge badge-green">3 &amp; 6 · Persist</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Sauvegarde les emails analysés et les KPIs hebdomadaires dans Supabase (2 appels).</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>EmailAnalyzed</code></li>
+              <li>ou <code>list[EmailAnalyzed]</code> + elapsed_sec</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>bool</code> (succès)</li>
+              <li>ou <code>KpiResult</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">📝</span>
+          <h3 class="card-title">ReportBuilder</h3>
+          <span class="agent-badge badge-orange">4 · Build</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Génère un rapport HTML structuré par priorité (aucun appel réseau).</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>list[EmailAnalyzed]</code></li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>str</code> HTML</li>
+              <li>organisé par priorité</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">📤</span>
+          <h3 class="card-title">GmailReporter</h3>
+          <span class="agent-badge badge-blue">5 · Send</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Envoie le rapport HTML par email via l'API Gmail. Ne lève jamais d'exception.</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>html</code> str</li>
+              <li><code>subject</code> str</li>
+              <li><code>recipient?</code> (défaut: RAPPORT_EMAIL)</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>bool</code> (succès)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">💬</span>
+          <h3 class="card-title">TelegramSender</h3>
+          <span class="agent-badge badge-purple">7 · Notify</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Envoie un résumé Markdown sur Telegram avec KPIs (temps gagné, valeur estimée).</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>list[EmailAnalyzed]</code></li>
+              <li><code>KpiResult?</code></li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>bool</code> (succès)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /agents-grid -->
+
+    <!-- Flow -->
+    <h2 class="sub" id="email-flow" style="margin-top:32px;">Flow orchestrateur</h2>
+    <div class="flow-diagram">
+      <div class="flow-schedule">
+        ⏰ Scheduler <code>schedule</code> — déclenché à <strong>08h45</strong> tous les jours
+        &nbsp;·&nbsp; flag <code>--once</code> disponible
+      </div>
+      <div class="flow-steps">
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">📥</span>
+            <div class="fn-num">1</div>
+            <div class="fn-name">GmailFetcher</div>
+            <div class="fn-desc">Emails non lus</div>
+          </div>
+          <div class="flow-note" style="font-style:italic; color:var(--red); font-size:10px;">Abort si vide</div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">🧠</span>
+            <div class="fn-num">2</div>
+            <div class="fn-name">EmailAnalyzer</div>
+            <div class="fn-desc">Claude × email</div>
+          </div>
+          <div class="flow-note">ICP chargé 1× avant la boucle</div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">💾</span>
+            <div class="fn-num">3</div>
+            <div class="fn-name">SupabaseWriter</div>
+            <div class="fn-desc">write_email()</div>
+          </div>
+          <div class="flow-note">Erreurs non-bloquantes</div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">📝</span>
+            <div class="fn-num">4</div>
+            <div class="fn-name">ReportBuilder</div>
+            <div class="fn-desc">HTML report</div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">📤</span>
+            <div class="fn-num">5</div>
+            <div class="fn-name">GmailReporter</div>
+            <div class="fn-desc">Envoi email</div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">📊</span>
+            <div class="fn-num">6</div>
+            <div class="fn-name">SupabaseWriter</div>
+            <div class="fn-desc">write_kpis()</div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">💬</span>
+            <div class="fn-num">7</div>
+            <div class="fn-name">TelegramSender</div>
+            <div class="fn-desc">Résumé + KPIs</div>
+          </div>
+        </div>
+
+      </div><!-- /flow-steps -->
+    </div><!-- /flow-diagram -->
+
+    <!-- Env vars -->
+    <h2 class="sub" id="email-env" style="margin-top:32px;">Variables d'environnement</h2>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table class="env-table">
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Statut</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="var-name">ANTHROPIC_API_KEY</td><td><span class="req-badge">Requis</span></td><td class="var-desc">Clé API Anthropic — Claude Sonnet 4.6</td></tr>
+          <tr><td class="var-name">GMAIL_TOKEN_B64</td><td><span class="req-badge">Requis prod</span></td><td class="var-desc">Token OAuth Gmail encodé base64 (production Railway)</td></tr>
+          <tr><td class="var-name">SUPABASE_URL</td><td><span class="req-badge">Requis</span></td><td class="var-desc">URL du projet Supabase</td></tr>
+          <tr><td class="var-name">SUPABASE_SERVICE_KEY</td><td><span class="req-badge">Requis</span></td><td class="var-desc">Clé service Supabase (bypass RLS)</td></tr>
+          <tr><td class="var-name">TELEGRAM_BOT_TOKEN</td><td><span class="req-badge">Requis</span></td><td class="var-desc">Token du bot Telegram</td></tr>
+          <tr><td class="var-name">TELEGRAM_CHAT_ID</td><td><span class="req-badge">Requis</span></td><td class="var-desc">ID du chat / canal Telegram cible</td></tr>
+          <tr><td class="var-name">RAPPORT_EMAIL</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">Destinataire du rapport HTML (défaut : michael@myvesper.fr)</td></tr>
+          <tr><td class="var-name">TEMPS_THEORIQUE_MIN</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">Durée théorique manuelle en minutes (défaut : 45)</td></tr>
+          <tr><td class="var-name">HOURLY_RATE</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">Taux horaire pour le calcul de valeur (défaut : 80 €)</td></tr>
+          <tr><td class="var-name">SENTRY_DSN</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">DSN Sentry pour le suivi des erreurs en production</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section><!-- /email agent -->
+
+  <!-- ══════════════════════════════════════════
+       LEADCOMMERCIAL
+  ══════════════════════════════════════════════ -->
+  <section class="section" id="lead-overview">
+    <div class="section-header">
+      <div class="section-icon icon-orange">🎯</div>
+      <div>
+        <h1 class="section-title">LeadCommercial</h1>
+        <p class="section-desc">Détection automatique de leads B2B qualifiés — nouvelles entreprises IDF, scoring ICP, enrichissement Pappers, alerte Telegram.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <p style="font-size:14px; color:var(--text-2); line-height:1.7;">
+        Le pipeline tourne chaque nuit à <strong>02h00 (Europe/Paris)</strong>.
+        Il récupère les établissements nouvellement créés en Île-de-France via l'API Sirene (INSEE),
+        score chaque entreprise selon des règles ICP (score 0–100), enrichit les leads qualifiés
+        via l'API Pappers (dirigeant, site web, capital), persiste en Supabase avec un mécanisme de verrou
+        anti-doublon multi-cabinets, et envoie une alerte Telegram instantanée.
+        Un flag <code>--dry-run</code> permet de tester sans écriture.
+      </p>
+    </div>
+
+    <!-- 5 Agents -->
+    <h2 class="sub" id="lead-agents" style="margin-top:28px;">Les 5 agents</h2>
+    <div class="agents-grid">
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">🏢</span>
+          <h3 class="card-title">SireneFetcher</h3>
+          <span class="agent-badge badge-blue">1 · Fetch</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Interroge l'API Sirene (INSEE) pour récupérer les entreprises IDF créées récemment.</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>SireneInput</code></li>
+              <li>max_results, date</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>list[CompanyRaw]</code></li>
+              <li>siren, siret, denomination</li>
+              <li>naf, dept, commune, date</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">⚖️</span>
+          <h3 class="card-title">LeadScorer</h3>
+          <span class="agent-badge badge-indigo">2 · Score</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Calcule un score 0–100 basé sur des règles de signaux (création, fiscal, intention…) et l'ICP cabinet.</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>ScoreInput</code></li>
+              <li>company, signal_type, icp?</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>ScoredLead</code></li>
+              <li>score (0–100)</li>
+              <li>qualified (bool)</li>
+              <li>scoring_details</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">🔎</span>
+          <h3 class="card-title">PappersEnricher</h3>
+          <span class="agent-badge badge-orange">3 · Enrich</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Enrichit le lead via l'API Pappers : dirigeant, site web, capital social. Dégradation gracieuse si absent.</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>EnrichInput</code></li>
+              <li>siren</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>PappersEnrichment</code></li>
+              <li>dirigeant nom/prenom/email</li>
+              <li>site_web, capital_social</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">🔒</span>
+          <h3 class="card-title">SupabaseWriter</h3>
+          <span class="agent-badge badge-green">4 · Persist</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Vérifie le verrou anti-doublon (<code>lead_locks</code>), puis insère le lead dans la table <code>leads</code>.</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>WriteInput</code></li>
+              <li>siren + 20+ champs</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>bool</code></li>
+              <li>False si SIREN déjà verrouillé</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:22px;">📲</span>
+          <h3 class="card-title">TelegramNotifier</h3>
+          <span class="agent-badge badge-purple">5 · Notify</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);">Envoie une alerte Telegram Markdown pour chaque lead qualifié persisté. Silent si tokens absents.</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li><code>NotifyInput</code></li>
+              <li>tous les champs du lead</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li><code>bool</code> (succès)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /agents-grid -->
+
+    <!-- Flow -->
+    <h2 class="sub" id="lead-flow" style="margin-top:32px;">Flow orchestrateur</h2>
+    <div class="flow-diagram">
+      <div class="flow-schedule">
+        ⏰ APScheduler cron — déclenché à <strong>02h00 Europe/Paris</strong> (nightly)
+        &nbsp;·&nbsp; flags <code>--date YYYY-MM-DD</code> et <code>--dry-run</code> disponibles
+      </div>
+      <div class="flow-steps">
+
+        <div class="flow-step">
+          <div class="flow-node" style="border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));">
+            <span class="fn-emoji">📋</span>
+            <div class="fn-num">0</div>
+            <div class="fn-name">Load ICP</div>
+            <div class="fn-desc">Supabase (si CABINET_ID)</div>
+          </div>
+          <div class="flow-note">Injecté dans tous les appels</div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">🏢</span>
+            <div class="fn-num">1</div>
+            <div class="fn-name">SireneFetcher</div>
+            <div class="fn-desc">Entreprises IDF</div>
+          </div>
+          <div class="flow-note" style="font-style:italic; color:var(--red); font-size:10px;">Return [] si erreur</div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">⚖️</span>
+            <div class="fn-num">2</div>
+            <div class="fn-name">LeadScorer</div>
+            <div class="fn-desc">Score 0–100</div>
+          </div>
+          <div class="flow-note">Skip si score &lt; THRESHOLD</div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">🔎</span>
+            <div class="fn-num">3</div>
+            <div class="fn-name">PappersEnricher</div>
+            <div class="fn-desc">Dirigeant + web</div>
+          </div>
+          <div class="flow-note">Vide si PAPPERS_API_KEY absent</div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">🔒</span>
+            <div class="fn-num">4</div>
+            <div class="fn-name">SupabaseWriter</div>
+            <div class="fn-desc">Lock + insert</div>
+          </div>
+          <div class="flow-note">Skippé en dry-run</div>
+        </div>
+
+        <div class="flow-arrow">→</div>
+
+        <div class="flow-step">
+          <div class="flow-node">
+            <span class="fn-emoji">📲</span>
+            <div class="fn-num">5</div>
+            <div class="fn-name">TelegramNotifier</div>
+            <div class="fn-desc">Alerte lead</div>
+          </div>
+          <div class="flow-note">Skippé en dry-run</div>
+        </div>
+
+      </div><!-- /flow-steps -->
+
+      <div style="margin-top:18px; padding-top:14px; border-top:1px solid var(--border);">
+        <div style="display:flex; gap:24px; flex-wrap:wrap; font-size:12px; color:var(--text-2);">
+          <div><strong>Scores par signal :</strong></div>
+          <div>🆕 creation = <strong style="color:var(--green);">100</strong></div>
+          <div>📅 rattrapage = <strong style="color:var(--green);">80</strong></div>
+          <div>💰 fiscal = <strong style="color:var(--orange);">80</strong></div>
+          <div>🎯 intention = <strong style="color:var(--orange);">60</strong></div>
+          <div>⚙️ Seuil qualif. = <code>LEAD_SCORE_THRESHOLD</code> (défaut <strong>50</strong>)</div>
+        </div>
+      </div>
+    </div><!-- /flow-diagram -->
+
+    <!-- Env vars -->
+    <h2 class="sub" id="lead-env" style="margin-top:32px;">Variables d'environnement</h2>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table class="env-table">
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Statut</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="var-name">SIRENE_API_TOKEN</td><td><span class="req-badge">Requis</span></td><td class="var-desc">Token API Sirene / INSEE — accès données SIREN</td></tr>
+          <tr><td class="var-name">SUPABASE_URL</td><td><span class="req-badge">Requis</span></td><td class="var-desc">URL du projet Supabase</td></tr>
+          <tr><td class="var-name">SUPABASE_SERVICE_KEY</td><td><span class="req-badge">Requis</span></td><td class="var-desc">Clé service Supabase (bypass RLS)</td></tr>
+          <tr><td class="var-name">PAPPERS_API_KEY</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">Clé API Pappers — enrichissement désactivé si absent</td></tr>
+          <tr><td class="var-name">CABINET_ID</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">Active le chargement de l'ICP depuis Supabase</td></tr>
+          <tr><td class="var-name">TELEGRAM_BOT_TOKEN</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">Token du bot Telegram — alertes désactivées si absent</td></tr>
+          <tr><td class="var-name">TELEGRAM_CHAT_ID</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">ID du chat / canal Telegram cible</td></tr>
+          <tr><td class="var-name">LEAD_SCORE_THRESHOLD</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">Score minimum pour qualifier un lead (défaut : 50)</td></tr>
+          <tr><td class="var-name">SENTRY_DSN</td><td><span class="opt-badge">Optionnel</span></td><td class="var-desc">DSN Sentry pour le suivi des erreurs en production</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section><!-- /leadcommercial -->
+
+</main><!-- /main -->
+
+<!-- ═══════════════════════════════════════════════
+     JS
+══════════════════════════════════════════════════ -->
+<script>
+  /* ── Theme ─────────────────────────────────── */
+  const html = document.documentElement;
+  const btn  = document.getElementById('theme-toggle');
+
+  function applyTheme(theme) {
+    html.setAttribute('data-theme', theme);
+    btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('theme', theme);
+  }
+
+  function toggleTheme() {
+    applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  /* Restore saved or prefer-color-scheme */
+  const saved = localStorage.getItem('theme');
+  if (saved) {
+    applyTheme(saved);
+  } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+    applyTheme('light');
+  }
+
+  /* ── Sidebar mobile ─────────────────────────── */
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+
+  function toggleSidebar() {
+    const open = sidebar.classList.toggle('open');
+    overlay.classList.toggle('open', open);
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+
+  /* ── Active nav link on scroll ──────────────── */
+  const sections = document.querySelectorAll('section[id], [id]');
+  const navLinks  = document.querySelectorAll('.nav-link');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const match = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+        if (match) match.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+
+  document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+
+  /* Close sidebar on nav click (mobile) */
+  navLinks.forEach(l => l.addEventListener('click', closeSidebar));
+</script>
+
+</body>
+</html>
