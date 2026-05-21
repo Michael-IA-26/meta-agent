@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -321,22 +322,18 @@ async def index() -> HTMLResponse:
 
 @app.get("/api/leads")
 async def get_leads() -> JSONResponse:
-    """Return the 50 most recent leads from the `leads` table."""
+    """Return the 50 leads with highest score from the `leads` table."""
     try:
         client = _get_supabase_client()
-        result = (
+        resp = (
             client.table("leads")
-            .select(
-                "id,siren,denomination,dept,commune,code_naf,score,qualified,created_at"
-            )
-            .order("created_at", desc=True)
+            .select("*")
+            .order("score", desc=True)
             .limit(50)
             .execute()
         )
-        return JSONResponse(content=result.data or [])
-    except ValueError as exc:
-        logger.warning("Supabase non configure: %s", exc)
-        return JSONResponse(content=[])
+        data = resp.data or []
+        return JSONResponse(content=data)
     except Exception as exc:
         logger.error("Erreur lecture leads: %s", exc)
         return JSONResponse(content=[])
@@ -344,14 +341,15 @@ async def get_leads() -> JSONResponse:
 
 @app.post("/api/run")
 async def run_now() -> JSONResponse:
-    """Trigger the LeadCommercial pipeline."""
+    """Trigger the LeadCommercial pipeline in a background thread."""
     try:
-        from apps.leadcommercial.pipeline import run_pipeline  # noqa: PLC0415
+        import apps.leadcommercial.main as lc_main  # noqa: PLC0415
 
-        leads = run_pipeline(dry_run=False)
-        return JSONResponse(content={"status": "ok", "leads_found": len(leads)})
+        thread = threading.Thread(target=lc_main.main, daemon=True)
+        thread.start()
+        return JSONResponse(content={"status": "started"})
     except Exception as exc:
-        logger.error("Erreur pipeline: %s", exc)
+        logger.error("Erreur demarrage pipeline: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -360,26 +358,34 @@ async def get_stats() -> JSONResponse:
     """Return global stats: leads today, this week, qualification rate."""
     now = datetime.now(tz=timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    week_start = today_start - timedelta(days=now.weekday())
+    week_start = today_start - timedelta(days=7)
+
+    _empty: dict[str, Any] = {
+        "leads_today": 0,
+        "leads_week": 0,
+        "qualified_week": 0,
+        "qualification_rate": 0.0,
+        "best_score": None,
+    }
 
     try:
         client = _get_supabase_client()
 
-        result_week = (
+        resp_week = (
             client.table("leads")
             .select("score,qualified,created_at")
             .gte("created_at", week_start.isoformat())
             .execute()
         )
-        rows_week = result_week.data or []
+        rows_week = resp_week.data or []
 
-        result_today = (
+        resp_today = (
             client.table("leads")
             .select("id")
             .gte("created_at", today_start.isoformat())
             .execute()
         )
-        leads_today = len(result_today.data or [])
+        leads_today = len(resp_today.data or [])
 
         leads_week = len(rows_week)
         qualified_week = sum(
@@ -400,25 +406,6 @@ async def get_stats() -> JSONResponse:
                 "best_score": best_score,
             }
         )
-    except ValueError as exc:
-        logger.warning("Supabase non configure: %s", exc)
-        return JSONResponse(
-            content={
-                "leads_today": 0,
-                "leads_week": 0,
-                "qualified_week": 0,
-                "qualification_rate": 0.0,
-                "best_score": None,
-            }
-        )
     except Exception as exc:
         logger.error("Erreur stats: %s", exc)
-        return JSONResponse(
-            content={
-                "leads_today": 0,
-                "leads_week": 0,
-                "qualified_week": 0,
-                "qualification_rate": 0.0,
-                "best_score": None,
-            }
-        )
+        return JSONResponse(content=_empty)

@@ -7,7 +7,7 @@ import os
 from datetime import date, timedelta
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 
 __all__ = ["app"]
@@ -158,54 +158,84 @@ def _supabase_available() -> bool:
     return bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
 
 
+def _get_supabase_client() -> Any:
+    """Retourne un client Supabase ou lève une ValueError si manquant."""
+    from supabase import create_client  # type: ignore[import-untyped]
+
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise ValueError("SUPABASE_URL ou SUPABASE_SERVICE_KEY manquant")
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+
+def _compute_alertes(deadline_str: str | None) -> list[str]:
+    """Calcule les alertes J-3/J-7/J-15 depuis une deadline ISO."""
+    if not deadline_str:
+        return []
+    try:
+        dl = date.fromisoformat(str(deadline_str))
+    except ValueError:
+        return []
+    jours = (dl - date.today()).days
+    if jours <= 3:
+        return ["J-3"]
+    if jours <= 7:
+        return ["J-7"]
+    if jours <= 15:
+        return ["J-15"]
+    return []
+
+
 def _fetch_dossiers_from_supabase() -> list[dict[str, Any]]:
     """Récupère les dossiers actifs depuis Supabase."""
-    from typing import cast
-
-    from supabase import create_client
-
-    supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    client = _get_supabase_client()
     resp = (
-        supabase_client.table("dossiers")
+        client.table("dossiers")
         .select("id, contact_id, type, statut, deadline, contacts(nom)")
         .eq("statut", "actif")
         .execute()
     )
     dossiers: list[dict[str, Any]] = []
-    for raw_row in resp.data or []:
-        row = cast(dict[str, Any], raw_row)
-        contact_nom: str | None = None
+    for row in resp.data or []:
         contacts_field = row.get("contacts")
+        contact_nom: str | None = None
         if isinstance(contacts_field, dict):
-            contact_nom = cast(dict[str, Any], contacts_field).get("nom")
+            contact_nom = contacts_field.get("nom")
+
+        deadline_val = row.get("deadline")
+        alertes = _compute_alertes(deadline_val)
+
+        # Fetch documents for this dossier
+        docs_manquants: list[str] = []
+        docs_presents: list[str] = []
+        try:
+            docs_resp = (
+                client.table("documents")
+                .select("nom_document, type_document, statut")
+                .eq("dossier_id", row.get("id"))
+                .execute()
+            )
+            for doc in docs_resp.data or []:
+                nom = doc.get("nom_document") or doc.get("type_document", "")
+                if doc.get("statut") in ("recu", "valide"):
+                    docs_presents.append(nom)
+                else:
+                    docs_manquants.append(nom)
+        except Exception as exc:
+            logger.warning(
+                "Erreur fetch documents pour dossier %s: %s", row.get("id"), exc
+            )
+
         dossier: dict[str, Any] = {
-            "id": row["id"],
+            "id": row.get("id"),
             "contact_id": row.get("contact_id"),
             "contact_nom": contact_nom,
             "type": row.get("type", ""),
             "statut": row.get("statut", ""),
-            "deadline": row.get("deadline"),
-            "documents_manquants": [],
-            "documents_presents": [],
-            "alertes": [],
+            "deadline": deadline_val,
+            "documents_manquants": docs_manquants,
+            "documents_presents": docs_presents,
+            "alertes": alertes,
         }
-        # Vérifie les documents manquants via document_checker
-        try:
-            from apps.jmpartners.agents.document_checker import run as check_docs
-
-            dossier_id = str(row["id"])
-            doc_result = check_docs(dossier_id, dry_run=True)
-            dossier["documents_manquants"] = [
-                m["nom_document"] for m in doc_result["manquants"]
-            ]
-            dossier["documents_presents"] = doc_result["complets"]
-            alertes: list[str] = []
-            for m in doc_result["manquants"]:
-                if m["urgence"]:
-                    alertes.append(m["urgence"])
-            dossier["alertes"] = list(set(alertes))
-        except Exception as exc:
-            logger.warning(f"document_checker failed for {row['id']}: {exc}")
         dossiers.append(dossier)
     return dossiers
 
@@ -847,12 +877,104 @@ async def get_dossiers() -> JSONResponse:
     return JSONResponse(content=_MOCK_DOSSIERS)
 
 
+def _urgence_niveau(jours: int) -> str | None:
+    """Retourne le niveau d'urgence selon le nombre de jours restants."""
+    if jours <= 3:
+        return "J-3"
+    if jours <= 7:
+        return "J-7"
+    if jours <= 15:
+        return "J-15"
+    return None
+
+
 @app.get("/api/echeances")
 async def get_echeances() -> JSONResponse:
     """Retourne les échéances TVA + IS des 30 prochains jours."""
+    today = date.today()
+    horizon = today + timedelta(days=30)
     echeances: list[dict[str, Any]] = []
-    echeances.extend(_next_tva_deadlines())
-    echeances.extend(_next_is_deadlines())
+    supabase_used = False
+
+    try:
+        client = _get_supabase_client()
+
+        # Déclarations TVA depuis Supabase
+        resp_tva = (
+            client.table("declarations_tva")
+            .select("id, dossier_id, periode, statut, deadline, montant_tva")
+            .gte("deadline", today.isoformat())
+            .lte("deadline", horizon.isoformat())
+            .neq("statut", "valide")
+            .execute()
+        )
+        for row in resp_tva.data or []:
+            dl_str = row.get("deadline")
+            if not dl_str:
+                continue
+            try:
+                dl = date.fromisoformat(str(dl_str))
+            except ValueError:
+                continue
+            jours = (dl - today).days
+            echeances.append(
+                {
+                    "type": "TVA",
+                    "label": f"TVA {row.get('periode', '')}",
+                    "deadline": dl_str,
+                    "jours_restants": jours,
+                    "urgence": _urgence_niveau(jours),
+                    "niveau": _urgence_niveau(jours),
+                    "couleur": "rouge"
+                    if jours <= 3
+                    else ("orange" if jours <= 7 else "jaune"),
+                }
+            )
+
+        # Acomptes IS depuis Supabase
+        resp_is = (
+            client.table("acomptes_is")
+            .select("id, dossier_id, exercice, statut, deadline, montant")
+            .gte("deadline", today.isoformat())
+            .lte("deadline", horizon.isoformat())
+            .neq("statut", "paye")
+            .execute()
+        )
+        for row in resp_is.data or []:
+            dl_str = row.get("deadline")
+            if not dl_str:
+                continue
+            try:
+                dl = date.fromisoformat(str(dl_str))
+            except ValueError:
+                continue
+            jours = (dl - today).days
+            echeances.append(
+                {
+                    "type": "IS",
+                    "label": f"Acompte IS {row.get('exercice', '')}",
+                    "deadline": dl_str,
+                    "jours_restants": jours,
+                    "urgence": _urgence_niveau(jours),
+                    "niveau": _urgence_niveau(jours),
+                    "couleur": "rouge"
+                    if jours <= 3
+                    else ("orange" if jours <= 7 else "jaune"),
+                }
+            )
+
+        supabase_used = True
+    except Exception as exc:
+        logger.warning(
+            "Supabase indisponible pour écheances, fallback algorithmique: %s", exc
+        )
+
+    # Fallback sur calcul algorithmique si tables vides ou Supabase down
+    if not supabase_used or not echeances:
+        echeances = []
+        echeances.extend(_next_tva_deadlines())
+        echeances.extend(_next_is_deadlines())
+
     echeances.sort(key=lambda e: e["jours_restants"])
 
     rouge = sum(1 for e in echeances if e["jours_restants"] <= 3)
@@ -873,9 +995,36 @@ async def get_echeances() -> JSONResponse:
 @app.post("/api/relancer/{dossier_id}")
 async def relancer_dossier(dossier_id: str) -> JSONResponse:
     """Déclenche une relance pour un dossier."""
+    cabinet_id = os.getenv("CABINET_ID", "")
+
+    # Tente d'utiliser RelanceHandler si disponible
     try:
-        from apps.jmpartners.agents.document_checker import run as check_docs
-        from apps.jmpartners.agents.relance_handler import run as send_relance
+        from apps.jmpartners.agents.relance_handler import (  # type: ignore[attr-defined]  # noqa: PLC0415
+            RelanceHandler,
+        )
+
+        handler = RelanceHandler(cabinet_id=cabinet_id)
+        handler.run(dossier_id)
+        return JSONResponse(
+            content={
+                "dossier_id": dossier_id,
+                "status": "relance_envoyee",
+            }
+        )
+    except ImportError:
+        pass
+    except Exception as exc:
+        logger.error("RelanceHandler erreur pour %s: %s", dossier_id, exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # Fallback : utilise les fonctions run() existantes
+    try:
+        from apps.jmpartners.agents.document_checker import (
+            run as check_docs,  # noqa: PLC0415
+        )
+        from apps.jmpartners.agents.relance_handler import (
+            run as send_relance,  # noqa: PLC0415
+        )
 
         doc_result = check_docs(dossier_id, dry_run=False)
         relance_result = send_relance(doc_result, dry_run=False)
@@ -888,7 +1037,7 @@ async def relancer_dossier(dossier_id: str) -> JSONResponse:
             }
         )
     except Exception as exc:
-        logger.warning(f"Relance failed for {dossier_id}, using mock: {exc}")
+        logger.warning("Relance failed for %s, using mock: %s", dossier_id, exc)
         return JSONResponse(
             content={
                 "dossier_id": dossier_id,
@@ -902,31 +1051,36 @@ async def relancer_dossier(dossier_id: str) -> JSONResponse:
 async def dry_run() -> JSONResponse:
     """Simule le cycle complet sans envoi ni écriture."""
     try:
-        from apps.jmpartners.orchestrator import run as orchestrate
+        from apps.jmpartners.orchestrator import run as orchestrate  # noqa: PLC0415
 
         result = orchestrate(dry_run=True)
         return JSONResponse(
             content={
-                "statut": "ok",
                 "dry_run": True,
-                "mail": result.get("mail"),
-                "relances": result.get("relances", []),
-                "tva": result.get("tva"),
-                "echeances": result.get("echeances"),
+                "result": result,
+                "statut": "ok",
                 "erreurs": result.get("erreurs", []),
             }
         )
     except Exception as exc:
-        logger.warning(f"Orchestrateur dry-run failed, using mock: {exc}")
+        logger.warning("Orchestrateur dry-run failed, using mock: %s", exc)
         return JSONResponse(
             content={
-                "statut": "mock",
                 "dry_run": True,
+                "result": {
+                    "mail": {"emails": [], "statut": "ok"},
+                    "relances": [],
+                    "tva": {"declarations_analysees": 3, "alertes": 1, "statut": "ok"},
+                    "echeances": {
+                        "echeances_total": 4,
+                        "rouge": 1,
+                        "orange": 2,
+                        "vert": 1,
+                    },
+                    "erreurs": [],
+                },
+                "statut": "mock",
                 "message": "Simulation complète (mode démo)",
-                "mail": {"emails": [], "statut": "ok"},
-                "relances": [],
-                "tva": {"declarations_analysees": 3, "alertes": 1, "statut": "ok"},
-                "echeances": {"echeances_total": 4, "rouge": 1, "orange": 2, "vert": 1},
                 "erreurs": [],
             }
         )
