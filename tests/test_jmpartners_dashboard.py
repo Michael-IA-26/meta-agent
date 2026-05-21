@@ -153,7 +153,7 @@ def test_relancer_dossier_with_mock_agents(client: TestClient) -> None:
 
 def test_dry_run_with_mock_orchestrator(client: TestClient) -> None:
     """POST /api/dry-run doit retourner un résultat structuré via l'orchestrateur."""
-    mock_result = {
+    mock_result: dict = {
         "mail": {"emails": [], "statut": "ok"},
         "relances": [],
         "tva": {"declarations_analysees": 2, "alertes": 0, "statut": "ok"},
