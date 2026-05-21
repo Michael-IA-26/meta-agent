@@ -1,4 +1,5 @@
 """Agent: vérifie le lock Supabase puis insère le lead → bool."""
+
 import logging
 from typing import TypedDict
 
@@ -33,7 +34,5 @@ def write_lead(params: WriteInput) -> bool:
     locked by another cabinet or if siren is missing.
     """
     result = persist_lead(dict(params))
-    logger.debug(
-        "supabase_writer: siren=%s persisted=%s", params.get("siren"), result
-    )
+    logger.debug("supabase_writer: siren=%s persisted=%s", params.get("siren"), result)
     return result

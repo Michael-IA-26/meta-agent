@@ -21,9 +21,7 @@ def _mock_supabase() -> MagicMock:
     """Build a MagicMock that mimics the Supabase fluent query builder."""
     client = MagicMock()
     # select chain — empty result by default (no lock)
-    client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = (
-        []
-    )
+    client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
     # insert chain — returns a fake UUID
     client.table.return_value.insert.return_value.execute.return_value.data = [
         {"id": "uuid-abc-123"}
@@ -118,7 +116,9 @@ def test_persist_lead_locked_skip():
         {"siren": "123456789"}
     ]
     with patch("apps.leadcommercial.supabase_client.get_client", return_value=client):
-        result = persist_lead({"siren": "123456789", "score": 90, "signal_type": "creation"})
+        result = persist_lead(
+            {"siren": "123456789", "score": 90, "signal_type": "creation"}
+        )
 
     assert result is False
     client.table.return_value.insert.assert_not_called()

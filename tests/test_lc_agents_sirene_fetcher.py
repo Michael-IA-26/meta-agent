@@ -1,4 +1,5 @@
 """Tests for apps.leadcommercial.agents.sirene_fetcher."""
+
 import os
 import sys
 

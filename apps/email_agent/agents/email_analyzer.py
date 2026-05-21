@@ -1,4 +1,5 @@
 """Email analyzer agent — classifies a single email using Claude. No side-effects."""
+
 from __future__ import annotations
 
 import logging

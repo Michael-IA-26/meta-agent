@@ -1,4 +1,5 @@
 """Tests for agents/supabase_writer."""
+
 import os
 import sys
 from unittest.mock import patch

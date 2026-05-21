@@ -24,9 +24,7 @@ def test_run_job_captures_sentry_on_error():
             "apps.leadcommercial.orchestrator.run",
             side_effect=RuntimeError("boom"),
         ),
-        patch(
-            "apps.leadcommercial.main.sentry_sdk.capture_exception"
-        ) as mock_capture,
+        patch("apps.leadcommercial.main.sentry_sdk.capture_exception") as mock_capture,
     ):
         _run_job()  # must not propagate the exception
 

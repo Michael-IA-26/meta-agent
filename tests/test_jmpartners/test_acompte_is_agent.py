@@ -114,9 +114,7 @@ def test_run_alerte_j15():
             "apps.jmpartners.agents.acompte_is_agent._echeances_dans_horizon",
             return_value=[echeance],
         ),
-        patch(
-            "apps.jmpartners.agents.acompte_is_agent.date"
-        ) as mock_date,
+        patch("apps.jmpartners.agents.acompte_is_agent.date") as mock_date,
     ):
         mock_date.today.return_value = today
         mock_date.side_effect = lambda *args, **kwargs: date(*args, **kwargs)
@@ -203,7 +201,9 @@ def test_send_telegram_erreur_reseau():
 
 def test_fetch_dossiers_erreur_supabase():
     mock_sb = MagicMock()
-    mock_sb.table.return_value.select.return_value.neq.return_value.execute.side_effect = Exception("DB error")
+    mock_sb.table.return_value.select.return_value.neq.return_value.execute.side_effect = Exception(
+        "DB error"
+    )
 
     with patch(
         "apps.jmpartners.agents.acompte_is_agent.create_client",
@@ -237,9 +237,7 @@ def test_run_alerte_non_envoyee_si_tous_echecs():
             "apps.jmpartners.agents.acompte_is_agent._echeances_dans_horizon",
             return_value=[echeance],
         ),
-        patch(
-            "apps.jmpartners.agents.acompte_is_agent.date"
-        ) as mock_date,
+        patch("apps.jmpartners.agents.acompte_is_agent.date") as mock_date,
     ):
         mock_date.today.return_value = today
         mock_date.side_effect = lambda *args, **kwargs: date(*args, **kwargs)

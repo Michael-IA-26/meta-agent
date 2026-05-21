@@ -1,4 +1,5 @@
 """Agent: envoie une alerte Telegram pour 1 lead qualifié → bool."""
+
 import logging
 import os
 from typing import TypedDict

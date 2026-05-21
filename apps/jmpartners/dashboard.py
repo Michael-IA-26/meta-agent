@@ -102,7 +102,11 @@ def _next_tva_deadlines() -> list[dict[str, Any]]:
         deadline = date(next_year, next_month, 20)
         jours = (deadline - today).days
         if 0 <= jours <= 30:
-            urgence = "J-3" if jours <= 3 else ("J-7" if jours <= 7 else ("J-15" if jours <= 15 else None))
+            urgence = (
+                "J-3"
+                if jours <= 3
+                else ("J-7" if jours <= 7 else ("J-15" if jours <= 15 else None))
+            )
             deadlines.append(
                 {
                     "type": "TVA",
@@ -110,7 +114,9 @@ def _next_tva_deadlines() -> list[dict[str, Any]]:
                     "deadline": deadline.isoformat(),
                     "jours_restants": jours,
                     "urgence": urgence,
-                    "couleur": "rouge" if jours <= 3 else ("orange" if jours <= 7 else "jaune"),
+                    "couleur": "rouge"
+                    if jours <= 3
+                    else ("orange" if jours <= 7 else "jaune"),
                 }
             )
     return deadlines
@@ -126,7 +132,11 @@ def _next_is_deadlines() -> list[dict[str, Any]]:
             deadline = date(year, month, 15)
             jours = (deadline - today).days
             if 0 <= jours <= 30:
-                urgence = "J-3" if jours <= 3 else ("J-7" if jours <= 7 else ("J-15" if jours <= 15 else None))
+                urgence = (
+                    "J-3"
+                    if jours <= 3
+                    else ("J-7" if jours <= 7 else ("J-15" if jours <= 15 else None))
+                )
                 trimestre = {3: "T1", 6: "T2", 9: "T3", 12: "T4"}[month]
                 deadlines.append(
                     {
@@ -135,7 +145,9 @@ def _next_is_deadlines() -> list[dict[str, Any]]:
                         "deadline": deadline.isoformat(),
                         "jours_restants": jours,
                         "urgence": urgence,
-                        "couleur": "rouge" if jours <= 3 else ("orange" if jours <= 7 else "jaune"),
+                        "couleur": "rouge"
+                        if jours <= 3
+                        else ("orange" if jours <= 7 else "jaune"),
                     }
                 )
     return deadlines

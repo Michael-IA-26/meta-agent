@@ -1,4 +1,5 @@
 """Telegram sender agent — posts the daily summary to a Telegram chat."""
+
 from __future__ import annotations
 
 import logging

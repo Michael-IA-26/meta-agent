@@ -1,4 +1,5 @@
 """Gmail reporter agent — sends the HTML report via Gmail."""
+
 from __future__ import annotations
 
 import base64

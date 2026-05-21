@@ -1,4 +1,5 @@
 """Tests for apps.leadcommercial.agents.telegram_notifier."""
+
 import os
 import sys
 
