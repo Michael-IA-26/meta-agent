@@ -45,14 +45,14 @@ def test_run_happy_path_j7():
     """J-7 exact → alerte envoyée, DeclarationISAlert bien formée."""
     echeance = (date.today() + timedelta(days=7)).isoformat()
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(
+    agent._fetch_echeances_is = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_echeance(echeance=echeance)]
     )
-    agent._get_elements_disponibles = MagicMock(
+    agent._get_elements_disponibles = MagicMock(  # type: ignore[method-assign]
         return_value=["liasse_fiscale", "resultat_comptable"]
     )
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
 
@@ -72,12 +72,12 @@ def test_run_happy_path_j15():
     """J-15 exact → alerte envoyée."""
     echeance = (date.today() + timedelta(days=15)).isoformat()
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(
+    agent._fetch_echeances_is = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_echeance(echeance=echeance)]
     )
-    agent._get_elements_disponibles = MagicMock(return_value=[])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._get_elements_disponibles = MagicMock(return_value=[])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert len(results) == 1
@@ -90,7 +90,7 @@ def test_run_happy_path_j15():
 def test_run_supabase_down_retourne_liste_vide():
     """Si Supabase est KO, run() retourne une liste vide."""
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(return_value=[])
+    agent._fetch_echeances_is = MagicMock(return_value=[])  # type: ignore[method-assign]
 
     results = agent.run()
     assert results == []
@@ -117,7 +117,7 @@ def test_fetch_echeances_erreur_supabase():
 def test_run_aucune_echeance_is():
     """Si aucune échéance IS non payée, run() retourne une liste vide."""
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(return_value=[])
+    agent._fetch_echeances_is = MagicMock(return_value=[])  # type: ignore[method-assign]
 
     results = agent.run()
     assert results == []
@@ -130,7 +130,7 @@ def test_run_alerte_j7_envoyee():
     """À J-7, alerte_envoyee=True si au moins un canal réussit."""
     echeance = (date.today() + timedelta(days=7)).isoformat()
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(
+    agent._fetch_echeances_is = MagicMock(  # type: ignore[method-assign]
         return_value=[
             _make_echeance(
                 echeance=echeance,
@@ -139,9 +139,9 @@ def test_run_alerte_j7_envoyee():
             )
         ]
     )
-    agent._get_elements_disponibles = MagicMock(return_value=["bilan_n_1"])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._get_elements_disponibles = MagicMock(return_value=["bilan_n_1"])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert results[0]["alerte_envoyee"] is True
@@ -155,11 +155,11 @@ def test_run_pas_alerte_si_horizon_hors_liste():
     """Si jours_restants n'est pas dans HORIZONS_ALERTE, aucune alerte."""
     echeance = (date.today() + timedelta(days=10)).isoformat()
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(
+    agent._fetch_echeances_is = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_echeance(echeance=echeance)]
     )
-    agent._send_alerte = MagicMock()
-    agent._log_journal = MagicMock()
+    agent._send_alerte = MagicMock()  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert results == []
@@ -170,12 +170,12 @@ def test_run_alerte_non_envoyee_si_canaux_echouent():
     """Si email et Telegram échouent, alerte_envoyee=False."""
     echeance = (date.today() + timedelta(days=30)).isoformat()
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(
+    agent._fetch_echeances_is = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_echeance(echeance=echeance)]
     )
-    agent._get_elements_disponibles = MagicMock(return_value=[])
-    agent._send_alerte = MagicMock(return_value=False)
-    agent._log_journal = MagicMock()
+    agent._get_elements_disponibles = MagicMock(return_value=[])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=False)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert len(results) == 1
@@ -189,12 +189,12 @@ def test_log_journal_appele_avec_bons_args():
     """_log_journal est appelé avec le bon dossier_id et action."""
     echeance = (date.today() + timedelta(days=7)).isoformat()
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(
+    agent._fetch_echeances_is = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_echeance(dossier_id="dos-99", echeance=echeance)]
     )
-    agent._get_elements_disponibles = MagicMock(return_value=[])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._get_elements_disponibles = MagicMock(return_value=[])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     agent.run()
 
@@ -242,12 +242,12 @@ def test_horizons_alerte_reconnus(jours: int):
     """Chaque horizon (30, 15, 7) doit déclencher une alerte."""
     echeance = (date.today() + timedelta(days=jours)).isoformat()
     agent = DeclarationISAgent()
-    agent._fetch_echeances_is = MagicMock(
+    agent._fetch_echeances_is = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_echeance(echeance=echeance)]
     )
-    agent._get_elements_disponibles = MagicMock(return_value=[])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._get_elements_disponibles = MagicMock(return_value=[])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert len(results) == 1

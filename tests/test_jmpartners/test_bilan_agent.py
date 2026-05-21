@@ -35,12 +35,12 @@ def test_run_happy_path_j7():
     """J-7 exact → alerte envoyée, BilanAlert bien formée."""
     deadline = (date.today() + timedelta(days=7)).isoformat()
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(
+    agent._fetch_dossiers_bilan = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_dossier(deadline=deadline)]
     )
-    agent._check_documents = MagicMock(return_value=["grand_livre", "balance"])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._check_documents = MagicMock(return_value=["grand_livre", "balance"])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
 
@@ -58,12 +58,12 @@ def test_run_happy_path_j30():
     """J-30 exact → alerte envoyée."""
     deadline = (date.today() + timedelta(days=30)).isoformat()
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(
+    agent._fetch_dossiers_bilan = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_dossier(deadline=deadline)]
     )
-    agent._check_documents = MagicMock(return_value=[])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._check_documents = MagicMock(return_value=[])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert len(results) == 1
@@ -77,7 +77,7 @@ def test_run_happy_path_j30():
 def test_run_supabase_down_retourne_liste_vide():
     """Si Supabase est KO lors du fetch, run() retourne une liste vide."""
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(return_value=[])
+    agent._fetch_dossiers_bilan = MagicMock(return_value=[])  # type: ignore[method-assign]
 
     results = agent.run()
     assert results == []
@@ -103,7 +103,7 @@ def test_fetch_dossiers_bilan_erreur_supabase():
 def test_run_aucun_dossier_bilan():
     """Si aucun dossier bilan n'est retourné, run() retourne une liste vide."""
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(return_value=[])
+    agent._fetch_dossiers_bilan = MagicMock(return_value=[])  # type: ignore[method-assign]
 
     results = agent.run()
     assert results == []
@@ -116,12 +116,12 @@ def test_run_alerte_j7_email_et_telegram_envoyes():
     """À J-7, _send_alerte est appelé et alerte_envoyee=True si ok."""
     deadline = (date.today() + timedelta(days=7)).isoformat()
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(
+    agent._fetch_dossiers_bilan = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_dossier(deadline=deadline, contact_nom="SAS Client")]
     )
-    agent._check_documents = MagicMock(return_value=["factures_achats"])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._check_documents = MagicMock(return_value=["factures_achats"])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert results[0]["alerte_envoyee"] is True
@@ -136,11 +136,11 @@ def test_run_pas_alerte_si_horizon_hors_liste():
     """Si jours_restants n'est pas dans HORIZONS_ALERTE, aucune alerte n'est émise."""
     deadline = (date.today() + timedelta(days=10)).isoformat()
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(
+    agent._fetch_dossiers_bilan = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_dossier(deadline=deadline)]
     )
-    agent._send_alerte = MagicMock()
-    agent._log_journal = MagicMock()
+    agent._send_alerte = MagicMock()  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert results == []
@@ -151,12 +151,12 @@ def test_run_alerte_non_envoyee_si_echec_canaux():
     """Si email et Telegram échouent tous deux, alerte_envoyee=False."""
     deadline = (date.today() + timedelta(days=15)).isoformat()
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(
+    agent._fetch_dossiers_bilan = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_dossier(deadline=deadline)]
     )
-    agent._check_documents = MagicMock(return_value=["balance"])
-    agent._send_alerte = MagicMock(return_value=False)
-    agent._log_journal = MagicMock()
+    agent._check_documents = MagicMock(return_value=["balance"])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=False)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert len(results) == 1
@@ -170,12 +170,12 @@ def test_log_journal_appele_avec_bons_args():
     """_log_journal est appelé avec le bon dossier_id et action."""
     deadline = (date.today() + timedelta(days=7)).isoformat()
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(
+    agent._fetch_dossiers_bilan = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_dossier(dossier_id="dos-42", deadline=deadline)]
     )
-    agent._check_documents = MagicMock(return_value=[])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._check_documents = MagicMock(return_value=[])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     agent.run()
 
@@ -223,12 +223,12 @@ def test_horizons_alerte_reconnus(jours: int):
     """Chaque horizon d'alerte (30, 15, 7) doit déclencher une alerte."""
     deadline = (date.today() + timedelta(days=jours)).isoformat()
     agent = BilanAgent()
-    agent._fetch_dossiers_bilan = MagicMock(
+    agent._fetch_dossiers_bilan = MagicMock(  # type: ignore[method-assign]
         return_value=[_make_dossier(deadline=deadline)]
     )
-    agent._check_documents = MagicMock(return_value=[])
-    agent._send_alerte = MagicMock(return_value=True)
-    agent._log_journal = MagicMock()
+    agent._check_documents = MagicMock(return_value=[])  # type: ignore[method-assign]
+    agent._send_alerte = MagicMock(return_value=True)  # type: ignore[method-assign]
+    agent._log_journal = MagicMock()  # type: ignore[method-assign]
 
     results = agent.run()
     assert len(results) == 1
