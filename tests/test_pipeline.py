@@ -216,12 +216,8 @@ def test_run_pipeline_locked_lead_skipped():
             "apps.leadcommercial.pipeline.fetch_enrichment",
             return_value=_empty_enrichment(),
         ),
-        patch(
-            "apps.leadcommercial.pipeline.persist_lead", return_value=False
-        ),
-        patch(
-            "apps.leadcommercial.pipeline.send_telegram_alert"
-        ) as mock_telegram,
+        patch("apps.leadcommercial.pipeline.persist_lead", return_value=False),
+        patch("apps.leadcommercial.pipeline.send_telegram_alert") as mock_telegram,
     ):
         leads = run_pipeline(dry_run=False)
 
@@ -240,7 +236,10 @@ def test_run_pipeline_with_icp():
         "signaux_exclus": [],
         "scoring_rules": {},
     }
-    company = {**_fake_company(), "code_naf": "62.01Z"}  # ICP sector, not in default NAF
+    company = {
+        **_fake_company(),
+        "code_naf": "62.01Z",
+    }  # ICP sector, not in default NAF
     with (
         patch(
             "apps.leadcommercial.pipeline.fetch_and_parse_idf",

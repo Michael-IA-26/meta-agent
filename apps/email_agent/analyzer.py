@@ -93,7 +93,9 @@ def analyze_emails(emails: list, icp_name: str = "agence_conseil") -> list:
     if icp_context:
         logger.info(f"ICP charge : {icp_name}")
     else:
-        logger.warning(f"ICP absent ou vide — analyse sans contexte metier : {icp_name}")
+        logger.warning(
+            f"ICP absent ou vide — analyse sans contexte metier : {icp_name}"
+        )
     logger.info(f"Analyse de {len(emails)} emails avec Claude")
     results = []
     for i, email in enumerate(emails):

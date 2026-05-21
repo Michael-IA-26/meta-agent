@@ -1,4 +1,5 @@
 """Tests for apps.leadcommercial.agents.pappers_enricher."""
+
 import os
 import sys
 

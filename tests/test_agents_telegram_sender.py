@@ -1,4 +1,5 @@
 """Tests for agents/telegram_sender."""
+
 import os
 import sys
 from unittest.mock import patch

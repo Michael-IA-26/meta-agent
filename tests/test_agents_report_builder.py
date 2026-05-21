@@ -1,4 +1,5 @@
 """Tests for agents/report_builder."""
+
 import os
 import sys
 from unittest.mock import patch

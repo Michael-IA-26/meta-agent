@@ -1,4 +1,5 @@
 """Orchestrator — sequences the email-agent pipeline, no business logic."""
+
 from __future__ import annotations
 
 import logging
@@ -82,7 +83,9 @@ def run(max_results: int = 20, icp_name: str = "agence_conseil") -> None:
     # 5. Send report by email
     if html:
         today = datetime.now().strftime("%d/%m/%Y")
-        gmail_reporter.send_email_report(html, subject=f"Votre rapport du jour - {today}")
+        gmail_reporter.send_email_report(
+            html, subject=f"Votre rapport du jour - {today}"
+        )
 
     # 6. Persist KPIs
     kpis = supabase_writer.write_kpis(analyzed, temps_agent_sec=elapsed)

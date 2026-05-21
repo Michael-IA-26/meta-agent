@@ -79,9 +79,7 @@ def run_document_relance_flow(
     return doc_result, relance_result
 
 
-def run(
-    dry_run: bool = False, cabinet_id: str = "jmpartners"
-) -> OrchestratorResult:
+def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorResult:
     """Exécute un cycle complet : emails → relances → TVA → échéances → clôture.
 
     Args:

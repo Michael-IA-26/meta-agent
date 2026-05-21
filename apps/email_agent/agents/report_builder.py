@@ -1,4 +1,5 @@
 """Report builder agent — assembles the HTML email report from analyzed emails."""
+
 from __future__ import annotations
 
 import logging
@@ -24,7 +25,5 @@ def build_report(analyzed_emails: list[EmailAnalyzed]) -> str:
     The returned string is a self-contained HTML document ready to be sent by email.
     """
     html: str = report_to_html(analyzed_emails)  # type: ignore[arg-type]
-    logger.info(
-        "ReportBuilder: HTML report built for %d emails", len(analyzed_emails)
-    )
+    logger.info("ReportBuilder: HTML report built for %d emails", len(analyzed_emails))
     return html

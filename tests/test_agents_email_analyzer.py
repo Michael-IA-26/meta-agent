@@ -1,4 +1,5 @@
 """Tests for agents/email_analyzer."""
+
 import os
 import sys
 from unittest.mock import MagicMock, patch
@@ -64,8 +65,10 @@ def test_analyze_email_fallback_on_bad_json() -> None:
 
 def test_analyze_email_no_supabase_call() -> None:
     """Analyzer agent must not call save_email."""
-    with patch(f"{_MOD}._client") as mock_client, \
-         patch(f"{_MOD}.supabase_writer", create=True) as mock_sw:
+    with (
+        patch(f"{_MOD}._client") as mock_client,
+        patch(f"{_MOD}.supabase_writer", create=True) as mock_sw,
+    ):
         mock_client.messages.create.return_value = _make_claude_mock(_CLAUDE_RESPONSE)
         analyze_email(_FAKE_EMAIL, icp_context="")
 

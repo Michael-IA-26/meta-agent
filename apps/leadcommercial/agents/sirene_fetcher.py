@@ -1,4 +1,5 @@
 """Agent: fetch entreprises IDF depuis l'API Sirene → list[CompanyRaw]."""
+
 import logging
 from typing import TypedDict
 

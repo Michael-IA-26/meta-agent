@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_app() -> Any:
     """Import the app after patching heavy dependencies."""
     from apps.jmpartners.dashboard import app
@@ -30,6 +31,7 @@ def client() -> TestClient:
 # ---------------------------------------------------------------------------
 # Test 1 — GET / renvoie du HTML avec les éléments clés
 # ---------------------------------------------------------------------------
+
 
 def test_root_returns_html(client: TestClient) -> None:
     """GET / doit renvoyer un HTML avec les sections kanban et calendrier."""
@@ -53,10 +55,13 @@ def test_root_returns_html(client: TestClient) -> None:
 # Test 2 — GET /api/dossiers sans Supabase retourne les données mock
 # ---------------------------------------------------------------------------
 
+
 def test_get_dossiers_mock_fallback(client: TestClient) -> None:
     """Sans Supabase configuré, /api/dossiers retourne les dossiers mock."""
-    with patch("apps.jmpartners.dashboard.SUPABASE_URL", ""), \
-         patch("apps.jmpartners.dashboard.SUPABASE_SERVICE_KEY", ""):
+    with (
+        patch("apps.jmpartners.dashboard.SUPABASE_URL", ""),
+        patch("apps.jmpartners.dashboard.SUPABASE_SERVICE_KEY", ""),
+    ):
         resp = client.get("/api/dossiers")
     assert resp.status_code == 200
     data = resp.json()
@@ -74,6 +79,7 @@ def test_get_dossiers_mock_fallback(client: TestClient) -> None:
 # ---------------------------------------------------------------------------
 # Test 3 — GET /api/echeances retourne TVA + IS bien structurés
 # ---------------------------------------------------------------------------
+
 
 def test_get_echeances_structure(client: TestClient) -> None:
     """GET /api/echeances doit retourner un objet avec les champs attendus."""
@@ -105,13 +111,16 @@ def test_get_echeances_types(client: TestClient) -> None:
 # Test 4 — POST /api/relancer/{dossier_id} — mode mock (sans Supabase)
 # ---------------------------------------------------------------------------
 
+
 def test_relancer_dossier_mock(client: TestClient) -> None:
     """POST /api/relancer/{id} doit retourner un statut même en mode mock."""
-    with patch("apps.jmpartners.dashboard._supabase_available", return_value=False), \
-         patch(
-             "apps.jmpartners.agents.document_checker.run",
-             side_effect=RuntimeError("Supabase indisponible"),
-         ):
+    with (
+        patch("apps.jmpartners.dashboard._supabase_available", return_value=False),
+        patch(
+            "apps.jmpartners.agents.document_checker.run",
+            side_effect=RuntimeError("Supabase indisponible"),
+        ),
+    ):
         resp = client.post("/api/relancer/d001")
     assert resp.status_code == 200
     data = resp.json()
@@ -127,7 +136,14 @@ def test_relancer_dossier_with_mock_agents(client: TestClient) -> None:
         "dossier_id": "d002",
         "contact_id": "c002",
         "type_dossier": "tva",
-        "manquants": [{"nom_document": "CA Mensuel", "type_document": "ca_mensuel", "deadline": None, "urgence": None}],
+        "manquants": [
+            {
+                "nom_document": "CA Mensuel",
+                "type_document": "ca_mensuel",
+                "deadline": None,
+                "urgence": None,
+            }
+        ],
         "complets": ["factures_tva"],
         "erreur": None,
     }
@@ -139,8 +155,15 @@ def test_relancer_dossier_with_mock_agents(client: TestClient) -> None:
         "message_id": "msg_001",
         "erreur": None,
     }
-    with patch("apps.jmpartners.agents.document_checker.run", return_value=mock_doc_result), \
-         patch("apps.jmpartners.agents.relance_handler.run", return_value=mock_relance_result):
+    with (
+        patch(
+            "apps.jmpartners.agents.document_checker.run", return_value=mock_doc_result
+        ),
+        patch(
+            "apps.jmpartners.agents.relance_handler.run",
+            return_value=mock_relance_result,
+        ),
+    ):
         resp = client.post("/api/relancer/d002")
     assert resp.status_code == 200
     data = resp.json()
@@ -150,6 +173,7 @@ def test_relancer_dossier_with_mock_agents(client: TestClient) -> None:
 # ---------------------------------------------------------------------------
 # Test 5 — POST /api/dry-run — orchestrateur mocké
 # ---------------------------------------------------------------------------
+
 
 def test_dry_run_with_mock_orchestrator(client: TestClient) -> None:
     """POST /api/dry-run doit retourner un résultat structuré via l'orchestrateur."""
@@ -189,6 +213,7 @@ def test_dry_run_fallback_when_orchestrator_fails(client: TestClient) -> None:
 # Test 6 — Calcul des échéances IS (dates connues)
 # ---------------------------------------------------------------------------
 
+
 def test_is_deadline_dates() -> None:
     """Les échéances IS tombent le 15 mars/juin/sep/dec."""
     from apps.jmpartners.dashboard import _next_is_deadlines
@@ -205,6 +230,7 @@ def test_is_deadline_dates() -> None:
 # Test 7 — Calcul des échéances TVA (le 20 du mois suivant)
 # ---------------------------------------------------------------------------
 
+
 def test_tva_deadline_dates() -> None:
     """Les échéances TVA tombent le 20 du mois suivant."""
     from apps.jmpartners.dashboard import _next_tva_deadlines
@@ -220,6 +246,7 @@ def test_tva_deadline_dates() -> None:
 # ---------------------------------------------------------------------------
 # Test 8 — GET /api/dossiers avec Supabase mocké
 # ---------------------------------------------------------------------------
+
 
 def test_get_dossiers_from_supabase(client: TestClient) -> None:
     """Quand Supabase est disponible, les dossiers sont chargés depuis la DB."""
@@ -240,8 +267,10 @@ def test_get_dossiers_from_supabase(client: TestClient) -> None:
     mock_client = MagicMock()
     mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_resp
 
-    with patch("apps.jmpartners.dashboard._supabase_available", return_value=True), \
-         patch("apps.jmpartners.dashboard._fetch_dossiers_from_supabase") as mock_fetch:
+    with (
+        patch("apps.jmpartners.dashboard._supabase_available", return_value=True),
+        patch("apps.jmpartners.dashboard._fetch_dossiers_from_supabase") as mock_fetch,
+    ):
         mock_fetch.return_value = [
             {
                 "id": "uuid-001",

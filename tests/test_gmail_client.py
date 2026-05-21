@@ -15,7 +15,9 @@ from apps.email_agent.gmail_client import (  # noqa: E402
 _MOD = "apps.email_agent.gmail_client"
 
 
-def _make_creds(valid: bool = True, expired: bool = False, has_refresh: bool = True) -> MagicMock:
+def _make_creds(
+    valid: bool = True, expired: bool = False, has_refresh: bool = True
+) -> MagicMock:
     creds = MagicMock()
     creds.valid = valid
     creds.expired = expired
@@ -81,9 +83,7 @@ def test_get_emails_returns_list():
                 {"name": "Subject", "value": "Test Subject"},
                 {"name": "Date", "value": "2026-05-21"},
             ],
-            "parts": [
-                {"mimeType": "text/plain", "body": {"data": "SGVsbG8="}}
-            ],
+            "parts": [{"mimeType": "text/plain", "body": {"data": "SGVsbG8="}}],
         }
     }
     with patch(f"{_MOD}.get_gmail_service", return_value=mock_service):

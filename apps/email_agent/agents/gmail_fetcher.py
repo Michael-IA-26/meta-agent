@@ -1,4 +1,5 @@
 """Gmail fetcher agent — returns raw unread emails from the primary account."""
+
 from __future__ import annotations
 
 import logging
