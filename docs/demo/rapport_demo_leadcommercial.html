@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Demo LeadCommercial — JM Partners</title>
+<style>
+  body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header {background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;padding:40px;text-align:center}
+  .header h1 {margin:0;font-size:2em}
+  .header p {margin:8px 0 0;opacity:0.85}
+  .kpis {display:flex;gap:20px;padding:30px;justify-content:center;flex-wrap:wrap}
+  .kpi {background:white;border-radius:12px;padding:20px 30px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1);min-width:120px}
+  .kpi .value {font-size:2.5em;font-weight:800;color:#1e40af}
+  .kpi .label {font-size:0.85em;color:#64748b;margin-top:4px}
+  .section {padding:0 30px 30px}
+  h2 {color:#1e40af;margin-bottom:12px}
+  table {width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  th {background:#1e40af;color:white;padding:12px 8px;text-align:left;font-size:0.85em}
+  tr:hover {background:#f1f5f9!important}
+  .footer {text-align:center;padding:20px;color:#94a3b8;font-size:0.8em}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>LeadCommercial — Demo IDF</h1>
+  <p>Pipeline complet · 21/05/2026 à 11:12 · 10 entreprises analysées</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="value">10</div><div class="label">Entreprises<br>analysées</div></div>
+  <div class="kpi"><div class="value" style="color:#16a34a">10</div><div class="label">Leads<br>qualifiés</div></div>
+  <div class="kpi"><div class="value">100%</div><div class="label">Taux de<br>qualification</div></div>
+  <div class="kpi"><div class="value">100</div><div class="label">Meilleur<br>score</div></div>
+</div>
+
+<div class="section">
+  <h2>Résultats détaillés</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Raison sociale</th><th>SIREN</th><th>Dept</th>
+        <th>Commune</th><th>NAF</th><th>Score</th><th>Qualifié</th><th>Détail scoring</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">1</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">LE ZINC PARISIEN SAS</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000001</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">75</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">PARIS 11</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">56.10A</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Secteur restauration (prioritaire): +10, Creation tres recente (1j): +10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">2</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">DIGITAL CONSEIL SASU</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000002</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">92</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">BOULOGNE-BILLANCOURT</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">70.22Z</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Creation tres recente (1j): +10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">3</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">BATI PRO IDF EURL</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000003</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">93</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">SAINT-DENIS</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">43.21A</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Creation tres recente (2j): +10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">4</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">RAMEN TOKYO PARIS</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000004</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">75</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">PARIS 9</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">56.10B</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Secteur restauration (prioritaire): +10, Creation tres recente (1j): +10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">5</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">WELLNESS YOGA 78</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000005</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">78</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">VERSAILLES</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">93.13Z</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Creation tres recente (3j): +10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">6</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">TRAITEUR DU SUD SAS</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000006</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">91</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">ÉVRY</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">56.21Z</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Secteur restauration (prioritaire): +10, Creation tres recente (1j): +10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">7</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">IMMO INVEST 94 SASU</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000007</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">94</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">CRÉTEIL</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">68.20A</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Creation tres recente (2j): +10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">8</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">CLEANTECH SOLUTIONS</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000008</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">95</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">CERGY</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">38.21Z</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Creation tres recente (4j): +10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">9</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">MODE & STYLE PARIS</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000009</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">75</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">PARIS 8</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">47.71Z</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    90
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Creation tres recente (1j): +10, Forme juridique non prioritaire (1000): -10</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">10</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">CAFÉ DES ARTISTES 77</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">900000010</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">77</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">MEAUX</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">56.30Z</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:12px;font-weight:700">
+                    100
+                </span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">✅</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:0.8em;color:#6b7280">Signal creation: +100, Secteur restauration (prioritaire): +10, Creation tres recente (2j): +10</td>
+        </tr></tbody>
+  </table>
+</div>
+
+<div class="footer">
+  Rapport généré automatiquement par Meta-Agent · JM Partners · 21/05/2026 à 11:12
+</div>
+</body>
+</html>
