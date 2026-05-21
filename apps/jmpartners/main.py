@@ -9,6 +9,7 @@ import sys
 from apps.jmpartners.agents.document_checker import run as check_docs
 from apps.jmpartners.agents.echeance_agent import run as run_echeances
 from apps.jmpartners.agents.tva_agent import run as run_tva
+from apps.jmpartners.orchestrator import OrchestratorResult
 from apps.jmpartners.orchestrator import run as orchestrate
 
 logging.basicConfig(
@@ -78,10 +79,13 @@ def main() -> None:
         return
 
     if args.once:
-        result = orchestrate(dry_run=dry_run)
+        orch_result: OrchestratorResult = orchestrate(dry_run=dry_run)
         logger.info(
-            f"Cycle terminé — {result['tva']['declarations_analysees'] if result['tva'] else 0} TVA, "
-            f"{result['echeances']['echeances_total'] if result['echeances'] else 0} échéances"
+            f"Cycle terminé — "
+            f"{orch_result['tva']['declarations_analysees'] if orch_result['tva'] else 0} TVA, "
+            f"{orch_result['echeances']['echeances_total'] if orch_result['echeances'] else 0} échéances, "
+            f"{len(orch_result['acomptes_is'])} alertes IS, "
+            f"clôture={orch_result['cloture']['statut'] if orch_result['cloture'] else 'skip'}"
         )
         return
 

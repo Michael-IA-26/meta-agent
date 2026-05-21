@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime
+from typing import cast
 
 from supabase import Client, create_client
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -10,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_supabase_client() -> Client:
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_KEY")
+    url = os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_KEY", "")
     return create_client(url, key)
 
 
@@ -19,10 +20,11 @@ def get_supabase_client() -> Client:
 def save_email(analyzed_email: dict) -> bool:
     try:
         client = get_supabase_client()
-        data = {
+        subject_str: str = analyzed_email.get("subject", "")
+        data: dict[str, str | None] = {
             "agent_id": "email_agent",
             "user_id": "michael",
-            "email_subject": analyzed_email.get("subject", ""),
+            "email_subject": subject_str,
             "email_from": analyzed_email.get("from", ""),
             "email_date": analyzed_email.get("date", ""),
             "priority": analyzed_email.get("priority", "moyenne"),
@@ -31,8 +33,8 @@ def save_email(analyzed_email: dict) -> bool:
             "action": analyzed_email.get("action"),
             "suggested_reply": analyzed_email.get("suggested_reply"),
         }
-        client.table("emails_analyzed").insert(data).execute()
-        logger.info(f"Email sauvegarde : {data['email_subject'][:50]}")
+        client.table("emails_analyzed").insert(cast(dict, data)).execute()
+        logger.info(f"Email sauvegarde : {subject_str[:50]}")
         return True
     except Exception as e:
         logger.error(f"Erreur Supabase : {e}")
@@ -66,7 +68,7 @@ def calculate_and_save_kpis(emails_analyzed: list, temps_agent_sec: float) -> di
             "time_saved_min": int(temps_gagne_min),
         }
 
-        client.table("agent_weekly_stats").insert(stats).execute()
+        client.table("agent_weekly_stats").insert(cast(dict, stats)).execute()
 
         kpis = {
             "emails_analyses": len(emails_analyzed),

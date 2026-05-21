@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TypedDict
 
+from apps.jmpartners.agents.acompte_is_agent import AcompteAlert, AcompteISAgent
+from apps.jmpartners.agents.cloture_handler import ClotureHandler, ClotureResult
 from apps.jmpartners.agents.document_checker import DocumentCheckerResult
 from apps.jmpartners.agents.document_checker import run as check_docs
 from apps.jmpartners.agents.echeance_agent import EcheanceAgentResult
@@ -28,6 +30,8 @@ class OrchestratorResult(TypedDict):
     relances: list[RelanceResult]
     tva: TvaAgentResult | None
     echeances: EcheanceAgentResult | None
+    cloture: ClotureResult | None
+    acomptes_is: list[AcompteAlert]
     erreurs: list[str]
 
 
@@ -75,12 +79,15 @@ def run_document_relance_flow(
     return doc_result, relance_result
 
 
-def run(dry_run: bool = False) -> OrchestratorResult:
-    """Exécute un cycle complet : emails → relances → TVA → échéances.
+def run(
+    dry_run: bool = False, cabinet_id: str = "jmpartners"
+) -> OrchestratorResult:
+    """Exécute un cycle complet : emails → relances → TVA → échéances → clôture.
 
     Args:
         dry_run: Si True, simule le flux complet sans envoyer d'emails
                  ni écrire en base.
+        cabinet_id: Identifiant du cabinet pour la clôture.
 
     Returns:
         OrchestratorResult avec le résultat de chaque agent.
@@ -107,11 +114,31 @@ def run(dry_run: bool = False) -> OrchestratorResult:
         logger.error(f"Orchestrateur — erreur echeance_agent : {exc}")
         erreurs.append(f"echeance_agent: {exc}")
 
+    # 4. Clôture comptable (fin de mois) — ignorée en dry_run
+    cloture_result: ClotureResult | None = None
+    if not dry_run:
+        try:
+            cloture_result = ClotureHandler(cabinet_id=cabinet_id).run()
+        except Exception as exc:
+            logger.error(f"Orchestrateur — erreur cloture_handler : {exc}")
+            erreurs.append(f"cloture_handler: {exc}")
+
+    # 5. Alertes acomptes IS — ignorées en dry_run
+    acomptes_is: list[AcompteAlert] = []
+    if not dry_run:
+        try:
+            acomptes_is = AcompteISAgent().run()
+        except Exception as exc:
+            logger.error(f"Orchestrateur — erreur acompte_is_agent : {exc}")
+            erreurs.append(f"acompte_is_agent: {exc}")
+
     logger.info("Orchestrateur JM Partners — cycle terminé")
     return OrchestratorResult(
         mail=mail_result,
         relances=relances,
         tva=tva_result,
         echeances=echeance_result,
+        cloture=cloture_result,
+        acomptes_is=acomptes_is,
         erreurs=erreurs,
     )

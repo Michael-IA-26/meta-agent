@@ -7,7 +7,7 @@ import imaplib
 import logging
 import os
 from email.header import decode_header
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import anthropic
 from supabase import Client, create_client
@@ -74,12 +74,12 @@ def decode_str(value: str | bytes) -> str:
 
 def fetch_unseen_emails(
     host: str, user: str, password: str
-) -> list[tuple[str, str, str]]:
+) -> list[tuple[str, str, str, str]]:
     """Se connecte en IMAP et retourne les emails non lus (message_id, expediteur, sujet, corps).
 
     Returns list of (message_id, from_addr, subject, body) tuples.
     """
-    results: list[tuple[str, str, str]] = []
+    results: list[tuple[str, str, str, str]] = []
     try:
         mail = imaplib.IMAP4_SSL(host)
         mail.login(user, password)
@@ -91,7 +91,7 @@ def fetch_unseen_emails(
             raw = msg_data[0][1] if msg_data and msg_data[0] else None
             if not raw:
                 continue
-            msg = email.message_from_bytes(raw)
+            msg = email.message_from_bytes(cast(bytes, raw))
             message_id = msg.get("Message-ID", str(uid))
             from_addr = decode_str(msg.get("From", ""))
             subject = decode_str(msg.get("Subject", ""))
@@ -100,12 +100,12 @@ def fetch_unseen_emails(
                 for part in msg.walk():
                     if part.get_content_type() == "text/plain":
                         payload = part.get_payload(decode=True)
-                        if payload:
+                        if payload and isinstance(payload, bytes):
                             body = payload.decode("utf-8", errors="replace")
                             break
             else:
                 payload = msg.get_payload(decode=True)
-                if payload:
+                if payload and isinstance(payload, bytes):
                     body = payload.decode("utf-8", errors="replace")
             results.append((message_id, from_addr, subject, body))
         mail.logout()
@@ -134,7 +134,7 @@ def identify_contact(
             .execute()
         )
         if resp.data:
-            row = resp.data[0]
+            row = cast(dict, resp.data[0])
             return row["id"], row["nom"]
     except Exception as exc:
         logger.warning(f"Erreur matching contact par email : {exc}")
@@ -162,10 +162,11 @@ def classify_request(client: anthropic.Anthropic, sujet: str, corps: str) -> str
             max_tokens=64,
             messages=[{"role": "user", "content": prompt}],
         )
-        content = msg.content[0].text.strip()
+        block = msg.content[0]
+        raw_text = block.text if hasattr(block, "text") else ""
         import json
 
-        data = json.loads(content)
+        data = json.loads(raw_text.strip())
         type_demande = data.get("type", "autre")
         if type_demande not in TYPES_DEMANDE:
             return "autre"
@@ -198,7 +199,7 @@ def log_journal(
             .execute()
         )
         if resp.data:
-            return resp.data[0]["id"]
+            return cast(dict, resp.data[0])["id"]
     except Exception as exc:
         logger.error(f"Erreur log journal : {exc}")
     return None

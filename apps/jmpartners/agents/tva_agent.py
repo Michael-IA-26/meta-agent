@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import date, timedelta
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import httpx
 from supabase import Client, create_client
@@ -69,7 +69,7 @@ def fetch_declarations_a_venir(supabase: Client, horizon_jours: int = 15) -> lis
             .neq("statut", "valide")
             .execute()
         )
-        return resp.data or []
+        return [cast(dict, row) for row in (resp.data or [])]
     except Exception as exc:
         logger.error(f"Erreur fetch déclarations TVA : {exc}")
         return []
@@ -85,7 +85,7 @@ def fetch_contact_nom(supabase: Client, contact_id: str) -> str | None:
             .single()
             .execute()
         )
-        return resp.data.get("nom") if resp.data else None
+        return cast(dict, resp.data).get("nom") if resp.data else None
     except Exception:
         return None
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import date
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from supabase import Client, create_client
 
@@ -101,7 +101,7 @@ def fetch_dossier(supabase: Client, dossier_id: str) -> dict | None:
             .single()
             .execute()
         )
-        return resp.data
+        return cast(dict, resp.data) if resp.data else None
     except Exception as exc:
         logger.error(f"Erreur fetch dossier {dossier_id} : {exc}")
         return None
@@ -117,7 +117,7 @@ def fetch_documents_presents(supabase: Client, dossier_id: str) -> list[str]:
             .in_("statut", ["recu", "valide"])
             .execute()
         )
-        return [row["type_document"] for row in (resp.data or [])]
+        return [cast(dict, row)["type_document"] for row in (resp.data or [])]
     except Exception as exc:
         logger.error(f"Erreur fetch documents {dossier_id} : {exc}")
         return []

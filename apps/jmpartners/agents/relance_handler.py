@@ -9,12 +9,15 @@ import smtplib
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import anthropic
 from supabase import Client, create_client
 
-from apps.jmpartners.agents.document_checker import DocumentCheckerResult
+from apps.jmpartners.agents.document_checker import (
+    DocumentCheckerResult,
+    DocumentManquant,
+)
 
 __all__ = ["RelanceResult", "run"]
 
@@ -108,7 +111,8 @@ def fetch_contact_email(
             .execute()
         )
         if resp.data:
-            return resp.data.get("email"), resp.data.get("nom")
+            row = cast(dict, resp.data)
+            return row.get("email"), row.get("nom")
     except Exception as exc:
         logger.error(f"Erreur fetch contact {contact_id} : {exc}")
     return None, None
@@ -117,7 +121,7 @@ def fetch_contact_email(
 def compose_relance(
     ai_client: anthropic.Anthropic,
     contact_nom: str,
-    manquants: list[dict],
+    manquants: list[DocumentManquant],
     tonalite: str,
 ) -> tuple[str, str]:
     """Compose un email de relance via Claude.
@@ -144,7 +148,9 @@ def compose_relance(
             max_tokens=512,
             messages=[{"role": "user", "content": prompt}],
         )
-        data = json.loads(msg.content[0].text.strip())
+        block = msg.content[0]
+        raw_text = block.text if hasattr(block, "text") else ""
+        data = json.loads(raw_text.strip())
         return data.get("sujet", "Relance documents"), data.get("corps", "")
     except Exception as exc:
         logger.warning(f"Erreur composition relance Claude : {exc}")
@@ -203,7 +209,7 @@ def log_journal(
             .execute()
         )
         if resp.data:
-            return resp.data[0]["id"]
+            return cast(dict, resp.data[0])["id"]
     except Exception as exc:
         logger.error(f"Erreur log journal relance : {exc}")
     return None

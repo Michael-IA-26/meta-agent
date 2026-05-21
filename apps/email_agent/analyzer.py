@@ -48,7 +48,9 @@ Reponds avec exactement ce format JSON:
     )
 
     try:
-        result = json.loads(response.content[0].text)
+        block = response.content[0]
+        raw_text = block.text if hasattr(block, "text") else ""
+        result = json.loads(raw_text)
     except Exception:
         result = {
             "priority": "moyenne",

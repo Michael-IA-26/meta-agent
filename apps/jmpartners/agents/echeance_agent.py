@@ -8,7 +8,7 @@ import smtplib
 from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import httpx
 from supabase import Client, create_client
@@ -86,7 +86,7 @@ def fetch_acomptes_is(supabase: Client, horizon: int) -> list[dict]:
             .eq("statut", "a_payer")
             .execute()
         )
-        return resp.data or []
+        return [cast(dict, row) for row in (resp.data or [])]
     except Exception as exc:
         logger.error(f"Erreur fetch acomptes IS : {exc}")
         return []
@@ -105,7 +105,7 @@ def fetch_declarations_tva(supabase: Client, horizon: int) -> list[dict]:
             .in_("statut", ["a_preparer", "pieces_manquantes", "pret"])
             .execute()
         )
-        return resp.data or []
+        return [cast(dict, row) for row in (resp.data or [])]
     except Exception as exc:
         logger.error(f"Erreur fetch déclarations TVA : {exc}")
         return []
@@ -121,7 +121,7 @@ def fetch_contact_nom(supabase: Client, contact_id: str) -> str | None:
             .single()
             .execute()
         )
-        return resp.data.get("nom") if resp.data else None
+        return cast(dict, resp.data).get("nom") if resp.data else None
     except Exception:
         return None
 
