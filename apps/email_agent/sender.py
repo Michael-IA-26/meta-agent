@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import sys
 import time
@@ -7,13 +8,14 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gmail_client import get_gmail_service
-from storage import calculate_and_save_kpis
-from telegram_sender import send_telegram_report
+
+logger = logging.getLogger(__name__)
+from gmail_client import get_gmail_service  # noqa: E402
+from storage import calculate_and_save_kpis  # noqa: E402
+from telegram_sender import send_telegram_report  # noqa: E402
 
 
 def report_to_html(analyzed_emails):
-    """Build and return a self-contained HTML report from a list of analyzed emails."""
     today = datetime.now().strftime("%d/%m/%Y")
     haute = [e for e in analyzed_emails if e["priority"] == "haute"]
     moyenne = [e for e in analyzed_emails if e["priority"] == "moyenne"]
@@ -61,10 +63,6 @@ Rapport genere automatiquement par Meta-Agent</p></body></html>"""
 
 
 def send_report(analyzed_emails, temps_agent_sec=0):
-    """Send the HTML report by email, persist KPIs, and trigger Telegram notification."""
-    import logging as _logging
-
-    _logger = _logging.getLogger(__name__)
     service = get_gmail_service()
     today = datetime.now().strftime("%d/%m/%Y")
     subject = f"Votre rapport du jour - {today}"
@@ -76,17 +74,12 @@ def send_report(analyzed_emails, temps_agent_sec=0):
     message.attach(MIMEText(html_content, "html", "utf-8"))
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     service.users().messages().send(userId="me", body={"raw": raw}).execute()
-    _logger.info("Rapport HTML envoye a %s", recipient)
+    logger.info(f"Rapport HTML envoye a {recipient} !")
 
     kpis = calculate_and_save_kpis(analyzed_emails, temps_agent_sec)
     if kpis:
-        _logger.info(
-            "KPIs — analyses: %s | agent: %s min | gagne: %s min | gain: %s%% | valeur: %s EUR",
-            kpis.get("emails_analyses"),
-            kpis.get("temps_agent_min"),
-            kpis.get("temps_gagne_min"),
-            kpis.get("gain_pourcentage"),
-            kpis.get("valeur_estimee_eur"),
+        logger.info(
+            f"KPIs — analyses: {kpis.get('emails_analyses')} | gagne: {kpis.get('temps_gagne_min')}min | valeur: {kpis.get('valeur_estimee_eur')}EUR"
         )
 
     send_telegram_report(analyzed_emails, kpis)

@@ -1,8 +1,10 @@
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 def generate_report(analyzed_emails):
-    """Generate a plain-text daily email report from *analyzed_emails*."""
     today = datetime.now().strftime("%d/%m/%Y")
     haute = [e for e in analyzed_emails if e["priority"] == "haute"]
     moyenne = [e for e in analyzed_emails if e["priority"] == "moyenne"]
@@ -41,8 +43,5 @@ if __name__ == "__main__":
 
     emails = get_emails(max_results=5)
     analyzed = analyze_emails(emails)
-    import logging as _logging
-
-    _logging.basicConfig(level=_logging.INFO)
     report = generate_report(analyzed)
-    _logging.getLogger(__name__).info(report)
+    logger.debug(report)

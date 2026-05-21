@@ -1,5 +1,3 @@
-"""Entry point — scheduler that triggers orchestrator.run() daily at 08:45."""
-import argparse
 import logging
 import os
 import sys
@@ -8,15 +6,13 @@ import time
 import schedule
 import sentry_sdk
 
+logger = logging.getLogger(__name__)
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from orchestrator import run  # noqa: E402
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
-logger = logging.getLogger(__name__)
+from analyzer import analyze_emails  # noqa: E402
+from gmail_client import get_emails  # noqa: E402
+from sender import send_report  # noqa: E402
 
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),
@@ -25,41 +21,24 @@ sentry_sdk.init(
 )
 
 
-def run_daily_report() -> None:
-    """Trigger the orchestrator pipeline and capture any unhandled exception in Sentry."""
+def run_daily_report():
     logger.info("Lancement du rapport quotidien...")
     try:
-        run()
-        logger.info("Rapport envoye avec succes.")
+        start = time.time()
+        emails = get_emails(max_results=20)
+        analyzed = analyze_emails(emails)
+        elapsed = time.time() - start
+        send_report(analyzed, temps_agent_sec=elapsed)
+        logger.info("Rapport envoye avec succes !")
     except Exception as e:
         sentry_sdk.capture_exception(e)
-        logger.error("Erreur capturee par Sentry : %s", e)
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    """Return the CLI argument parser."""
-    parser = argparse.ArgumentParser(
-        description="Agent email — rapport quotidien automatise."
-    )
-    parser.add_argument(
-        "--once",
-        action="store_true",
-        help="Execute run_daily_report() une seule fois puis quitte.",
-    )
-    return parser
+        logger.error(f"Erreur capturee par Sentry : {e}")
 
 
 if __name__ == "__main__":
-    args = _build_parser().parse_args()
-
-    if args.once:
-        run_daily_report()
-        sys.exit(0)
-
-    logger.info(
-        "Agent email demarre — rapport envoye chaque jour a 08h45. Sentry : %s",
-        bool(os.getenv("SENTRY_DSN")),
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logger.info("Agent email demarre - rapport envoye chaque jour a 08h45")
+    logger.info(f"Sentry initialise : {bool(os.getenv('SENTRY_DSN'))}")
     schedule.every().day.at("08:45").do(run_daily_report)
     while True:
         schedule.run_pending()

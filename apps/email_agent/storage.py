@@ -10,15 +10,15 @@ logger = logging.getLogger(__name__)
 
 
 def get_supabase_client() -> Client:
-    """Return an authenticated Supabase client from environment variables."""
-    url: str = os.environ["SUPABASE_URL"]
-    key: str = os.environ["SUPABASE_SERVICE_KEY"]
-    return create_client(url, key)
+    """Retourne un client Supabase authentifie via les variables d'environnement."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_KEY")
+    return create_client(url or "", key or "")
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8))
 def save_email(analyzed_email: dict) -> bool:
-    """Persist a single analyzed email to the emails_analyzed table."""
+    """Sauvegarde un email analyse dans la table emails_analyzed. Retourne True si succes."""
     try:
         client = get_supabase_client()
         data = {
@@ -33,7 +33,7 @@ def save_email(analyzed_email: dict) -> bool:
             "action": analyzed_email.get("action"),
             "suggested_reply": analyzed_email.get("suggested_reply"),
         }
-        client.table("emails_analyzed").insert(data).execute()
+        client.table("emails_analyzed").insert(dict(data)).execute()  # type: ignore[arg-type]
         logger.info(f"Email sauvegarde : {data['email_subject'][:50]}")
         return True
     except Exception as e:
@@ -42,7 +42,7 @@ def save_email(analyzed_email: dict) -> bool:
 
 
 def calculate_and_save_kpis(emails_analyzed: list, temps_agent_sec: float) -> dict:
-    """Compute time-saved KPIs from *emails_analyzed* and persist them to agent_weekly_stats."""
+    """Calcule les KPIs du jour (temps gagne, valeur) et les sauvegarde dans agent_weekly_stats."""
     try:
         client = get_supabase_client()
 
@@ -59,7 +59,7 @@ def calculate_and_save_kpis(emails_analyzed: list, temps_agent_sec: float) -> di
         # Semaine courante
         week = datetime.now().strftime("%Y-W%W")
 
-        stats: dict[str, str | int | float] = {
+        stats = {
             "agent_id": "email_agent",
             "week": week,
             "validity_score": 1.0,
@@ -69,7 +69,7 @@ def calculate_and_save_kpis(emails_analyzed: list, temps_agent_sec: float) -> di
             "time_saved_min": int(temps_gagne_min),
         }
 
-        client.table("agent_weekly_stats").insert(stats).execute()
+        client.table("agent_weekly_stats").insert(dict(stats)).execute()  # type: ignore[arg-type]
 
         kpis = {
             "emails_analyses": len(emails_analyzed),
@@ -91,24 +91,12 @@ def calculate_and_save_kpis(emails_analyzed: list, temps_agent_sec: float) -> di
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8))
 def save_weekly_stats(stats: dict) -> bool:
-    """Persist weekly stats dict directly to agent_weekly_stats (low-level helper)."""
+    """Sauvegarde les stats hebdomadaires dans Supabase avec retry automatique (3 tentatives)."""
     try:
         client = get_supabase_client()
-        client.table("agent_weekly_stats").insert(stats).execute()
+        client.table("agent_weekly_stats").insert(dict(stats)).execute()  # type: ignore[arg-type]
         logger.info("KPIs hebdo sauvegardes")
         return True
     except Exception as e:
         logger.error(f"Erreur KPIs Supabase : {e}")
         return False
-
-
-if __name__ == "__main__":
-    import logging as _logging
-
-    _logging.basicConfig(level=_logging.INFO)
-    _log = _logging.getLogger(__name__)
-    _log.info("Test KPIs...")
-    _test_emails = [{"subject": f"Email {i}"} for i in range(5)]
-    _kpis = calculate_and_save_kpis(_test_emails, temps_agent_sec=120)
-    for _k, _v in _kpis.items():
-        _log.info("  %s: %s", _k, _v)
