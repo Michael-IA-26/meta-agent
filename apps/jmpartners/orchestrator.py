@@ -6,13 +6,19 @@ import logging
 from typing import TypedDict
 
 from apps.jmpartners.agents.acompte_is_agent import AcompteAlert, AcompteISAgent
+from apps.jmpartners.agents.bilan_agent import BilanAgent, BilanAlert
 from apps.jmpartners.agents.cloture_handler import ClotureHandler, ClotureResult
+from apps.jmpartners.agents.declaration_is_agent import (
+    DeclarationISAgent,
+    DeclarationISAlert,
+)
 from apps.jmpartners.agents.document_checker import DocumentCheckerResult
 from apps.jmpartners.agents.document_checker import run as check_docs
 from apps.jmpartners.agents.echeance_agent import EcheanceAgentResult
 from apps.jmpartners.agents.echeance_agent import run as run_echeances
 from apps.jmpartners.agents.mail_handler import MailHandlerResult
 from apps.jmpartners.agents.mail_handler import run as handle_mail
+from apps.jmpartners.agents.notification_agent import NotificationAgent
 from apps.jmpartners.agents.relance_handler import RelanceResult
 from apps.jmpartners.agents.relance_handler import run as send_relance
 from apps.jmpartners.agents.tva_agent import TvaAgentResult
@@ -32,6 +38,8 @@ class OrchestratorResult(TypedDict):
     echeances: EcheanceAgentResult | None
     cloture: ClotureResult | None
     acomptes_is: list[AcompteAlert]
+    bilans: list[BilanAlert]
+    declarations_is: list[DeclarationISAlert]
     erreurs: list[str]
 
 
@@ -130,6 +138,30 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
             logger.error(f"Orchestrateur — erreur acompte_is_agent : {exc}")
             erreurs.append(f"acompte_is_agent: {exc}")
 
+    # 6. Alertes bilan (Sprint 3) — ignorées en dry_run
+    bilans: list[BilanAlert] = []
+    if not dry_run:
+        try:
+            bilans = BilanAgent().run()
+        except Exception as exc:
+            logger.error(f"Orchestrateur — erreur bilan_agent : {exc}")
+            erreurs.append(f"bilan_agent: {exc}")
+
+    # 7. Alertes déclarations IS (Sprint 3) — ignorées en dry_run
+    declarations_is: list[DeclarationISAlert] = []
+    if not dry_run:
+        try:
+            declarations_is = DeclarationISAgent().run()
+        except Exception as exc:
+            logger.error(f"Orchestrateur — erreur declaration_is_agent : {exc}")
+            erreurs.append(f"declaration_is_agent: {exc}")
+
+    # 8. Hub de notifications Sprint 3 (service interne, pas exposé dans le résultat)
+    _notification_agent = NotificationAgent()
+    logger.debug(
+        f"Orchestrateur — notification_agent disponible : {_notification_agent}"
+    )
+
     logger.info("Orchestrateur JM Partners — cycle terminé")
     return OrchestratorResult(
         mail=mail_result,
@@ -138,5 +170,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         echeances=echeance_result,
         cloture=cloture_result,
         acomptes_is=acomptes_is,
+        bilans=bilans,
+        declarations_is=declarations_is,
         erreurs=erreurs,
     )
