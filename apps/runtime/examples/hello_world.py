@@ -1,4 +1,5 @@
 import ast
+import logging
 import os
 
 import anthropic
@@ -6,6 +7,7 @@ from dotenv import load_dotenv
 from langfuse import get_client, observe
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 tools = [
@@ -45,7 +47,7 @@ def echo(message):
 
 @observe()
 def run_agent(prompt):
-    print(f"Prompt: {prompt}")
+    logger.info("Prompt: %s", prompt)
     messages = [{"role": "user", "content": prompt}]
     while True:
         response = client.messages.create(
@@ -54,26 +56,27 @@ def run_agent(prompt):
         if response.stop_reason == "end_turn":
             for block in response.content:
                 if hasattr(block, "text"):
-                    print(f"Reponse: {block.text}")
+                    logger.info("Reponse: %s", block.text)
             break
         tool_results = []
         for block in response.content:
             if block.type == "tool_use":
-                print(f"Tool: {block.name}({block.input})")
+                logger.info("Tool: %s(%s)", block.name, block.input)
                 result = (
                     calculator(**block.input)
                     if block.name == "calculator"
                     else echo(**block.input)
                 )
-                print(f"  -> {result}")
+                logger.info("  -> %s", result)
                 tool_results.append(
                     {"type": "tool_result", "tool_use_id": block.id, "content": result}
                 )
         messages.append({"role": "assistant", "content": response.content})
         messages.append({"role": "user", "content": tool_results})
     get_client().flush()
-    print("Trace envoyee a Langfuse!")
+    logger.info("Trace envoyee a Langfuse!")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     run_agent("Calcule 42 * 7 puis fais un echo du resultat")
