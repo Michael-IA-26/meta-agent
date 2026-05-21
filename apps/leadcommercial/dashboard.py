@@ -1,4 +1,5 @@
 """FastAPI dashboard for LeadCommercial demo."""
+
 from __future__ import annotations
 
 import logging
@@ -303,9 +304,7 @@ def _get_supabase_client() -> Any:
     from supabase import create_client  # type: ignore[import-untyped]
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise ValueError(
-            "SUPABASE_URL ou SUPABASE_SERVICE_KEY manquant"
-        )
+        raise ValueError("SUPABASE_URL ou SUPABASE_SERVICE_KEY manquant")
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
@@ -327,7 +326,9 @@ async def get_leads() -> JSONResponse:
         client = _get_supabase_client()
         result = (
             client.table("leads")
-            .select("id,siren,denomination,dept,commune,code_naf,score,qualified,created_at")
+            .select(
+                "id,siren,denomination,dept,commune,code_naf,score,qualified,created_at"
+            )
             .order("created_at", desc=True)
             .limit(50)
             .execute()

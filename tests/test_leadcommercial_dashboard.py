@@ -1,4 +1,5 @@
 """Tests for apps/leadcommercial/dashboard.py."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -46,7 +47,9 @@ SAMPLE_STATS_ROWS = [
 ]
 
 
-def _mock_supabase_client(leads_data: list, stats_rows: list | None = None) -> MagicMock:
+def _mock_supabase_client(
+    leads_data: list, stats_rows: list | None = None
+) -> MagicMock:
     """Build a mock Supabase client that returns the given data."""
     mock_client = MagicMock()
 
