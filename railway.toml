@@ -3,3 +3,9 @@ dockerfilePath = "Dockerfile"
 
 [services.leadcommercial]
 dockerfilePath = "Dockerfile.leadcommercial"
+
+[services.leadcommercial-dashboard]
+dockerfilePath = "Dockerfile.leadcommercial-dashboard"
+
+[services.jmpartners-dashboard]
+dockerfilePath = "Dockerfile.jmpartners-dashboard"
