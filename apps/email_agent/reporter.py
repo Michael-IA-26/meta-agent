@@ -1,4 +1,7 @@
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 def generate_report(analyzed_emails):
@@ -41,4 +44,4 @@ if __name__ == "__main__":
     emails = get_emails(max_results=5)
     analyzed = analyze_emails(emails)
     report = generate_report(analyzed)
-    print(report)
+    logger.debug(report)

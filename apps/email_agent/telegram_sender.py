@@ -62,41 +62,11 @@ def send_telegram_report(analyzed_emails: list, kpis: dict | None = None) -> boo
     try:
         response = requests.post(api_url, json=payload, timeout=10)
         if response.status_code == 200:
-            print("Rapport Telegram envoye !")
+            logger.info("Rapport Telegram envoye !")
             return True
         else:
-            print("Erreur Telegram : " + response.text)
+            logger.error("Erreur Telegram : " + response.text)
             return False
     except Exception as e:
-        print("Erreur : " + str(e))
+        logger.error(f"Erreur Telegram : {e}")
         return False
-
-
-if __name__ == "__main__":
-    test_emails = [
-        {
-            "subject": "CREATION DE COMPTE VESPER",
-            "from": "grace@also.com",
-            "priority": "haute",
-            "category": "action_requise",
-            "summary": "Demande de creation de compte",
-            "action": "Traiter la demande de creation de compte",
-            "suggested_reply": None,
-        },
-        {
-            "subject": "LinkedIn notification",
-            "from": "linkedin@linkedin.com",
-            "priority": "basse",
-            "category": "inutile",
-            "summary": "Notification LinkedIn",
-            "action": None,
-            "suggested_reply": None,
-        },
-    ]
-    test_kpis = {
-        "temps_gagne_min": 42.9,
-        "gain_pourcentage": 95.3,
-        "valeur_estimee_eur": 57.2,
-    }
-    result = send_telegram_report(test_emails, test_kpis)
-    print("Resultat : OK" if result else "Resultat : ERREUR")

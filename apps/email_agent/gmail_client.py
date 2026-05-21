@@ -1,10 +1,13 @@
 import base64
+import logging
 import os
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+
+logger = logging.getLogger(__name__)
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -28,6 +31,7 @@ def get_gmail_service():
             creds = flow.run_local_server(port=0)
         with open(TOKEN_FILE, "w") as token:
             token.write(creds.to_json())
+    logger.info("Gmail service initialise")
     return build("gmail", "v1", credentials=creds)
 
 
@@ -40,6 +44,7 @@ def get_emails(max_results=20):
         .execute()
     )
     messages = results.get("messages", [])
+    logger.info(f"Gmail: {len(messages)} emails non lus")
     emails = []
     for msg in messages:
         detail = (
