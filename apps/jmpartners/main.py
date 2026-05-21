@@ -1,134 +1,123 @@
-"""Entry point JM Partners — scheduler APScheduler ou exécution unique."""
+"""Point d'entrée JM Partners — scheduler APScheduler ou exécution ponctuelle."""
 
 from __future__ import annotations
 
 import argparse
-import calendar
 import logging
-import os
-from datetime import datetime
+import sys
 
-import sentry_sdk
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apps.jmpartners.agents.document_checker import run as check_docs
+from apps.jmpartners.agents.echeance_agent import run as run_echeances
+from apps.jmpartners.agents.tva_agent import run as run_tva
+from apps.jmpartners.orchestrator import OrchestratorResult
+from apps.jmpartners.orchestrator import run as orchestrate
 
-from apps.jmpartners.orchestrator import Orchestrator
-
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+    stream=sys.stdout,
+)
 logger = logging.getLogger(__name__)
 
-_TZ = "Europe/Paris"
 
-
-def _job_cycle_complet() -> None:
-    """Cycle complet : mails, documents, échéances."""
-    try:
-        Orchestrator().run()
-    except Exception as exc:
-        sentry_sdk.capture_exception(exc)
-        logger.error("Erreur cycle complet : %s", exc, exc_info=True)
-
-
-def _job_fin_de_mois() -> None:
-    """Clôture mensuelle — déclenché le dernier jour du mois à 20h."""
-    now = datetime.now()
-    try:
-        Orchestrator().on_fin_de_mois(now.year, now.month)
-    except Exception as exc:
-        sentry_sdk.capture_exception(exc)
-        logger.error("Erreur fin de mois : %s", exc, exc_info=True)
-
-
-def _last_day_of_month() -> int:
-    """Retourne le dernier jour du mois courant."""
-    now = datetime.now()
-    return calendar.monthrange(now.year, now.month)[1]
-
-
-def start_scheduler() -> None:
-    """Configure et démarre le scheduler APScheduler bloquant."""
-    scheduler = BlockingScheduler(timezone=_TZ)
-
-    # Cycle principal : toutes les 30 min en heures ouvrées
-    scheduler.add_job(
-        _job_cycle_complet,
-        CronTrigger(
-            day_of_week="mon-fri",
-            hour="8-19",
-            minute="*/30",
-            timezone=_TZ,
-        ),
-        id="jmpartners_cycle_complet",
-        name="Cycle complet JM Partners",
-        misfire_grace_time=600,
-        replace_existing=True,
-    )
-
-    # Clôture mensuelle : dernier jour du mois à 20h
-    scheduler.add_job(
-        _job_fin_de_mois,
-        CronTrigger(day=_last_day_of_month(), hour=20, minute=0, timezone=_TZ),
-        id="jmpartners_fin_de_mois",
-        name="Clôture mensuelle JM Partners",
-        misfire_grace_time=3600,
-        replace_existing=True,
-    )
-
-    # Surveillance des échéances : chaque matin à 8h
-    scheduler.add_job(
-        _job_cycle_complet,
-        CronTrigger(hour=8, minute=0, timezone=_TZ),
-        id="jmpartners_echeances_matin",
-        name="Vérification échéances JM Partners",
-        misfire_grace_time=3600,
-        replace_existing=True,
-    )
-
-    logger.info(
-        "Scheduler JM Partners démarré — cycle toutes les 30 min (lun-ven 8h-19h)"
-    )
-    try:
-        scheduler.start()
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("Scheduler arrêté proprement")
-
-
-def main(argv: list[str] | None = None) -> None:
-    """Entry point : scheduler bloquant ou exécution unique avec --once."""
-    parser = argparse.ArgumentParser(description="JM Partners — assistant comptable")
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="JM Partners — agent comptable")
     parser.add_argument(
         "--once",
         action="store_true",
-        help="Exécute un cycle immédiatement puis quitte",
+        help="Exécute un cycle unique puis quitte",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Cycle sans écriture Supabase ni notification",
+        help="Simule le flux complet sans effet de bord",
     )
-    args = parser.parse_args(argv)
+    parser.add_argument(
+        "--check-dossier",
+        metavar="DOSSIER_ID",
+        help="Vérifie les documents d'un dossier spécifique",
+    )
+    parser.add_argument(
+        "--echeances",
+        action="store_true",
+        help="Génère uniquement le rapport des échéances",
+    )
+    parser.add_argument(
+        "--tva",
+        action="store_true",
+        help="Vérifie uniquement les échéances TVA",
+    )
+    return parser.parse_args()
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-    )
 
-    sentry_sdk.init(
-        dsn=os.getenv("SENTRY_DSN"),
-        environment=os.getenv("DOPPLER_ENVIRONMENT", "dev"),
-        traces_sample_rate=0.1,
-    )
+def main() -> None:
+    """Exécute le cycle ou lance le scheduler selon les arguments."""
+    args = _parse_args()
+    dry_run = args.dry_run
+
+    if dry_run:
+        logger.info("Mode DRY RUN activé — aucun email ni écriture Supabase")
+
+    if args.check_dossier:
+        result = check_docs(args.check_dossier, dry_run=dry_run)
+        logger.info(
+            f"Dossier {args.check_dossier} : "
+            f"{len(result['manquants'])} manquant(s), "
+            f"{len(result['complets'])} complet(s)"
+        )
+        if result["erreur"]:
+            logger.error(result["erreur"])
+            sys.exit(1)
+        return
+
+    if args.echeances:
+        run_echeances(dry_run=dry_run)
+        return
+
+    if args.tva:
+        run_tva(dry_run=dry_run)
+        return
 
     if args.once:
-        logger.info("--once : exécution immédiate puis arrêt")
-        try:
-            Orchestrator(dry_run=args.dry_run).run()
-        except Exception as exc:
-            sentry_sdk.capture_exception(exc)
-            logger.error("Erreur --once : %s", exc, exc_info=True)
-            raise
-    else:
-        start_scheduler()
+        orch_result: OrchestratorResult = orchestrate(dry_run=dry_run)
+        logger.info(
+            f"Cycle terminé — "
+            f"{orch_result['tva']['declarations_analysees'] if orch_result['tva'] else 0} TVA, "
+            f"{orch_result['echeances']['echeances_total'] if orch_result['echeances'] else 0} échéances, "
+            f"{len(orch_result['acomptes_is'])} alertes IS, "
+            f"clôture={orch_result['cloture']['statut'] if orch_result['cloture'] else 'skip'}"
+        )
+        return
+
+    # Mode scheduler
+    try:
+        from apscheduler.schedulers.blocking import BlockingScheduler
+        from apscheduler.triggers.cron import CronTrigger
+    except ImportError:
+        logger.error("APScheduler non installé. Utilisez --once pour un run unique.")
+        sys.exit(1)
+
+    scheduler = BlockingScheduler(timezone="Europe/Paris")
+    scheduler.add_job(
+        orchestrate,
+        CronTrigger(hour=8, minute=0, day_of_week="mon-fri"),
+        kwargs={"dry_run": dry_run},
+        id="cycle_matin",
+        name="Cycle quotidien matin",
+    )
+    scheduler.add_job(
+        run_echeances,
+        CronTrigger(hour=17, minute=30, day_of_week="mon-fri"),
+        kwargs={"dry_run": dry_run},
+        id="rapport_echeances",
+        name="Rapport échéances fin de journée",
+    )
+
+    logger.info("Scheduler JM Partners démarré (lun-ven 08h00 + 17h30)")
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Scheduler arrêté")
 
 
 if __name__ == "__main__":
