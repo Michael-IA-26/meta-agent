@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta-Agent — Offres & Tarifs</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-w: 270px;
+      --radius: 10px;
+      --transition: 0.2s ease;
+      --bg: #f8f9fc; --surface: #ffffff; --surface-2: #f1f3f8;
+      --border: #e2e6ef; --text: #1a1d27; --text-2: #5a607a;
+      --accent: #6366f1; --accent-2: #818cf8;
+      --green: #22c55e; --orange: #f59e0b; --red: #ef4444;
+      --blue: #3b82f6; --purple: #a855f7;
+      --sidebar-bg: #ffffff; --sidebar-border: #e2e6ef;
+      --code-bg: #f1f3f8;
+      --shadow: 0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+      --shadow-lg: 0 4px 24px rgba(0,0,0,.10);
+      --email-color: #22c55e;
+      --lead-color: #f59e0b;
+      --compta-color: #a855f7;
+    }
+    [data-theme="dark"] {
+      --bg: #0d0f18; --surface: #151824; --surface-2: #1c1f30;
+      --border: #252840; --text: #e8eaf6; --text-2: #7b82a8;
+      --accent: #818cf8; --accent-2: #a5b4fc;
+      --sidebar-bg: #10121e; --sidebar-border: #1e2135;
+      --code-bg: #1c1f30;
+      --shadow: 0 1px 4px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
+      --shadow-lg: 0 4px 24px rgba(0,0,0,.4);
+    }
+
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; display: flex; min-height: 100vh; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh;
+      background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border);
+      display: flex; flex-direction: column; overflow-y: auto; z-index: 100;
+      transition: transform var(--transition);
+    }
+    .sidebar-header { padding: 20px 16px 14px; border-bottom: 1px solid var(--sidebar-border); }
+    .sidebar-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .sidebar-logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--purple)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .sidebar-logo-text { font-size: 14px; font-weight: 700; }
+    .sidebar-logo-sub { font-size: 10px; color: var(--text-2); margin-top: 1px; }
+    .sidebar-nav { padding: 10px; flex: 1; }
+    .nav-section { margin-bottom: 6px; }
+    .nav-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-2); padding: 8px 8px 3px; }
+    .nav-link { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 6px; text-decoration: none; color: var(--text-2); font-size: 13px; transition: all var(--transition); }
+    .nav-link:hover { background: var(--surface-2); color: var(--text); }
+    .nav-link.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 500; }
+    .nav-link .nav-icon { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+    .sidebar-footer { padding: 14px 16px; border-top: 1px solid var(--sidebar-border); display: flex; align-items: center; justify-content: space-between; }
+    .doc-link { display: flex; align-items: center; gap: 6px; text-decoration: none; color: var(--text-2); font-size: 12px; padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border); transition: all var(--transition); }
+    .doc-link:hover { color: var(--text); border-color: var(--accent); }
+    #theme-toggle { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); cursor: pointer; padding: 6px 8px; border-radius: 7px; font-size: 13px; transition: all var(--transition); }
+    #theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+    #burger { display: none; position: fixed; top: 13px; left: 13px; z-index: 200; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; cursor: pointer; font-size: 15px; }
+    #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 99; }
+
+    /* ── Main ── */
+    #main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; padding: 0 48px 80px; max-width: 1120px; }
+    .section { margin-bottom: 72px; }
+    [id] { scroll-margin-top: 24px; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 56px 48px 48px; margin: 0 -48px 56px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--bg)), color-mix(in srgb, var(--purple) 5%, var(--bg)));
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 12px; }
+    .hero-title { font-size: 38px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 12px; }
+    .hero-sub { font-size: 16px; color: var(--text-2); max-width: 560px; line-height: 1.6; margin-bottom: 24px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; background: var(--accent); color: #fff; text-decoration: none; transition: all var(--transition); }
+    .btn-primary:hover { background: var(--accent-2); transform: translateY(-1px); }
+    .btn-outline { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; background: var(--surface); color: var(--text); text-decoration: none; border: 1px solid var(--border); transition: all var(--transition); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Section headers ── */
+    .section-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 24px; }
+    .section-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; margin-top: 2px; }
+    .icon-indigo { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+    .icon-green  { background: color-mix(in srgb, var(--green) 15%, transparent); }
+    .icon-orange { background: color-mix(in srgb, var(--orange) 15%, transparent); }
+    .icon-purple { background: color-mix(in srgb, var(--purple) 15%, transparent); }
+    .section-title { font-size: 24px; font-weight: 700; letter-spacing: -0.4px; line-height: 1.2; }
+    .section-desc  { font-size: 13.5px; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
+    h2.sub { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-2); margin-bottom: 14px; }
+
+    /* ── Offer cards ── */
+    .offers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .offer-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px; box-shadow: var(--shadow); cursor: pointer;
+      transition: all var(--transition); text-decoration: none; color: inherit; display: block;
+    }
+    .offer-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .offer-card.email-card:hover  { border-color: var(--email-color); }
+    .offer-card.lead-card:hover   { border-color: var(--lead-color); }
+    .offer-card.compta-card:hover { border-color: var(--compta-color); }
+    .offer-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; margin-bottom: 12px; }
+    .offer-badge.email  { background: color-mix(in srgb, var(--email-color) 12%, transparent); color: var(--email-color); }
+    .offer-badge.lead   { background: color-mix(in srgb, var(--lead-color) 12%, transparent); color: var(--lead-color); }
+    .offer-badge.compta { background: color-mix(in srgb, var(--compta-color) 12%, transparent); color: var(--compta-color); }
+    .offer-name { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .offer-tagline { font-size: 13px; color: var(--text-2); margin-bottom: 16px; line-height: 1.4; }
+    .offer-price { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; }
+    .offer-price-setup { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .offer-price-label { font-size: 11px; color: var(--text-2); }
+    .offer-price-monthly { font-size: 13px; color: var(--text-2); margin-bottom: 14px; }
+    .offer-roi { font-size: 12px; padding: 6px 10px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); }
+    .offer-agents { font-size: 11px; color: var(--text-2); margin-top: 10px; }
+    .offer-cta { display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 600; color: var(--accent); }
+
+    /* ── Detail sheet ── */
+    .detail-sheet { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .detail-color-bar { width: 4px; height: 48px; border-radius: 99px; flex-shrink: 0; }
+    .detail-color-bar.email  { background: var(--email-color); }
+    .detail-color-bar.lead   { background: var(--lead-color); }
+    .detail-color-bar.compta { background: var(--compta-color); }
+    .detail-name { font-size: 20px; font-weight: 700; }
+    .detail-agents { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .detail-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .detail-box-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-2); margin-bottom: 8px; }
+    .detail-list { list-style: none; }
+    .detail-list li { font-size: 13px; padding: 3px 0; display: flex; gap: 7px; align-items: baseline; }
+    .detail-list li::before { content: "→"; color: var(--accent); font-size: 11px; flex-shrink: 0; }
+
+    /* ── Onboarding steps ── */
+    .onboarding-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .onboarding-week { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .onboarding-week-num { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--accent); margin-bottom: 4px; }
+    .onboarding-week-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .onboarding-week-deliverable { font-size: 11px; color: var(--green); margin-top: 8px; font-weight: 500; }
+
+    /* ── Objections ── */
+    .objection-list { display: flex; flex-direction: column; gap: 10px; }
+    .objection-item { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .objection-q { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .objection-a { font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
+
+    /* ── Pricing table ── */
+    .pricing-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+    .pricing-table th { text-align: left; padding: 10px 12px; background: var(--surface-2); color: var(--text-2); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+    .pricing-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 12.5px; }
+    .pricing-table tr:last-child td { border-bottom: none; }
+    .pricing-table tr:hover td { background: var(--surface-2); }
+    .price-setup { font-weight: 700; color: var(--text); }
+    .price-monthly { color: var(--text-2); }
+    .roi-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); }
+    .target-tag { display: inline-block; font-size: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; color: var(--text-2); }
+
+    /* ── Bundles ── */
+    .bundles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 20px; }
+    .bundle-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; box-shadow: var(--shadow); }
+    .bundle-card.featured { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
+    .bundle-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .bundle-desc { font-size: 12px; color: var(--text-2); margin-bottom: 10px; line-height: 1.4; }
+    .bundle-price-setup { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .bundle-price-monthly { font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
+    .bundle-discount { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); display: inline-block; }
+
+    /* ── Playbook ── */
+    .playbook-steps { display: flex; flex-direction: column; gap: 12px; }
+    .playbook-step { display: flex; gap: 14px; align-items: flex-start; }
+    .playbook-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .playbook-step-content { flex: 1; }
+    .playbook-step-title { font-size: 14px; font-weight: 600; }
+    .playbook-step-desc { font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
+    .playbook-step-duration { font-size: 11px; color: var(--accent); font-weight: 600; margin-top: 4px; }
+
+    .script-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
+    .script-table th { text-align: left; padding: 8px 10px; background: var(--surface-2); color: var(--text-2); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+    .script-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .script-table tr:last-child td { border-bottom: none; }
+
+    .question-list { display: flex; flex-direction: column; gap: 8px; }
+    .question-item { display: flex; gap: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .question-num { font-size: 11px; font-weight: 700; color: var(--accent); flex-shrink: 0; width: 20px; }
+    .question-text { font-size: 13px; font-style: italic; color: var(--text); }
+    .question-why { font-size: 11.5px; color: var(--text-2); margin-top: 3px; }
+
+    .signal-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .signal-list li { display: flex; gap: 8px; font-size: 13px; align-items: flex-start; }
+    .signal-list li::before { content: "✅"; font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Onboarding timeline ── */
+    .timeline { display: flex; gap: 0; margin-top: 4px; }
+    .timeline-week { flex: 1; position: relative; }
+    .timeline-week + .timeline-week::before { content: '→'; position: absolute; left: -12px; top: 14px; font-size: 14px; color: var(--border); }
+    .timeline-week-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 0 8px; box-shadow: var(--shadow); }
+    .timeline-week-num { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--accent); margin-bottom: 4px; }
+    .timeline-week-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .timeline-tasks { list-style: none; }
+    .timeline-tasks li { font-size: 11.5px; color: var(--text-2); padding: 2px 0; display: flex; gap: 5px; }
+    .timeline-tasks li::before { content: "·"; color: var(--accent); flex-shrink: 0; }
+    .timeline-deliverable { font-size: 11px; color: var(--green); font-weight: 600; margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px; }
+
+    /* ── Generic card ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); margin-bottom: 14px; }
+    code { font-family: 'SF Mono', monospace; font-size: 11.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; color: var(--accent-2); }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      #sidebar { transform: translateX(calc(-1 * var(--sidebar-w))); }
+      #sidebar.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
+      #main { margin-left: 0; padding: 0 22px 60px; }
+      #burger { display: block; }
+      #overlay.open { display: block; }
+      .hero { padding: 48px 22px 36px; margin: 0 -22px 36px; }
+      .hero-title { font-size: 28px; }
+      .timeline { flex-direction: column; }
+      .timeline-week + .timeline-week::before { display: none; }
+      .timeline-week-inner { margin: 4px 0; }
+    }
+    @media (max-width: 600px) {
+      .offers-grid { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .onboarding-grid { grid-template-columns: 1fr; }
+      .bundles-grid { grid-template-columns: repeat(2, 1fr); }
+      #main { padding: 0 14px 60px; }
+      .hero { padding: 40px 14px 30px; margin: 0 -14px 30px; }
+    }
+    @media print { #sidebar, #burger, #overlay { display: none !important; } #main { margin-left: 0; } }
+  </style>
+</head>
+<body>
+
+<div id="overlay" onclick="closeSidebar()"></div>
+<button id="burger" onclick="toggleSidebar()">☰</button>
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <a class="sidebar-logo" href="index.html">
+      <div class="sidebar-logo-icon">⚡</div>
+      <div>
+        <div class="sidebar-logo-text">meta-agent</div>
+        <div class="sidebar-logo-sub">Offres & Tarifs</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-title">Catalogue</div>
+      <a href="#offres"  class="nav-link active"><span class="nav-icon">📦</span> Les 3 offres</a>
+      <a href="#email-detail"  class="nav-link"><span class="nav-icon">📧</span> Mika Email Intelligence</a>
+      <a href="#lead-detail"   class="nav-link"><span class="nav-icon">🎯</span> Mika Lead Hunter</a>
+      <a href="#compta-detail" class="nav-link"><span class="nav-icon">🏢</span> Mika Compta Pilot</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Commercial</div>
+      <a href="#pricing"   class="nav-link"><span class="nav-icon">💰</span> Grille tarifaire</a>
+      <a href="#bundles"   class="nav-link"><span class="nav-icon">🎁</span> Bundles</a>
+      <a href="#playbook"  class="nav-link"><span class="nav-icon">🎬</span> Playbook commercial</a>
+      <a href="#questions" class="nav-link"><span class="nav-icon">❓</span> Questions découverte</a>
+      <a href="#objections-global" class="nav-link"><span class="nav-icon">🛡</span> Gestion objections</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Opérationnel</div>
+      <a href="#onboarding" class="nav-link"><span class="nav-icon">🚀</span> Onboarding 4 semaines</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Documentation</div>
+      <a href="index.html" class="nav-link"><span class="nav-icon">📖</span> Docs technique</a>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <a class="doc-link" href="index.html">← Docs</a>
+    <button id="theme-toggle" onclick="toggleTheme()">🌙</button>
+  </div>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<main id="main">
+
+  <!-- ── HERO ── -->
+  <div class="hero" id="top">
+    <div class="hero-label">Offres commerciales · Mai 2026</div>
+    <h1 class="hero-title">Automatiser. Mesurer. Vendre.</h1>
+    <p class="hero-sub">Trois produits IA clés en main pour les cabinets et PME. Déployés en 4 semaines. ROI mesurable dès le premier mois.</p>
+    <div class="hero-actions">
+      <a href="#offres" class="btn-primary">Voir les offres →</a>
+      <a href="#pricing" class="btn-outline">Grille tarifaire</a>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 1 — LES 3 OFFRES ═══ -->
+  <section class="section" id="offres">
+    <div class="section-header">
+      <div class="section-icon icon-indigo">📦</div>
+      <div>
+        <h1 class="section-title">Les 3 offres</h1>
+        <p class="section-desc">Chaque offre est un package complet — agents, infrastructure, monitoring et support inclus.</p>
+      </div>
+    </div>
+
+    <div class="offers-grid">
+
+      <a href="#email-detail" class="offer-card email-card">
+        <div class="offer-badge email">6 agents</div>
+        <div class="offer-name">Mika Email Intelligence</div>
+        <div class="offer-tagline">Analyse automatique de vos emails entrants — classement ICP, rapport quotidien, alertes Telegram.</div>
+        <div class="offer-price">
+          <span class="offer-price-setup" style="color:var(--email-color);">1 500 €</span>
+          <span class="offer-price-label">HT setup</span>
+        </div>
+        <div class="offer-price-monthly">puis <strong>290 € HT/mois</strong></div>
+        <div class="offer-roi">🕐 ROI estimé : <strong>4h/semaine économisées</strong></div>
+        <div class="offer-agents">gmail_fetcher · email_analyzer · reporter · sender · telegram_sender</div>
+        <div class="offer-cta">Voir la fiche →</div>
+      </a>
+
+      <a href="#lead-detail" class="offer-card lead-card">
+        <div class="offer-badge lead">5 agents</div>
+        <div class="offer-name">Mika Lead Hunter</div>
+        <div class="offer-tagline">Détection automatique des nouvelles entreprises IDF — scoring ICP 0-100, alerte Telegram immédiate.</div>
+        <div class="offer-price">
+          <span class="offer-price-setup" style="color:var(--lead-color);">1 200 €</span>
+          <span class="offer-price-label">HT setup</span>
+        </div>
+        <div class="offer-price-monthly">puis <strong>250 € HT/mois</strong></div>
+        <div class="offer-roi">🎯 ROI estimé : <strong>15 leads qualifiés/semaine</strong></div>
+        <div class="offer-agents">sirene_fetcher · pappers_enricher · icp_scorer · supabase_storage · telegram_notifier</div>
+        <div class="offer-cta">Voir la fiche →</div>
+      </a>
+
+      <a href="#compta-detail" class="offer-card compta-card">
+        <div class="offer-badge compta">9 agents</div>
+        <div class="offer-name">Mika Compta Pilot</div>
+        <div class="offer-tagline">Assistant comptable complet — relances clients, alertes TVA/IS, dashboard kanban, zéro oubli.</div>
+        <div class="offer-price">
+          <span class="offer-price-setup" style="color:var(--compta-color);">2 500 €</span>
+          <span class="offer-price-label">HT setup</span>
+        </div>
+        <div class="offer-price-monthly">puis <strong>490 € HT/mois</strong></div>
+        <div class="offer-roi">⏱ ROI estimé : <strong>6h/semaine/comptable économisées</strong></div>
+        <div class="offer-agents">mail_handler · document_checker · relance_handler · tva_agent · echeance_agent + 4 autres</div>
+        <div class="offer-cta">Voir la fiche →</div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ═══ SECTION 2 — FICHES DÉTAILLÉES ═══ -->
+
+  <!-- EMAIL DETAIL -->
+  <section class="section" id="email-detail">
+    <div class="section-header">
+      <div class="section-icon icon-green">📧</div>
+      <div>
+        <h1 class="section-title">Mika Email Intelligence</h1>
+        <p class="section-desc">Pipeline Gmail → Claude → Rapport HTML → Telegram. Tourne chaque matin à 08h45.</p>
+      </div>
+    </div>
+
+    <div class="detail-sheet">
+      <div class="detail-header">
+        <div class="detail-color-bar email"></div>
+        <div>
+          <div class="detail-name">Mika Email Intelligence</div>
+          <div class="detail-agents">6 agents · Setup 1 500 € HT · 290 € HT/mois</div>
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-box">
+          <div class="detail-box-label">Ce que ça automatise</div>
+          <ul class="detail-list">
+            <li>Triage quotidien de la boîte mail</li>
+            <li>Identification des prospects chauds parmi les emails</li>
+            <li>Rédaction des brouillons de réponse</li>
+            <li>Calcul du temps économisé chaque semaine</li>
+            <li>Synthèse envoyée par Telegram le matin</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Ce que le client reçoit</div>
+          <ul class="detail-list">
+            <li>Rapport HTML chaque matin à 08h45</li>
+            <li>Emails classés par priorité (urgent / normal / info)</li>
+            <li>Brouillon de réponse pour chaque email important</li>
+            <li>Alerte Telegram : nb emails, % prospects, action du jour</li>
+            <li>Dashboard Supabase : historique + KPIs hebdomadaires</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Prérequis techniques</div>
+          <ul class="detail-list">
+            <li>Compte Gmail (Google Workspace ou gmail.com)</li>
+            <li>Accès OAuth2 Gmail (configuration 1 fois)</li>
+            <li>Bot Telegram créé (@BotFather)</li>
+            <li>Projet Supabase (gratuit ou Pro)</li>
+            <li>SMTP ou Gmail API pour l'envoi du rapport</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Clause contractuelle</div>
+          <ul class="detail-list">
+            <li>Données emails : propriété exclusive du client</li>
+            <li>Zéro partage avec des tiers</li>
+            <li>Résiliation 30j préavis, export données 15j</li>
+            <li>Anthropic API : zéro entraînement sur vos données</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="sub">Checklist onboarding 4 semaines</h2>
+      <div class="onboarding-grid">
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 1 — Discovery</div>
+          <div class="onboarding-week-title">Cartographie & accès</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Appel découverte 1h — volume emails, douleurs</li>
+            <li>Rédaction du profil ICP ensemble</li>
+            <li>Configuration OAuth2 Gmail</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Profil ICP validé + accès Gmail</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 2 — Setup</div>
+          <div class="onboarding-week-title">Configuration infra</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Tables Supabase créées</li>
+            <li>Secrets Doppler configurés</li>
+            <li>Déploiement Railway staging</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Staging fonctionnel</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 3 — Dry-run</div>
+          <div class="onboarding-week-title">Tests sur données réelles</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Dry-run sur 1 semaine d'emails</li>
+            <li>Ajustement prompt ICP si précision < 85%</li>
+            <li>Formation utilisateur (1h)</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Validation client signée</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 4 — Go Live</div>
+          <div class="onboarding-week-title">Production</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Passage en production</li>
+            <li>Monitoring J+1, J+3, J+7</li>
+            <li>Rapport de première semaine</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Client autonome</div>
+        </div>
+      </div>
+
+      <h2 class="sub" style="margin-top:20px;">Objections fréquentes</h2>
+      <div class="objection-list">
+        <div class="objection-item">
+          <div class="objection-q">❝ Je ne veux pas donner accès à mes emails à une IA ❞</div>
+          <div class="objection-a">L'accès est limité à la lecture des emails entrants non lus. Les données restent dans votre Supabase (hébergement EU). Anthropic n'utilise pas vos données pour entraîner ses modèles — c'est contractuel. Vous pouvez révoquer l'accès OAuth2 à tout moment depuis votre compte Google.</div>
+        </div>
+        <div class="objection-item">
+          <div class="objection-q">❝ J'ai déjà des filtres Gmail et des labels ❞</div>
+          <div class="objection-a">Les filtres Gmail classent par règles fixes. Mika Email Intelligence comprend le contenu, détecte l'intent (prospect chaud vs question technique vs newsletter), et génère un brouillon de réponse. Ce ne sont pas les mêmes outils — ils sont complémentaires.</div>
+        </div>
+        <div class="objection-item">
+          <div class="objection-q">❝ 290 €/mois c'est cher pour un rapport email ❞</div>
+          <div class="objection-a">Si vous traitez 50 emails/jour à 3 min/email = 2,5h/jour = 12,5h/semaine. Au taux horaire de 50€, c'est 625€/semaine de travail administratif. Mika le fait en 0h. Le ROI est à 1 semaine. La question c'est : est-ce que 290€ vaut 12,5h de votre temps chaque semaine ?</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEAD DETAIL -->
+  <section class="section" id="lead-detail">
+    <div class="section-header">
+      <div class="section-icon icon-orange">🎯</div>
+      <div>
+        <h1 class="section-title">Mika Lead Hunter</h1>
+        <p class="section-desc">Pipeline INSEE Sirene → scoring ICP → Pappers → Telegram. Tourne chaque nuit à 02h00.</p>
+      </div>
+    </div>
+
+    <div class="detail-sheet">
+      <div class="detail-header">
+        <div class="detail-color-bar lead"></div>
+        <div>
+          <div class="detail-name">Mika Lead Hunter</div>
+          <div class="detail-agents">5 agents · Setup 1 200 € HT · 250 € HT/mois</div>
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-box">
+          <div class="detail-box-label">Ce que ça automatise</div>
+          <ul class="detail-list">
+            <li>Veille nocturne des nouvelles créations d'entreprises IDF</li>
+            <li>Scoring automatique selon vos critères ICP</li>
+            <li>Enrichissement dirigeant, capital, santé financière</li>
+            <li>Alerte Telegram dès qu'un lead chaud est détecté</li>
+            <li>Historique complet en base (Supabase)</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Ce que le client reçoit</div>
+          <ul class="detail-list">
+            <li>Message Telegram chaque nuit avec les leads qualifiés</li>
+            <li>Nom, SIREN, secteur, score, ville, dirigeant</li>
+            <li>Lien direct vers la fiche Pappers</li>
+            <li>Dashboard Supabase avec filtres et export CSV</li>
+            <li>Stats hebdomadaires : nb leads, taux qualification</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Prérequis techniques</div>
+          <ul class="detail-list">
+            <li>Token API INSEE Sirene (gratuit, formulaire en ligne)</li>
+            <li>Clé API Pappers (optionnel mais recommandé)</li>
+            <li>Bot Telegram créé (@BotFather)</li>
+            <li>Projet Supabase</li>
+            <li>Définition de l'ICP client (secteurs, zones, tailles)</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Clause contractuelle</div>
+          <ul class="detail-list">
+            <li>Leads générés : propriété exclusive du client</li>
+            <li>Verrou anti-doublon multi-cabinets (SIREN)</li>
+            <li>Données INSEE/Pappers : sources publiques</li>
+            <li>Résiliation 30j, export données 15j</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="sub">Checklist onboarding 4 semaines</h2>
+      <div class="onboarding-grid">
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 1 — Discovery</div>
+          <div class="onboarding-week-title">Définition ICP</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Atelier ICP 2h — secteurs NAF cibles</li>
+            <li>Zones géographiques prioritaires</li>
+            <li>Formes juridiques ciblées</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Config ICP documentée</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 2 — Setup</div>
+          <div class="onboarding-week-title">APIs & infrastructure</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Token Sirene obtenu + testé</li>
+            <li>Pappers configuré</li>
+            <li>Railway + Supabase déployés</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Pipeline staging OK</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 3 — Dry-run</div>
+          <div class="onboarding-week-title">Calibration scoring</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Dry-run sur 1 semaine historique</li>
+            <li>Validation qualité leads avec client</li>
+            <li>Ajustement seuil score si besoin</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Taux qualif > 60%</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 4 — Go Live</div>
+          <div class="onboarding-week-title">Production</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Passage en production</li>
+            <li>Première nuit réelle surveillée</li>
+            <li>Rapport de première semaine</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Alertes Telegram actives</div>
+        </div>
+      </div>
+
+      <h2 class="sub" style="margin-top:20px;">Objections fréquentes</h2>
+      <div class="objection-list">
+        <div class="objection-item">
+          <div class="objection-q">❝ On a déjà une base de données de prospects ❞</div>
+          <div class="objection-a">Mika Lead Hunter détecte les entreprises le jour même de leur création — avant qu'elles aient cherché quoi que ce soit. Votre base actuelle est composée d'entreprises qui existent déjà depuis des mois ou des années. Ce sont des marchés différents.</div>
+        </div>
+        <div class="objection-item">
+          <div class="objection-q">❝ Est-ce que les données INSEE sont fiables ? ❞</div>
+          <div class="objection-a">L'API Sirene est la source officielle du gouvernement français pour les données d'entreprises. Pappers enrichit avec des données légales (Infogreffe, BODACC). C'est ce que les études de marché payantes à 500€/mois utilisent comme source.</div>
+        </div>
+        <div class="objection-item">
+          <div class="objection-q">❝ 15 leads/semaine c'est pas assez ❞</div>
+          <div class="objection-a">15 leads qualifiés à score > 70 sur 100, avec nom du dirigeant, capital, secteur exact. Comparez à une semaine de prospection manuelle : 15 leads qualifiés en cold calling prend 3-4 jours. Mika les livre pendant que vous dormez. Le volume est configurable en ajustant le seuil de score.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPTA DETAIL -->
+  <section class="section" id="compta-detail">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🏢</div>
+      <div>
+        <h1 class="section-title">Mika Compta Pilot</h1>
+        <p class="section-desc">Assistant comptable complet. 9 agents. 3 sprints. Dashboard kanban. Cycle APScheduler toutes les 30 min.</p>
+      </div>
+    </div>
+
+    <div class="detail-sheet">
+      <div class="detail-header">
+        <div class="detail-color-bar compta"></div>
+        <div>
+          <div class="detail-name">Mika Compta Pilot</div>
+          <div class="detail-agents">9 agents · Setup 2 500 € HT · 490 € HT/mois</div>
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-box">
+          <div class="detail-box-label">Ce que ça automatise</div>
+          <ul class="detail-list">
+            <li>Relances clients pour documents manquants</li>
+            <li>Alertes TVA avant chaque échéance (J-15/J-7/J-3)</li>
+            <li>Alertes acomptes IS avec montants et deadlines</li>
+            <li>Surveillance bilans et déclarations IS annuelles</li>
+            <li>Détection des clôtures de fin de mois</li>
+            <li>Notifications multi-canal selon l'urgence</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Ce que le client reçoit</div>
+          <ul class="detail-list">
+            <li>Dashboard kanban : dossiers en retard / en attente / complets</li>
+            <li>Alertes Telegram pour les urgences J-3/J-0</li>
+            <li>Emails automatiques de relance clients</li>
+            <li>Rapport quotidien des échéances 30 jours</li>
+            <li>Journal complet de toutes les actions automatisées</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Prérequis techniques</div>
+          <ul class="detail-list">
+            <li>Accès IMAP du cabinet (ou Gmail)</li>
+            <li>Liste contacts clients (import CSV)</li>
+            <li>Liste dossiers actifs (import CSV)</li>
+            <li>Calendrier fiscal configuré (type dossier, dates)</li>
+            <li>Bot Telegram + SMTP configurés</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label">Clause contractuelle</div>
+          <ul class="detail-list">
+            <li>Données clients : propriété exclusive du cabinet</li>
+            <li>Accès nominatif, logs auditables</li>
+            <li>RGPD : hébergement EU, zéro transfert tiers</li>
+            <li>Résiliation 30j, export complet 15j</li>
+            <li>Le code reste accessible sur GitHub</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="sub">Les 9 agents — Sprint par Sprint</h2>
+      <div class="detail-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="detail-box">
+          <div class="detail-box-label" style="color:var(--accent);">Sprint 1 — Email & Documents ✅</div>
+          <ul class="detail-list">
+            <li><strong>mail_handler</strong> — lecture IMAP, identification client, classification</li>
+            <li><strong>document_checker</strong> — pièces manquantes, urgences J-15/J-7/J-3/J-0</li>
+            <li><strong>relance_handler</strong> — email relance IA personnalisé, anti-doublon 48h</li>
+            <li><strong>tva_agent</strong> — alertes TVA avant deadline DGFiP</li>
+            <li><strong>echeance_agent</strong> — rapport quotidien toutes échéances 30 jours</li>
+          </ul>
+        </div>
+        <div class="detail-box">
+          <div class="detail-box-label" style="color:var(--orange);">Sprint 2 — Clôtures & IS ✅</div>
+          <ul class="detail-list">
+            <li><strong>cloture_handler</strong> — fin de mois, vérif pièces, notification comptable</li>
+            <li><strong>acompte_is_agent</strong> — alertes IS J-15/J-7/J-3 avec montants</li>
+          </ul>
+          <div class="detail-box-label" style="color:var(--purple);margin-top:12px;">Sprint 3 — Intelligence ✅</div>
+          <ul class="detail-list">
+            <li><strong>bilan_agent</strong> — J-30/J-15/J-7 avant deadline bilan</li>
+            <li><strong>declaration_is_agent</strong> — IS annuel, résumé éléments disponibles</li>
+            <li><strong>notification_agent</strong> — hub central, déduplication 24h, multi-canal</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="sub" style="margin-top:20px;">Objections fréquentes</h2>
+      <div class="objection-list">
+        <div class="objection-item">
+          <div class="objection-q">❝ On a déjà un logiciel comptable (ACD, Cegid, MyUnisoft...) ❞</div>
+          <div class="objection-a">Mika Compta Pilot ne remplace pas votre logiciel comptable — il automatise la couche de communication et de surveillance que votre logiciel ne fait pas : relancer les clients, surveiller les échéances, alerter proactivement. Il s'intègre en parallèle, via Supabase comme intermédiaire.</div>
+        </div>
+        <div class="objection-item">
+          <div class="objection-q">❝ 2 500 € de setup c'est beaucoup pour un cabinet de notre taille ❞</div>
+          <div class="objection-a">Un gestionnaire à 35k€/an passe environ 2h/jour sur des relances et la surveillance des échéances = 500h/an = 9 000€ de coût brut. Mika automatise 80% de ces tâches. Le setup est amorti en 3-4 mois. À partir du 5e mois, c'est du bénéfice net.</div>
+        </div>
+        <div class="objection-item">
+          <div class="objection-q">❝ On n'a pas de technicien en interne pour maintenir ça ❞</div>
+          <div class="objection-a">L'abonnement mensuel inclut la maintenance complète : mise à jour des APIs, correction des bugs, monitoring Sentry 24h/24. Vous n'avez rien à gérer techniquement. Votre seul rôle : vérifier le dashboard le matin et valider les actions suggérées.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SECTION 3 — GRILLE TARIFAIRE ═══ -->
+  <section class="section" id="pricing">
+    <div class="section-header">
+      <div class="section-icon icon-indigo">💰</div>
+      <div>
+        <h1 class="section-title">Grille tarifaire globale</h1>
+        <p class="section-desc">Tous les prix sont en HT. TVA 20% applicable selon votre régime.</p>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0; overflow:hidden; margin-bottom:24px;">
+      <table class="pricing-table">
+        <thead>
+          <tr>
+            <th>Offre</th>
+            <th>Agents inclus</th>
+            <th>Setup</th>
+            <th>Mensuel</th>
+            <th>ROI estimé</th>
+            <th>Déploiement</th>
+            <th>Cible idéale</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--email-color);">📧 Mika Email Intelligence</strong></td>
+            <td>6 agents</td>
+            <td><span class="price-setup">1 500 €</span></td>
+            <td><span class="price-monthly">290 €/mois</span></td>
+            <td><span class="roi-badge">4h/semaine</span></td>
+            <td>2 semaines</td>
+            <td><span class="target-tag">+50 emails/jour</span></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--lead-color);">🎯 Mika Lead Hunter</strong></td>
+            <td>5 agents</td>
+            <td><span class="price-setup">1 200 €</span></td>
+            <td><span class="price-monthly">250 €/mois</span></td>
+            <td><span class="roi-badge">15 leads/sem.</span></td>
+            <td>2 semaines</td>
+            <td><span class="target-tag">PME B2B IDF</span></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--compta-color);">🏢 Mika Compta Pilot</strong></td>
+            <td>9 agents</td>
+            <td><span class="price-setup">2 500 €</span></td>
+            <td><span class="price-monthly">490 €/mois</span></td>
+            <td><span class="roi-badge">6h/sem./comptable</span></td>
+            <td>4 semaines</td>
+            <td><span class="target-tag">Cabinet 200+ dossiers</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="sub" id="bundles">Bundles & remises</h2>
+    <div class="bundles-grid">
+      <div class="bundle-card">
+        <div class="bundle-name">🟢 Starter</div>
+        <div class="bundle-desc">1 agent au choix. Idéal pour tester avant d'étendre.</div>
+        <div class="bundle-price-setup">Prix unitaire</div>
+        <div class="bundle-price-monthly">Pas de remise</div>
+      </div>
+      <div class="bundle-card featured">
+        <div class="bundle-name">🔵 Growth</div>
+        <div class="bundle-desc">2 agents au choix (ex. Email + Lead, ou Email + Compta).</div>
+        <div class="bundle-price-setup">−10%</div>
+        <div class="bundle-price-monthly">setup + mensuel</div>
+        <span class="bundle-discount">-10% les 2</span>
+      </div>
+      <div class="bundle-card featured">
+        <div class="bundle-name">🟣 Scale</div>
+        <div class="bundle-desc">Les 3 agents : Email + Lead Hunter + Compta Pilot.</div>
+        <div class="bundle-price-setup">−20%</div>
+        <div class="bundle-price-monthly">setup + mensuel</div>
+        <span class="bundle-discount">-20% les 3</span>
+      </div>
+      <div class="bundle-card">
+        <div class="bundle-name">⚫ Enterprise</div>
+        <div class="bundle-desc">Agents sur mesure, SLA garanti, formation équipe, support dédié.</div>
+        <div class="bundle-price-setup">Sur devis</div>
+        <div class="bundle-price-monthly">engagement 12 mois</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px; margin-bottom:0;">
+      <p style="font-size:13px; color:var(--text-2); line-height:1.7;">
+        <strong style="color:var(--text);">Exemple Scale</strong> — Les 3 agents à −20% :<br>
+        Setup : (1 500 + 1 200 + 2 500) × 0,80 = <strong>4 160 € HT</strong> (vs 5 200 € en unitaire)<br>
+        Mensuel : (290 + 250 + 490) × 0,80 = <strong>824 € HT/mois</strong> (vs 1 030 €/mois en unitaire)<br>
+        Économie annuelle : <strong>2 472 € HT</strong>
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ SECTION 4 — PLAYBOOK COMMERCIAL ═══ -->
+  <section class="section" id="playbook">
+    <div class="section-header">
+      <div class="section-icon icon-indigo">🎬</div>
+      <div>
+        <h1 class="section-title">Playbook commercial</h1>
+        <p class="section-desc">Du premier contact à la signature — script, questions, signaux d'achat.</p>
+      </div>
+    </div>
+
+    <h2 class="sub">Cycle de vente type (5 étapes)</h2>
+    <div class="playbook-steps" style="margin-bottom:28px;">
+      <div class="playbook-step">
+        <div class="playbook-step-num">1</div>
+        <div class="playbook-step-content">
+          <div class="playbook-step-title">Premier contact</div>
+          <div class="playbook-step-desc">Cold email ou réseau. Message court : 1 problème identifié + 1 résultat concret (ex. "76% des leads IDF qualifiés automatiquement"). Pas de pitch produit, juste la douleur et le résultat.</div>
+          <div class="playbook-step-duration">J0 · 15 min de préparation</div>
+        </div>
+      </div>
+      <div class="playbook-step">
+        <div class="playbook-step-num">2</div>
+        <div class="playbook-step-content">
+          <div class="playbook-step-title">Appel découverte (30 min)</div>
+          <div class="playbook-step-desc">Qualifier le pain, le budget, les décisionnaires. Poser les 5 questions clés. Ne pas pitcher. Conclure sur : "Je vous propose une démo de 45 min la semaine prochaine sur vos données réelles."</div>
+          <div class="playbook-step-duration">J3-7 · 30 min</div>
+        </div>
+      </div>
+      <div class="playbook-step">
+        <div class="playbook-step-num">3</div>
+        <div class="playbook-step-content">
+          <div class="playbook-step-title">Démo live (45 min)</div>
+          <div class="playbook-step-desc">Montrer des données réelles (vrais rapports, vrais leads). Jamais de mockups. Structuré en 5 temps : pain recap → démo Email → démo Lead → démo Compta → Q&A + prochaine étape.</div>
+          <div class="playbook-step-duration">J10-14 · 45 min</div>
+        </div>
+      </div>
+      <div class="playbook-step">
+        <div class="playbook-step-num">4</div>
+        <div class="playbook-step-content">
+          <div class="playbook-step-title">POC (1 semaine gratuite)</div>
+          <div class="playbook-step-desc">Dry-run sur les données réelles du client. Il voit les résultats avant de signer. Taux de conversion POC → contrat : ~80% si le POC est bien cadré et que les résultats sont présentés formellement.</div>
+          <div class="playbook-step-duration">J14-21 · 1 semaine</div>
+        </div>
+      </div>
+      <div class="playbook-step">
+        <div class="playbook-step-num">5</div>
+        <div class="playbook-step-content">
+          <div class="playbook-step-title">Contrat + Onboarding</div>
+          <div class="playbook-step-desc">Présenter les résultats du POC + la proposition commerciale. Contrat 1 page. Démarrage de l'onboarding la semaine suivante. Premier rapport en production à J+28.</div>
+          <div class="playbook-step-duration">J21-28 · Signature</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="sub">Script démo 45 min</h2>
+    <div class="card" style="padding:0; overflow:hidden; margin-bottom:24px;">
+      <table class="script-table">
+        <thead><tr><th>Temps</th><th>Contenu</th><th>Objectif</th></tr></thead>
+        <tbody>
+          <tr><td><strong>0-5 min</strong></td><td>Rappel des douleurs identifiées en découverte</td><td>Créer la connexion pain/solution</td></tr>
+          <tr><td><strong>5-15 min</strong></td><td>Démo Email Agent : rapport HTML reçu ce matin, classification, brouillon réponse, Telegram KPIs</td><td>Montrer quelque chose de concret immédiatement</td></tr>
+          <tr><td><strong>15-25 min</strong></td><td>Démo Lead Hunter : alertes reçues cette nuit, dashboard, qualité leads</td><td>Qualifier le besoin commercial</td></tr>
+          <tr><td><strong>25-38 min</strong></td><td>Démo Compta Pilot : kanban dossiers, relance envoyée auto, alerte TVA J-7</td><td>Montrer l'impact opérationnel</td></tr>
+          <tr><td><strong>38-43 min</strong></td><td>Architecture & sécurité : RGPD, hébergement EU, zéro lock-in, GitHub open</td><td>Lever les freins confiance</td></tr>
+          <tr><td><strong>43-45 min</strong></td><td>Q&A + proposer le POC gratuit 1 semaine</td><td>Conclure sur une prochaine étape concrète</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="sub" id="questions">Les 5 questions de découverte</h2>
+    <div class="question-list" style="margin-bottom:28px;">
+      <div class="question-item">
+        <div class="question-num">Q1</div>
+        <div>
+          <div class="question-text">"Combien de temps par jour votre équipe passe sur des tâches répétitives — trier des emails, relancer des clients, chercher des leads ?"</div>
+          <div class="question-why">→ Quantifie le pain et le ROI potentiel en euros</div>
+        </div>
+      </div>
+      <div class="question-item">
+        <div class="question-num">Q2</div>
+        <div>
+          <div class="question-text">"Est-ce qu'il vous est arrivé de rater une échéance fiscale ou de répondre trop tard à un prospect à cause du volume ?"</div>
+          <div class="question-why">→ Crée l'urgence émotionnelle — le coût de l'inaction</div>
+        </div>
+      </div>
+      <div class="question-item">
+        <div class="question-num">Q3</div>
+        <div>
+          <div class="question-text">"Si on libérait 2h par jour dans votre équipe dès la semaine prochaine, qu'est-ce que vous feriez avec ?"</div>
+          <div class="question-why">→ Projette le client dans le futur positif, teste son ambition</div>
+        </div>
+      </div>
+      <div class="question-item">
+        <div class="question-num">Q4</div>
+        <div>
+          <div class="question-text">"Vous avez déjà essayé des outils d'automatisation ? Qu'est-ce qui n'a pas marché ?"</div>
+          <div class="question-why">→ Comprend les objections passées, positionne vs alternatives</div>
+        </div>
+      </div>
+      <div class="question-item">
+        <div class="question-num">Q5</div>
+        <div>
+          <div class="question-text">"Qui dans votre équipe serait le plus impacté positivement ? Et qui pourrait freiner ?"</div>
+          <div class="question-why">→ Identifie le sponsor interne et les résistances à anticiper</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="sub">Signaux d'achat</h2>
+    <ul class="signal-list" style="margin-bottom:28px;">
+      <li>Demande le prix sans qu'on l'ait mentionné</li>
+      <li>"On a justement une réunion sur ce sujet vendredi"</li>
+      <li>"Mon associé devrait être dans la prochaine démo"</li>
+      <li>"On peut commencer quand ?"</li>
+      <li>Pose des questions techniques (intégrations, sécurité, RGPD)</li>
+      <li>Partage ses données pendant la démo sans qu'on le demande</li>
+    </ul>
+
+    <h2 class="sub" id="objections-global">Gestion des objections</h2>
+    <div class="objection-list">
+      <div class="objection-item">
+        <div class="objection-q">❝ C'est trop cher ❞</div>
+        <div class="objection-a">
+          "Je comprends. Faisons le calcul ensemble. Combien d'heures par semaine votre équipe passe sur [la tâche identifiée] ? Et quel est le coût horaire approximatif ? ...
+          [Calcul en direct] ... Donc on parle de X€/mois de coût actuel pour Y€/mois d'abonnement.
+          Le ROI est à [N] semaines. Est-ce que le vrai problème c'est le montant, ou c'est la confiance dans le résultat ?"
+          <br><br>Si c'est la confiance → proposer le POC gratuit.
+        </div>
+      </div>
+      <div class="objection-item">
+        <div class="objection-q">❝ On a déjà un prestataire ❞</div>
+        <div class="objection-a">
+          "C'est bien. Notre outil ne remplace pas votre prestataire — il automatise les tâches que personne ne veut faire : trier les emails, envoyer des relances, surveiller les échéances.
+          Votre prestataire peut se concentrer sur la valeur ajoutée.
+          Est-ce qu'on peut regarder ensemble ce que fait votre prestataire vs ce qu'on ferait ?"
+        </div>
+      </div>
+      <div class="objection-item">
+        <div class="objection-q">❝ On n'est pas prêt ❞</div>
+        <div class="objection-a">
+          "Qu'est-ce qui doit se passer pour que vous soyez prêts ? Je pose la question parce que [la douleur identifiée] ne se résoudra pas toute seule.
+          On peut commencer par un POC d'une semaine, sans engagement, pour que vous voyiez les résultats avant de décider.
+          Qu'est-ce qui vous semble risqué dans le fait de tester ?"
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SECTION 5 — ONBOARDING ═══ -->
+  <section class="section" id="onboarding">
+    <div class="section-header">
+      <div class="section-icon icon-green">🚀</div>
+      <div>
+        <h1 class="section-title">Onboarding type — 4 semaines</h1>
+        <p class="section-desc">De la signature au premier rapport automatique en production. Livrables concrets à chaque étape.</p>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-week">
+        <div class="timeline-week-inner">
+          <div class="timeline-week-num">Semaine 1</div>
+          <div class="timeline-week-title">Discovery</div>
+          <ul class="timeline-tasks">
+            <li>Appel découverte 1h — cartographie processus</li>
+            <li>Accès aux systèmes : Gmail, base contacts, outils existants</li>
+            <li>Définition ICP (Lead) ou mapping dossiers (Compta)</li>
+            <li>Rédaction document de cadrage</li>
+          </ul>
+          <div class="timeline-deliverable">📄 Document de cadrage signé</div>
+        </div>
+      </div>
+      <div class="timeline-week">
+        <div class="timeline-week-inner">
+          <div class="timeline-week-num">Semaine 2</div>
+          <div class="timeline-week-title">Setup</div>
+          <ul class="timeline-tasks">
+            <li>Configuration Supabase (tables, import données)</li>
+            <li>Connexion APIs (Gmail OAuth2, Telegram bot, Sirene)</li>
+            <li>Secrets sécurisés dans Doppler</li>
+            <li>Déploiement Railway staging</li>
+          </ul>
+          <div class="timeline-deliverable">⚙️ Staging fonctionnel</div>
+        </div>
+      </div>
+      <div class="timeline-week">
+        <div class="timeline-week-inner">
+          <div class="timeline-week-num">Semaine 3</div>
+          <div class="timeline-week-title">Dry-run</div>
+          <ul class="timeline-tasks">
+            <li>Dry-run complet avec données réelles du client</li>
+            <li>Ajustement ICP, templates, fréquences alertes</li>
+            <li>Formation utilisateur (1h max)</li>
+            <li>Formulaire de recette signé</li>
+          </ul>
+          <div class="timeline-deliverable">✅ Validation client sur staging</div>
+        </div>
+      </div>
+      <div class="timeline-week">
+        <div class="timeline-week-inner">
+          <div class="timeline-week-num">Semaine 4</div>
+          <div class="timeline-week-title">Go Live</div>
+          <ul class="timeline-tasks">
+            <li>Passage en production Railway</li>
+            <li>Monitoring J+1, J+3, J+7</li>
+            <li>Rapport de première semaine automatique</li>
+            <li>Accès dashboard confirmé</li>
+          </ul>
+          <div class="timeline-deliverable">🚀 Client autonome en production</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px; margin-bottom:0;">
+      <h2 class="sub" style="margin-bottom:10px;">Checklist go-live universelle</h2>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:8px;">
+        <div style="font-size:12.5px; color:var(--text-2);">✅ Secrets dans Doppler (0 hardcodé)</div>
+        <div style="font-size:12.5px; color:var(--text-2);">✅ Tests ≥ 90% coverage</div>
+        <div style="font-size:12.5px; color:var(--text-2);">✅ Dry-run validé données réelles</div>
+        <div style="font-size:12.5px; color:var(--text-2);">✅ Sentry DSN configuré</div>
+        <div style="font-size:12.5px; color:var(--text-2);">✅ Langfuse monitoring LLM</div>
+        <div style="font-size:12.5px; color:var(--text-2);">✅ Première exécution manuelle (<code>--once</code>)</div>
+        <div style="font-size:12.5px; color:var(--text-2);">✅ Client a accès dashboard</div>
+        <div style="font-size:12.5px; color:var(--text-2);">✅ Contact urgence Telegram défini</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const html = document.documentElement;
+  const btn  = document.getElementById('theme-toggle');
+  function applyTheme(t) { html.setAttribute('data-theme', t); btn.textContent = t === 'dark' ? '☀️' : '🌙'; localStorage.setItem('theme', t); }
+  function toggleTheme() { applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+  const saved = localStorage.getItem('theme');
+  if (saved) { applyTheme(saved); } else if (window.matchMedia('(prefers-color-scheme: light)').matches) { applyTheme('light'); }
+
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  function toggleSidebar() { const o = sidebar.classList.toggle('open'); overlay.classList.toggle('open', o); }
+  function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+
+  const navLinks = document.querySelectorAll('.nav-link');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const m = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+        if (m) m.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+  navLinks.forEach(l => l.addEventListener('click', closeSidebar));
+</script>
+
+</body>
+</html>
