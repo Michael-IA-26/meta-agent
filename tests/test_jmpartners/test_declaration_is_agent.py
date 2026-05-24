@@ -229,14 +229,6 @@ def test_send_email_non_configure():
     assert result is False
 
 
-def test_send_telegram_non_configure():
-    """_send_telegram retourne False si Telegram non configuré."""
-    with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": ""}):
-        agent = DeclarationISAgent()
-        result = agent._send_telegram("message")
-    assert result is False
-
-
 @pytest.mark.parametrize("jours", HORIZONS_ALERTE)
 def test_horizons_alerte_reconnus(jours: int):
     """Chaque horizon (30, 15, 7) doit déclencher une alerte."""

@@ -10,8 +10,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import TypedDict, cast
 
-import httpx
 from supabase import Client, create_client
+
+from apps.shared.telegram import send_telegram_message
 
 __all__ = ["DeclarationISAlert", "DeclarationISAgent"]
 
@@ -23,8 +24,6 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 CABINET_ID = os.getenv("CABINET_ID", "")
 
 HORIZONS_ALERTE = [30, 15, 7]
@@ -122,7 +121,7 @@ class DeclarationISAgent:
         sujet = f"Déclaration IS J-{jours} — {raison}"
 
         ok_email = self._send_email(sujet, message)
-        ok_telegram = self._send_telegram(message)
+        ok_telegram = send_telegram_message(message)
         return ok_email or ok_telegram
 
     def _send_email(self, sujet: str, corps: str) -> bool:
@@ -145,29 +144,6 @@ class DeclarationISAgent:
             return True
         except Exception as exc:
             logger.error(f"declaration_is_agent — erreur SMTP : {exc}")
-            return False
-
-    def _send_telegram(self, message: str) -> bool:
-        """Envoie une alerte Telegram."""
-        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-            logger.warning(
-                "declaration_is_agent — Telegram non configuré, alerte non envoyée"
-            )
-            return False
-        try:
-            r = httpx.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={
-                    "chat_id": TELEGRAM_CHAT_ID,
-                    "text": message[:4096],
-                    "parse_mode": "Markdown",
-                },
-                timeout=10,
-            )
-            r.raise_for_status()
-            return True
-        except Exception as exc:
-            logger.error(f"declaration_is_agent — erreur Telegram : {exc}")
             return False
 
     def _log_journal(

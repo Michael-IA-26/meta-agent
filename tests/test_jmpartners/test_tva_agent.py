@@ -3,32 +3,7 @@
 from datetime import date, timedelta
 from unittest.mock import patch
 
-from apps.jmpartners.agents.tva_agent import run, send_telegram_alerte
-
-# ─── send_telegram_alerte ────────────────────────────────────────────────────
-
-
-def test_telegram_non_configure():
-    with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": ""}):
-        result = send_telegram_alerte("test message")
-    assert result is False
-
-
-def test_telegram_erreur_reseau():
-    with (
-        patch.dict(
-            "os.environ",
-            {
-                "TELEGRAM_BOT_TOKEN": "fake-token",
-                "TELEGRAM_CHAT_ID": "12345",
-            },
-        ),
-        patch("apps.jmpartners.agents.tva_agent.httpx.post") as mock_post,
-    ):
-        mock_post.side_effect = Exception("network error")
-        result = send_telegram_alerte("test")
-    assert result is False
-
+from apps.jmpartners.agents.tva_agent import run
 
 # ─── run ──────────────────────────────────────────────────────────────────────
 
@@ -54,7 +29,7 @@ def test_run_declaration_avec_manquants_dry_run():
         ) as mock_decl,
         patch("apps.jmpartners.agents.tva_agent.fetch_contact_nom") as mock_nom,
         patch("apps.jmpartners.agents.tva_agent.check_docs") as mock_check,
-        patch("apps.jmpartners.agents.tva_agent.send_telegram_alerte") as mock_tg,
+        patch("apps.jmpartners.agents.tva_agent.send_telegram_message") as mock_tg,
     ):
         deadline_j7 = (date.today() + timedelta(days=7)).isoformat()
         mock_decl.return_value = [
@@ -168,7 +143,7 @@ def test_run_alerte_envoyee_non_dry_run():
         ) as mock_decl,
         patch("apps.jmpartners.agents.tva_agent.fetch_contact_nom") as mock_nom,
         patch("apps.jmpartners.agents.tva_agent.check_docs") as mock_check,
-        patch("apps.jmpartners.agents.tva_agent.send_telegram_alerte") as mock_tg,
+        patch("apps.jmpartners.agents.tva_agent.send_telegram_message") as mock_tg,
         patch("apps.jmpartners.agents.tva_agent.log_alerte_tva"),
     ):
         deadline_j7 = (date.today() + timedelta(days=7)).isoformat()

@@ -170,7 +170,7 @@ def test_run_dry_run_pas_envoi():
             "apps.jmpartners.agents.echeance_agent.fetch_declarations_tva"
         ) as mock_tva,
         patch("apps.jmpartners.agents.echeance_agent.fetch_contact_nom") as mock_nom,
-        patch("apps.jmpartners.agents.echeance_agent.send_telegram") as mock_tg,
+        patch("apps.jmpartners.agents.echeance_agent.send_telegram_message") as mock_tg,
         patch("apps.jmpartners.agents.echeance_agent.send_email_rapport") as mock_email,
     ):
         today = date.today()
@@ -203,7 +203,7 @@ def test_run_rapport_envoye_non_dry_run():
             "apps.jmpartners.agents.echeance_agent.fetch_declarations_tva"
         ) as mock_tva,
         patch("apps.jmpartners.agents.echeance_agent.fetch_contact_nom") as mock_nom,
-        patch("apps.jmpartners.agents.echeance_agent.send_telegram") as mock_tg,
+        patch("apps.jmpartners.agents.echeance_agent.send_telegram_message") as mock_tg,
         patch("apps.jmpartners.agents.echeance_agent.send_email_rapport") as mock_email,
         patch("apps.jmpartners.agents.echeance_agent.log_alerte_echeances"),
     ):

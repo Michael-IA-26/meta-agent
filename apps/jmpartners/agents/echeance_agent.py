@@ -10,8 +10,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import TypedDict, cast
 
-import httpx
 from supabase import Client, create_client
+
+from apps.shared.telegram import send_telegram_message
 
 __all__ = ["Echeance", "EcheanceAgentResult", "run"]
 
@@ -19,8 +20,6 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
@@ -149,28 +148,6 @@ def build_rapport(echeances: list[Echeance]) -> str:
     return "\n".join(lignes)
 
 
-def send_telegram(message: str) -> bool:
-    """Envoie le rapport Telegram."""
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logger.warning("Telegram non configuré")
-        return False
-    try:
-        r = httpx.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": message[:4096],
-                "parse_mode": "Markdown",
-            },
-            timeout=10,
-        )
-        r.raise_for_status()
-        return True
-    except Exception as exc:
-        logger.error(f"Erreur Telegram echeance_agent : {exc}")
-        return False
-
-
 def send_email_rapport(sujet: str, corps: str) -> bool:
     """Envoie le rapport par email SMTP."""
     if not SMTP_USER or not RAPPORT_DESTINATAIRE:
@@ -283,7 +260,7 @@ def run(dry_run: bool = False) -> EcheanceAgentResult:
     rapport_envoye = False
 
     if not dry_run and echeances:
-        ok_telegram = send_telegram(rapport)
+        ok_telegram = send_telegram_message(rapport)
         ok_email = send_email_rapport(
             f"Échéances JM Partners — {today.isoformat()}", rapport
         )

@@ -8,8 +8,9 @@ from calendar import monthrange
 from datetime import date
 from typing import TypedDict, cast
 
-import httpx
 from supabase import Client, create_client
+
+from apps.shared.telegram import send_telegram_message
 
 __all__ = ["ClotureResult", "ClotureHandler"]
 
@@ -17,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
 
 class ClotureResult(TypedDict):
@@ -76,26 +75,6 @@ class ClotureHandler:
             logger.error(f"Erreur clôture dossier {dossier_id} : {exc}")
             return False
 
-    def _send_telegram(self, message: str) -> bool:
-        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-            logger.warning("Telegram non configuré — notification clôture non envoyée")
-            return False
-        try:
-            r = httpx.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={
-                    "chat_id": TELEGRAM_CHAT_ID,
-                    "text": message[:4096],
-                    "parse_mode": "Markdown",
-                },
-                timeout=10,
-            )
-            r.raise_for_status()
-            return True
-        except Exception as exc:
-            logger.error(f"Erreur Telegram clôture : {exc}")
-            return False
-
     def run(self) -> ClotureResult:
         from datetime import datetime, timezone
 
@@ -128,7 +107,7 @@ class ClotureHandler:
                 f"Clôture comptable {mois} — cabinet {self.cabinet_id}\n"
                 f"{len(clotures)} dossier(s) clôturé(s)"
             )
-            self._send_telegram(message)
+            send_telegram_message(message)
 
         statut = "ok" if clotures else "aucun_dossier"
         logger.info(f"cloture_handler terminé : {len(clotures)} dossier(s) clôturé(s)")

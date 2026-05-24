@@ -7,11 +7,11 @@ import os
 from datetime import date, timedelta
 from typing import TypedDict, cast
 
-import httpx
 from supabase import Client, create_client
 
 from apps.jmpartners.agents.document_checker import DocumentCheckerResult
 from apps.jmpartners.agents.document_checker import run as check_docs
+from apps.shared.telegram import send_telegram_message
 
 __all__ = ["TvaDeclarationStatus", "TvaAgentResult", "run"]
 
@@ -19,8 +19,6 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 SMTP_USER = os.getenv("SMTP_USER", "")
 
 HORIZONS_ALERTE = [15, 7, 3]
@@ -88,31 +86,6 @@ def fetch_contact_nom(supabase: Client, contact_id: str) -> str | None:
         return cast(dict, resp.data).get("nom") if resp.data else None
     except Exception:
         return None
-
-
-def send_telegram_alerte(message: str) -> bool:
-    """Envoie une alerte Telegram au cabinet.
-
-    Returns True si succès.
-    """
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logger.warning("Telegram non configuré — alerte TVA non envoyée")
-        return False
-    try:
-        r = httpx.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": message,
-                "parse_mode": "Markdown",
-            },
-            timeout=10,
-        )
-        r.raise_for_status()
-        return True
-    except Exception as exc:
-        logger.error(f"Erreur Telegram TVA : {exc}")
-        return False
 
 
 def log_alerte_tva(
@@ -184,7 +157,7 @@ def run(dry_run: bool = False) -> TvaAgentResult:
                     f"Pièces manquantes :\n" + "\n".join(f"• {m}" for m in manquants)
                 )
                 if not dry_run:
-                    alerte_envoyee = send_telegram_alerte(msg)
+                    alerte_envoyee = send_telegram_message(msg)
                     if alerte_envoyee:
                         log_alerte_tva(supabase, contact_id, dossier_id, decl_id, msg)
                         alertes_envoyees += 1

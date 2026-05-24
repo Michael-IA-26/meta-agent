@@ -10,9 +10,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import TypedDict, cast
 
-import httpx
 from postgrest import CountMethod
 from supabase import Client, create_client
+
+from apps.shared.telegram import send_telegram_message
 
 __all__ = ["NotificationPayload", "NotificationAgent"]
 
@@ -24,8 +25,6 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 CABINET_ID = os.getenv("CABINET_ID", "")
 
 # Urgences qui déclenchent Telegram immédiat
@@ -121,27 +120,6 @@ class NotificationAgent:
             )
             return False
 
-    def _send_telegram(self, message: str) -> bool:
-        """Envoie un message Telegram."""
-        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-            logger.warning("notification_agent — Telegram non configuré")
-            return False
-        try:
-            r = httpx.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={
-                    "chat_id": TELEGRAM_CHAT_ID,
-                    "text": message[:4096],
-                    "parse_mode": "Markdown",
-                },
-                timeout=10,
-            )
-            r.raise_for_status()
-            return True
-        except Exception as exc:
-            logger.error(f"notification_agent — erreur Telegram : {exc}")
-            return False
-
     def send(self, alert: NotificationPayload) -> bool:
         """Envoie une notification en appliquant le routing par urgence.
 
@@ -177,7 +155,7 @@ class NotificationAgent:
 
         if urgence in URGENCES_TELEGRAM:
             # J-3 : Telegram immédiat + email
-            ok_tg = self._send_telegram(corps)
+            ok_tg = send_telegram_message(corps)
             ok_mail = self._send_email(destinataire, sujet, corps)
             ok = ok_tg or ok_mail
         elif urgence == "J-7":

@@ -5,9 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from unittest.mock import MagicMock, patch
-
-import httpx
+from unittest.mock import patch
 
 from apps.leadcommercial.agents.telegram_notifier import (
     NotifyInput,
@@ -37,44 +35,20 @@ def _notify_input(**overrides) -> NotifyInput:
     return base
 
 
-def test_notify_lead_no_token_returns_false():
-    with (
-        patch("apps.leadcommercial.agents.telegram_notifier._BOT_TOKEN", ""),
-        patch("apps.leadcommercial.agents.telegram_notifier._CHAT_ID", ""),
+def test_notify_lead_returns_false_si_telegram_echoue():
+    with patch(
+        "apps.leadcommercial.agents.telegram_notifier.send_telegram_message",
+        return_value=False,
     ):
-        result = notify_lead(_notify_input())
-    assert result is False
-
-
-def test_notify_lead_no_chat_id_returns_false():
-    with (
-        patch("apps.leadcommercial.agents.telegram_notifier._BOT_TOKEN", "mytoken"),
-        patch("apps.leadcommercial.agents.telegram_notifier._CHAT_ID", ""),
-    ):
-        result = notify_lead(_notify_input())
-    assert result is False
-
-
-def test_notify_lead_http_error_returns_false():
-    with (
-        patch("apps.leadcommercial.agents.telegram_notifier._BOT_TOKEN", "tok"),
-        patch("apps.leadcommercial.agents.telegram_notifier._CHAT_ID", "123"),
-        patch("apps.leadcommercial.agents.telegram_notifier.httpx.post") as mock_post,
-    ):
-        mock_post.return_value.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "400", request=MagicMock(), response=MagicMock()
-        )
         result = notify_lead(_notify_input())
     assert result is False
 
 
 def test_notify_lead_success_returns_true():
-    with (
-        patch("apps.leadcommercial.agents.telegram_notifier._BOT_TOKEN", "tok"),
-        patch("apps.leadcommercial.agents.telegram_notifier._CHAT_ID", "123"),
-        patch("apps.leadcommercial.agents.telegram_notifier.httpx.post") as mock_post,
+    with patch(
+        "apps.leadcommercial.agents.telegram_notifier.send_telegram_message",
+        return_value=True,
     ):
-        mock_post.return_value.raise_for_status = MagicMock()
         result = notify_lead(_notify_input())
     assert result is True
 

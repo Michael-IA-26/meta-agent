@@ -9,6 +9,8 @@ from apps.jmpartners.agents.notification_agent import (
     NotificationPayload,
 )
 
+_TG = "apps.jmpartners.agents.notification_agent.send_telegram_message"
+
 # ─── Helper factory ───────────────────────────────────────────────────────────
 
 
@@ -37,15 +39,15 @@ def test_send_j3_envoie_telegram_et_email():
     """J-3 → Telegram immédiat + email, les deux sont appelés."""
     agent = NotificationAgent()
     agent._is_duplicate = MagicMock(return_value=False)
-    agent._send_telegram = MagicMock(return_value=True)
     agent._send_email = MagicMock(return_value=True)
     agent._log_journal = MagicMock()
 
     payload = _make_payload(urgence="J-3")
-    result = agent.send(payload)
+    with patch(_TG, return_value=True) as mock_tg:
+        result = agent.send(payload)
 
     assert result is True
-    agent._send_telegram.assert_called_once()
+    mock_tg.assert_called_once()
     agent._send_email.assert_called_once()
 
 
@@ -53,11 +55,11 @@ def test_send_j3_retourne_true_si_telegram_seul_ok():
     """J-3 → True si Telegram ok même si email échoue."""
     agent = NotificationAgent()
     agent._is_duplicate = MagicMock(return_value=False)
-    agent._send_telegram = MagicMock(return_value=True)
     agent._send_email = MagicMock(return_value=False)
     agent._log_journal = MagicMock()
 
-    result = agent.send(_make_payload(urgence="J-3"))
+    with patch(_TG, return_value=True):
+        result = agent.send(_make_payload(urgence="J-3"))
     assert result is True
 
 
@@ -69,15 +71,15 @@ def test_send_j7_email_seul():
     agent = NotificationAgent()
     agent._is_duplicate = MagicMock(return_value=False)
     agent._send_email = MagicMock(return_value=True)
-    agent._send_telegram = MagicMock(return_value=True)
     agent._log_journal = MagicMock()
 
     payload = _make_payload(urgence="J-7")
-    result = agent.send(payload)
+    with patch(_TG) as mock_tg:
+        result = agent.send(payload)
 
     assert result is True
     agent._send_email.assert_called_once()
-    agent._send_telegram.assert_not_called()
+    mock_tg.assert_not_called()
 
 
 def test_send_j7_retourne_false_si_email_echoue():
@@ -85,12 +87,12 @@ def test_send_j7_retourne_false_si_email_echoue():
     agent = NotificationAgent()
     agent._is_duplicate = MagicMock(return_value=False)
     agent._send_email = MagicMock(return_value=False)
-    agent._send_telegram = MagicMock()
     agent._log_journal = MagicMock()
 
-    result = agent.send(_make_payload(urgence="J-7"))
+    with patch(_TG) as mock_tg:
+        result = agent.send(_make_payload(urgence="J-7"))
     assert result is False
-    agent._send_telegram.assert_not_called()
+    mock_tg.assert_not_called()
 
 
 # ─── Déduplication 24h ────────────────────────────────────────────────────────
@@ -101,14 +103,14 @@ def test_send_digest_j15_doublon_24h_ignore():
     agent = NotificationAgent()
     agent._is_duplicate = MagicMock(return_value=True)
     agent._send_email = MagicMock()
-    agent._send_telegram = MagicMock()
     agent._log_journal = MagicMock()
 
-    result = agent.send(_make_payload(urgence="J-15"))
+    with patch(_TG) as mock_tg:
+        result = agent.send(_make_payload(urgence="J-15"))
 
     assert result is False
     agent._send_email.assert_not_called()
-    agent._send_telegram.assert_not_called()
+    mock_tg.assert_not_called()
     agent._log_journal.assert_not_called()
 
 
@@ -117,10 +119,10 @@ def test_send_digest_j30_doublon_24h_ignore():
     agent = NotificationAgent()
     agent._is_duplicate = MagicMock(return_value=True)
     agent._send_email = MagicMock()
-    agent._send_telegram = MagicMock()
     agent._log_journal = MagicMock()
 
-    result = agent.send(_make_payload(urgence="J-30"))
+    with patch(_TG):
+        result = agent.send(_make_payload(urgence="J-30"))
 
     assert result is False
     agent._send_email.assert_not_called()
@@ -131,14 +133,14 @@ def test_send_digest_j15_pas_doublon_envoie():
     agent = NotificationAgent()
     agent._is_duplicate = MagicMock(return_value=False)
     agent._send_email = MagicMock(return_value=True)
-    agent._send_telegram = MagicMock()
     agent._log_journal = MagicMock()
 
-    result = agent.send(_make_payload(urgence="J-15"))
+    with patch(_TG) as mock_tg:
+        result = agent.send(_make_payload(urgence="J-15"))
 
     assert result is True
     agent._send_email.assert_called_once()
-    agent._send_telegram.assert_not_called()
+    mock_tg.assert_not_called()
 
 
 # ─── Déduplication — vérification Supabase ────────────────────────────────────
@@ -189,7 +191,6 @@ def test_send_batch_retourne_liste_bool():
     agent = NotificationAgent()
     agent._is_duplicate = MagicMock(return_value=False)
     agent._send_email = MagicMock(return_value=True)
-    agent._send_telegram = MagicMock(return_value=True)
     agent._log_journal = MagicMock()
 
     payloads = [
@@ -197,7 +198,8 @@ def test_send_batch_retourne_liste_bool():
         _make_payload(dossier_id="dos-2", urgence="J-3"),
         _make_payload(dossier_id="dos-3", urgence="J-15"),
     ]
-    results = agent.send_batch(payloads)
+    with patch(_TG, return_value=True):
+        results = agent.send_batch(payloads)
 
     assert len(results) == 3
     assert all(isinstance(r, bool) for r in results)
@@ -256,35 +258,4 @@ def test_send_email_erreur_smtp():
     ):
         agent = NotificationAgent()
         result = agent._send_email("dest@test.fr", "Sujet", "Corps")
-    assert result is False
-
-
-# ─── Telegram seul ────────────────────────────────────────────────────────────
-
-
-def test_send_telegram_non_configure():
-    """_send_telegram retourne False si Telegram non configuré."""
-    with patch.dict(
-        "os.environ",
-        {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": ""},
-    ):
-        agent = NotificationAgent()
-        result = agent._send_telegram("message test")
-    assert result is False
-
-
-def test_send_telegram_erreur_reseau():
-    """_send_telegram retourne False si httpx lève une exception."""
-    with (
-        patch.dict(
-            "os.environ",
-            {"TELEGRAM_BOT_TOKEN": "fake-token", "TELEGRAM_CHAT_ID": "123"},
-        ),
-        patch(
-            "apps.jmpartners.agents.notification_agent.httpx.post",
-            side_effect=Exception("network error"),
-        ),
-    ):
-        agent = NotificationAgent()
-        result = agent._send_telegram("message test")
     assert result is False

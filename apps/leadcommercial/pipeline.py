@@ -5,11 +5,10 @@ from apps.leadcommercial.pappers_client import fetch_enrichment
 from apps.leadcommercial.scorer import IcpContext, ScoredLead, score_lead
 from apps.leadcommercial.sirene_client import fetch_and_parse_idf
 from apps.leadcommercial.supabase_client import fetch_icp, persist_lead
+from apps.shared.telegram import send_telegram_message
 
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 SCORE_THRESHOLD = int(os.getenv("LEAD_SCORE_THRESHOLD", "50"))
 
 
@@ -47,30 +46,8 @@ def format_lead_alert(company: dict, score_result: ScoredLead) -> str:
 
 
 def send_telegram_alert(message: str) -> bool:
-    import httpx
-
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logger.warning(
-            "Telegram non configure — TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID manquant"
-        )
-        return False
-
-    try:
-        r = httpx.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": message,
-                "parse_mode": "Markdown",
-            },
-            timeout=10,
-        )
-        r.raise_for_status()
-        logger.info("Alerte Telegram envoyee")
-        return True
-    except Exception as e:
-        logger.error(f"Erreur Telegram : {e}")
-        return False
+    """Proxy vers shared.telegram pour compatibilité descendante."""
+    return send_telegram_message(message)
 
 
 def run_pipeline(date: str | None = None, dry_run: bool = False) -> list[dict]:
