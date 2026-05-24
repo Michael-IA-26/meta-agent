@@ -115,6 +115,10 @@ def test_run_alerte_j15():
             return_value=[echeance],
         ),
         patch("apps.jmpartners.agents.acompte_is_agent.date") as mock_date,
+        patch(
+            "apps.jmpartners.agents.acompte_is_agent.send_telegram_message",
+            return_value=True,
+        ),
     ):
         mock_date.today.return_value = today
         mock_date.side_effect = lambda *args, **kwargs: date(*args, **kwargs)
@@ -122,7 +126,6 @@ def test_run_alerte_j15():
         agent = AcompteISAgent()
         agent._fetch_dossiers = MagicMock(return_value=dossiers)
         agent._send_email = MagicMock(return_value=True)
-        agent._send_telegram = MagicMock(return_value=True)
         result = agent.run()
 
     assert len(result) == 1
@@ -158,40 +161,6 @@ def test_send_email_erreur_smtp():
     ):
         agent = AcompteISAgent()
         result = agent._send_email("dest@test.com", "sujet", "corps")
-
-    assert result is False
-
-
-# ─── AcompteISAgent._send_telegram — non configuré ───────────────────────────
-
-
-def test_send_telegram_non_configure():
-    with patch.dict(
-        "os.environ",
-        {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": ""},
-    ):
-        agent = AcompteISAgent()
-        result = agent._send_telegram("test message")
-
-    assert result is False
-
-
-# ─── AcompteISAgent._send_telegram — erreur réseau ───────────────────────────
-
-
-def test_send_telegram_erreur_reseau():
-    with (
-        patch.dict(
-            "os.environ",
-            {"TELEGRAM_BOT_TOKEN": "fake-token", "TELEGRAM_CHAT_ID": "123"},
-        ),
-        patch(
-            "apps.jmpartners.agents.acompte_is_agent.httpx.post",
-            side_effect=Exception("network error"),
-        ),
-    ):
-        agent = AcompteISAgent()
-        result = agent._send_telegram("test")
 
     assert result is False
 
@@ -238,6 +207,10 @@ def test_run_alerte_non_envoyee_si_tous_echecs():
             return_value=[echeance],
         ),
         patch("apps.jmpartners.agents.acompte_is_agent.date") as mock_date,
+        patch(
+            "apps.jmpartners.agents.acompte_is_agent.send_telegram_message",
+            return_value=False,
+        ),
     ):
         mock_date.today.return_value = today
         mock_date.side_effect = lambda *args, **kwargs: date(*args, **kwargs)
@@ -245,7 +218,6 @@ def test_run_alerte_non_envoyee_si_tous_echecs():
         agent = AcompteISAgent()
         agent._fetch_dossiers = MagicMock(return_value=dossiers)
         agent._send_email = MagicMock(return_value=False)
-        agent._send_telegram = MagicMock(return_value=False)
         result = agent.run()
 
     assert len(result) == 1

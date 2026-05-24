@@ -1,19 +1,11 @@
 import logging
-import os
 
-import requests  # type: ignore
+from apps.shared.telegram import send_telegram_message
 
 logger = logging.getLogger(__name__)
 
 
 def send_telegram_report(analyzed_emails: list, kpis: dict | None = None) -> bool:
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-    if not token or not chat_id:
-        logger.error("Tokens Telegram manquants")
-        return False
-
     haute = [e for e in analyzed_emails if e.get("priority") == "haute"]
     actions = [e for e in analyzed_emails if e.get("action")]
     inutiles = [e for e in analyzed_emails if e.get("category") == "inutile"]
@@ -55,18 +47,7 @@ def send_telegram_report(analyzed_emails: list, kpis: dict | None = None) -> boo
     lines.append("_Rapport genere par Meta-Agent_")
 
     msg = "\n".join(lines)
-
-    api_url = "https://api.telegram.org/bot" + token + "/sendMessage"
-    payload = {"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}
-
-    try:
-        response = requests.post(api_url, json=payload, timeout=10)
-        if response.status_code == 200:
-            logger.info("Rapport Telegram envoye !")
-            return True
-        else:
-            logger.error("Erreur Telegram : " + response.text)
-            return False
-    except Exception as e:
-        logger.error(f"Erreur Telegram : {e}")
-        return False
+    ok = send_telegram_message(msg)
+    if ok:
+        logger.info("Rapport Telegram envoye !")
+    return ok

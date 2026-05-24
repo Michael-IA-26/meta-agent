@@ -1,15 +1,11 @@
 """Agent: envoie une alerte Telegram pour 1 lead qualifié → bool."""
 
 import logging
-import os
 from typing import TypedDict
 
-import httpx
+from apps.shared.telegram import send_telegram_message
 
 logger = logging.getLogger(__name__)
-
-_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
 
 class NotifyInput(TypedDict):
@@ -67,24 +63,10 @@ def notify_lead(params: NotifyInput) -> bool:
 
     Returns True on success, False if Telegram is not configured or on error.
     """
-    if not _BOT_TOKEN or not _CHAT_ID:
-        logger.warning(
-            "Telegram non configure — TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID manquant"
-        )
-        return False
-
     message = _format_message(params)
-    try:
-        r = httpx.post(
-            f"https://api.telegram.org/bot{_BOT_TOKEN}/sendMessage",
-            json={"chat_id": _CHAT_ID, "text": message, "parse_mode": "Markdown"},
-            timeout=10,
-        )
-        r.raise_for_status()
+    ok = send_telegram_message(message)
+    if ok:
         logger.info("telegram_notifier: alerte envoyee pour %s", params["denomination"])
-        return True
-    except Exception as exc:
-        logger.error(
-            "telegram_notifier: erreur pour %s: %s", params["denomination"], exc
-        )
-        return False
+    else:
+        logger.error("telegram_notifier: erreur pour %s", params["denomination"])
+    return ok

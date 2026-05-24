@@ -98,9 +98,8 @@ def test_run_cloture_dossiers_et_telegram():
             "apps.jmpartners.agents.cloture_handler.create_client",
             return_value=mock_sb,
         ),
-        patch("apps.jmpartners.agents.cloture_handler.httpx.post") as mock_post,
+        patch("apps.jmpartners.agents.cloture_handler.send_telegram_message"),
     ):
-        mock_post.return_value.raise_for_status = MagicMock()
         handler = ClotureHandler(cabinet_id="cab-2")
         handler._fetch_dossiers_en_cours = MagicMock(return_value=dossiers_data)
         handler._cloture_dossier = MagicMock(return_value=True)
@@ -127,40 +126,6 @@ def test_cloture_dossier_erreur_supabase():
         handler = ClotureHandler(cabinet_id="cab-3")
         handler._supabase = mock_sb
         result = handler._cloture_dossier("dos-err")
-
-    assert result is False
-
-
-# ─── ClotureHandler._send_telegram — non configuré ───────────────────────────
-
-
-def test_send_telegram_non_configure():
-    with patch.dict(
-        "os.environ",
-        {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": ""},
-    ):
-        handler = ClotureHandler(cabinet_id="cab-4")
-        result = handler._send_telegram("test")
-
-    assert result is False
-
-
-# ─── ClotureHandler._send_telegram — erreur réseau ───────────────────────────
-
-
-def test_send_telegram_erreur_reseau():
-    with (
-        patch.dict(
-            "os.environ",
-            {"TELEGRAM_BOT_TOKEN": "fake", "TELEGRAM_CHAT_ID": "123"},
-        ),
-        patch(
-            "apps.jmpartners.agents.cloture_handler.httpx.post",
-            side_effect=Exception("network"),
-        ),
-    ):
-        handler = ClotureHandler(cabinet_id="cab-5")
-        result = handler._send_telegram("test")
 
     assert result is False
 

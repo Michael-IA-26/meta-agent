@@ -10,8 +10,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import TypedDict, cast
 
-import httpx
 from supabase import Client, create_client
+
+from apps.shared.telegram import send_telegram_message
 
 __all__ = ["AcompteAlert", "AcompteISAgent"]
 
@@ -23,9 +24,6 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-
 HORIZONS_ALERTE = [15, 7, 3]
 
 ECHEANCES_IS = [
@@ -108,25 +106,6 @@ class AcompteISAgent:
             logger.error(f"Erreur SMTP IS vers {destinataire} : {exc}")
             return False
 
-    def _send_telegram(self, message: str) -> bool:
-        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-            logger.warning("Telegram non configuré — alerte IS non envoyée")
-            return False
-        try:
-            r = httpx.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={
-                    "chat_id": TELEGRAM_CHAT_ID,
-                    "text": message[:4096],
-                    "parse_mode": "Markdown",
-                },
-                timeout=10,
-            )
-            r.raise_for_status()
-            return True
-        except Exception as exc:
-            logger.error(f"Erreur Telegram IS : {exc}")
-            return False
 
     def run(self) -> list[AcompteAlert]:
         today = date.today()
@@ -158,7 +137,7 @@ class AcompteISAgent:
                 sujet = f"Acompte IS J-{jours_restants} — {raison_sociale}"
 
                 ok_email = self._send_email(SMTP_USER, sujet, message)
-                ok_telegram = self._send_telegram(message)
+                ok_telegram = send_telegram_message(message)
                 alerte_envoyee = ok_email or ok_telegram
 
                 alerts.append(
