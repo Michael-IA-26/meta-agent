@@ -66,7 +66,10 @@ def send_report(analyzed_emails, temps_agent_sec=0):
     service = get_gmail_service()
     today = datetime.now().strftime("%d/%m/%Y")
     subject = f"Votre rapport du jour - {today}"
-    recipient = os.getenv("RAPPORT_EMAIL", "michael@myvesper.fr")
+    recipient = os.getenv("EMAIL_DEFAULT_RECIPIENT") or os.getenv("RAPPORT_EMAIL", "")
+    if not recipient:
+        logger.warning("send_report: EMAIL_DEFAULT_RECIPIENT non défini, rapport non envoyé")
+        return False
     html_content = report_to_html(analyzed_emails)
     message = MIMEMultipart("alternative")
     message["to"] = recipient
