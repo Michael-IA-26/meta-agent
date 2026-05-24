@@ -5,10 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-import smtplib
 from datetime import datetime, timedelta, timezone
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from typing import TypedDict, cast
 
 import anthropic
@@ -18,6 +15,7 @@ from apps.jmpartners.agents.document_checker import (
     DocumentCheckerResult,
     DocumentManquant,
 )
+from apps.shared.smtp import send_email
 
 __all__ = ["RelanceResult", "run"]
 
@@ -26,10 +24,6 @@ logger = logging.getLogger(__name__)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 
 DELAI_ANTI_DOUBLON_HEURES = 48
 
@@ -164,24 +158,8 @@ def compose_relance(
 
 
 def send_smtp(destinataire: str, sujet: str, corps: str) -> bool:
-    """Envoie un email via SMTP TLS.
-
-    Returns True si succès, False sinon (sans lever d'exception).
-    """
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = SMTP_USER
-        msg["To"] = destinataire
-        msg["Subject"] = sujet
-        msg.attach(MIMEText(corps, "plain", "utf-8"))
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, [destinataire], msg.as_string())
-        return True
-    except Exception as exc:
-        logger.error(f"Erreur SMTP vers {destinataire} : {exc}")
-        return False
+    """Envoie un email via SMTP TLS — délègue à apps.shared.smtp.send_email."""
+    return send_email(destinataire, sujet, corps)
 
 
 def log_journal(
