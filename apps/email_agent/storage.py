@@ -8,6 +8,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+_EMAIL_USER_ID = os.getenv("EMAIL_USER_ID", "default")
+if _EMAIL_USER_ID == "default":
+    logger.warning("EMAIL_USER_ID non défini — utilisation de 'default' pour user_id")
+
 
 def get_supabase_client() -> Client:
     """Retourne un client Supabase authentifie via les variables d'environnement."""
@@ -23,7 +27,7 @@ def save_email(analyzed_email: dict) -> bool:
         client = get_supabase_client()
         data = {
             "agent_id": "email_agent",
-            "user_id": "michael",
+            "user_id": _EMAIL_USER_ID,
             "email_subject": analyzed_email.get("subject", ""),
             "email_from": analyzed_email.get("from", ""),
             "email_date": analyzed_email.get("date", ""),
