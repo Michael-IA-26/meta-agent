@@ -34,7 +34,7 @@ def test_email_agent_preset():
     assert config.agent_id == "email_agent"
     assert config.schedule.enabled is True
     assert config.kpis.temps_theorique_min == 45
-    assert config.notifications.telegram_chat_id == "5505521057"
+    assert isinstance(config.notifications.telegram_chat_id, str)
     print("OK: test_email_agent_preset")
 
 

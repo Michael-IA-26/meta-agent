@@ -17,7 +17,7 @@ from gmail_client import get_gmail_service  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_RECIPIENT = "michael@myvesper.fr"
+_DEFAULT_RECIPIENT = os.environ.get("EMAIL_DEFAULT_RECIPIENT", "")
 
 
 def send_email_report(html: str, subject: str, recipient: str = "") -> bool:

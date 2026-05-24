@@ -112,8 +112,8 @@ def email_agent_config() -> AgentConfig:
         ),
         schedule=ScheduleConfig(enabled=True, cron="45 8 * * *"),
         notifications=NotificationConfig(
-            email="michael@myvesper.fr",
-            telegram_chat_id="5505521057",
+            email=os.environ.get("AGENT_DEFAULT_EMAIL", ""),
+            telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID", ""),
         ),
         kpis=KPIConfig(temps_theorique_min=45, hourly_rate=80.0),
     )
@@ -136,7 +136,7 @@ def leadcommercial_agent_config() -> AgentConfig:
             system="Tu es un agent de detection de leads B2B pour cabinets comptables.",
         ),
         schedule=ScheduleConfig(enabled=True, cron="0 7 * * *"),
-        notifications=NotificationConfig(telegram_chat_id="5505521057"),
+        notifications=NotificationConfig(telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID", "")),
         kpis=KPIConfig(temps_theorique_min=120, hourly_rate=100.0),
         metadata={
             "client": "JM Partners",
