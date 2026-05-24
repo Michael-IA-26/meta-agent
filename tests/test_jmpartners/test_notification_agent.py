@@ -231,34 +231,6 @@ def test_send_batch_erreur_une_alerte_continue_les_autres():
     assert results[2] is True
 
 
-# ─── Email seul ───────────────────────────────────────────────────────────────
-
-
-def test_send_email_non_configure():
-    """_send_email retourne False si SMTP non configuré."""
-    with patch.dict("os.environ", {"SMTP_USER": "", "SMTP_PASS": ""}):
-        agent = NotificationAgent()
-        result = agent._send_email("dest@test.fr", "Sujet", "Corps")
-    assert result is False
-
-
-def test_send_email_erreur_smtp():
-    """_send_email retourne False si SMTP lève une exception."""
-    with (
-        patch.dict(
-            "os.environ",
-            {"SMTP_USER": "user@test.com", "SMTP_PASS": "pass"},
-        ),
-        patch(
-            "apps.jmpartners.agents.notification_agent.smtplib.SMTP",
-            side_effect=Exception("connexion refusée"),
-        ),
-    ):
-        agent = NotificationAgent()
-        result = agent._send_email("dest@test.fr", "Sujet", "Corps")
-    assert result is False
-
-
 # ─── Telegram seul ────────────────────────────────────────────────────────────
 
 

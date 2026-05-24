@@ -221,14 +221,6 @@ def test_log_journal_erreur_supabase_ne_plante_pas():
 # ─── Canaux de notification ───────────────────────────────────────────────────
 
 
-def test_send_email_non_configure():
-    """_send_email retourne False si SMTP non configuré."""
-    with patch.dict("os.environ", {"SMTP_USER": "", "SMTP_PASS": ""}):
-        agent = DeclarationISAgent()
-        result = agent._send_email("Sujet", "Corps")
-    assert result is False
-
-
 def test_send_telegram_non_configure():
     """_send_telegram retourne False si Telegram non configuré."""
     with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": ""}):

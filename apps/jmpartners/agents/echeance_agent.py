@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import logging
 import os
-import smtplib
 from datetime import date, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from typing import TypedDict, cast
 
 import httpx
 from supabase import Client, create_client
+
+from apps.shared.smtp import send_email
 
 __all__ = ["Echeance", "EcheanceAgentResult", "run"]
 
@@ -21,11 +20,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-RAPPORT_DESTINATAIRE = os.getenv("RAPPORT_DESTINATAIRE", SMTP_USER)
+RAPPORT_DESTINATAIRE = os.getenv("RAPPORT_DESTINATAIRE", "")
 
 HORIZON_JOURS = 30
 
@@ -173,23 +168,7 @@ def send_telegram(message: str) -> bool:
 
 def send_email_rapport(sujet: str, corps: str) -> bool:
     """Envoie le rapport par email SMTP."""
-    if not SMTP_USER or not RAPPORT_DESTINATAIRE:
-        logger.warning("SMTP non configuré — rapport email non envoyé")
-        return False
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = SMTP_USER
-        msg["To"] = RAPPORT_DESTINATAIRE
-        msg["Subject"] = sujet
-        msg.attach(MIMEText(corps, "plain", "utf-8"))
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, [RAPPORT_DESTINATAIRE], msg.as_string())
-        return True
-    except Exception as exc:
-        logger.error(f"Erreur SMTP rapport : {exc}")
-        return False
+    return send_email(RAPPORT_DESTINATAIRE, sujet, corps)
 
 
 def log_alerte_echeances(

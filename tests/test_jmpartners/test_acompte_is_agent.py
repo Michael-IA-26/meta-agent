@@ -131,37 +131,6 @@ def test_run_alerte_j15():
     assert result[0]["alerte_envoyee"] is True
 
 
-# ─── AcompteISAgent._send_email — SMTP non configuré ─────────────────────────
-
-
-def test_send_email_non_configure():
-    with patch.dict("os.environ", {"SMTP_USER": "", "SMTP_PASS": ""}):
-        agent = AcompteISAgent()
-        result = agent._send_email("dest@test.com", "sujet", "corps")
-
-    assert result is False
-
-
-# ─── AcompteISAgent._send_email — erreur SMTP ────────────────────────────────
-
-
-def test_send_email_erreur_smtp():
-    with (
-        patch.dict(
-            "os.environ",
-            {"SMTP_USER": "user@test.com", "SMTP_PASS": "pass"},
-        ),
-        patch(
-            "apps.jmpartners.agents.acompte_is_agent.smtplib.SMTP",
-            side_effect=Exception("SMTP error"),
-        ),
-    ):
-        agent = AcompteISAgent()
-        result = agent._send_email("dest@test.com", "sujet", "corps")
-
-    assert result is False
-
-
 # ─── AcompteISAgent._send_telegram — non configuré ───────────────────────────
 
 

@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import logging
 import os
-import smtplib
 from datetime import date
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from typing import TypedDict, cast
 
 import httpx
 from supabase import Client, create_client
+
+from apps.shared.smtp import send_email
 
 __all__ = ["AcompteAlert", "AcompteISAgent"]
 
@@ -19,10 +18,6 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASS = os.getenv("SMTP_PASS", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
@@ -90,23 +85,7 @@ class AcompteISAgent:
             return []
 
     def _send_email(self, destinataire: str, sujet: str, corps: str) -> bool:
-        if not SMTP_USER or not SMTP_PASS:
-            logger.warning("SMTP non configuré — email IS non envoyé")
-            return False
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["From"] = SMTP_USER
-            msg["To"] = destinataire
-            msg["Subject"] = sujet
-            msg.attach(MIMEText(corps, "plain", "utf-8"))
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_USER, [destinataire], msg.as_string())
-            return True
-        except Exception as exc:
-            logger.error(f"Erreur SMTP IS vers {destinataire} : {exc}")
-            return False
+        return send_email(destinataire, sujet, corps)
 
     def _send_telegram(self, message: str) -> bool:
         if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -157,7 +136,7 @@ class AcompteISAgent:
                 )
                 sujet = f"Acompte IS J-{jours_restants} — {raison_sociale}"
 
-                ok_email = self._send_email(SMTP_USER, sujet, message)
+                ok_email = self._send_email("", sujet, message)
                 ok_telegram = self._send_telegram(message)
                 alerte_envoyee = ok_email or ok_telegram
 
