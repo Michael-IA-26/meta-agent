@@ -801,6 +801,391 @@ APScheduler exécute un cycle complet toutes les 30 minutes. Coordonne les 9 age
 
 ---
 
+## PARTIE 2bis — JM PARTNERS v2.2 (mise à jour CDC mai 2026)
+
+*Nom commercial : **Mika Compta Pilot v2.2** — 13 agents · 17 tables Supabase · Stack dédié*
+
+---
+
+### CHAÎNE DOCUMENTAIRE (#1 → #5)
+
+---
+
+<details>
+<summary><strong>📬 Agent #1 — Collecte</strong> — Point d'entrée unique des pièces comptables</summary>
+
+### Collecte
+
+**Rôle business en 1 phrase**
+Surveille en continu la boîte compta@jmpartners.fr et les flux bancaires pour capturer toutes les pièces comptables dès leur arrivée.
+
+**Problème résolu**
+Les pièces comptables arrivent par des canaux multiples et hétérogènes (email, banque, PennyLane). Sans agent de collecte centralisé, certaines pièces sont manquées, traitées en doublon ou reçues avec retard.
+
+**Ce que fait l'agent en langage client**
+- Surveille la boîte compta@jmpartners.fr (Outlook API) en permanence
+- Récupère les relevés et pièces depuis Regate (~150 dossiers), PennyLane (<10) et Chaintrust
+- Extrait les pièces jointes et les pousse vers l'Agent OCR
+- Déduplication des pièces déjà reçues
+
+**Tables Supabase** : `documents_inbox`, `email_metadata`
+
+**Schedule** : Continu (trigger webhook Outlook + polling Regate toutes les 15 min)
+
+</details>
+
+---
+
+<details>
+<summary><strong>👁 Agent #2 — OCR</strong> — Pivot central de la chaîne documentaire (NOUVEAU v2.2)</summary>
+
+### OCR
+
+**Rôle business en 1 phrase**
+Claude Vision lit chaque pièce jointe, en extrait les données structurées et détecte automatiquement à quel dossier client elle appartient.
+
+**Problème résolu**
+Sans OCR, le collaborateur doit lire chaque PDF, identifier le fournisseur, le montant, la TVA et le dossier — travail répétitif à faible valeur ajoutée, source d'erreurs de classement.
+
+**Ce que fait l'agent en langage client**
+- Lit les PDF et images avec Claude Vision (Edge Function Supabase TypeScript/Deno)
+- Extrait : montant HT, TVA, total TTC, date, fournisseur/client, IBAN si présent
+- Détecte le dossier client par SIRET, logo ou raison sociale (score de confiance)
+- Découpe automatiquement les emails avec plusieurs factures jointes
+
+**Tables Supabase** : `documents_ocr`, `ocr_extractions`
+
+**Schedule** : Déclenché après chaque collecte (trigger n8n)
+
+</details>
+
+---
+
+<details>
+<summary><strong>🏷️ Agent #3 — Tri &amp; Classification</strong> — Catégorisation automatique F/C/B/Autres</summary>
+
+### Tri & Classification
+
+**Rôle business en 1 phrase**
+Classe chaque document en Fournisseur, Client, Banque ou Autres avec un score de confiance, et met en attente les cas ambigus pour arbitrage collaborateur.
+
+**Problème résolu**
+Le tri manuel des documents est la tâche la plus chronophage et la plus sujette aux erreurs de classement. Les multi-dossiers (une facture pour plusieurs clients) sont particulièrement complexes.
+
+**Ce que fait l'agent en langage client**
+- Attribue une catégorie F/C/B/Autres avec score confiance ≥ 80%
+- Règle multi-dossiers : si >50% des signaux pointent vers un dossier → attribution automatique
+- Si ambigu (aucune majorité) → mise en attente dans la vue Lovable (pastille orange)
+- Apprentissage continu : chaque décision collaborateur améliore le modèle
+
+**Tables Supabase** : `documents_classified`, `classification_votes`
+
+**Schedule** : Déclenché après chaque OCR (trigger n8n)
+
+</details>
+
+---
+
+<details>
+<summary><strong>✍️ Agent #4 — Pré-saisie</strong> — Propositions d'écritures comptables assistées par IA</summary>
+
+### Pré-saisie
+
+**Rôle business en 1 phrase**
+Génère automatiquement des propositions d'écritures comptables en combinant Claude Vision et la mémoire vectorielle du FEC historique du dossier.
+
+**Problème résolu**
+La saisie comptable est le cœur du métier mais aussi la tâche la plus chronophage. Un document classifié doit encore être saisi manuellement avec le bon compte PCG, le bon sens D/C, le bon libellé.
+
+**Ce que fait l'agent en langage client**
+- Interroge pgvector avec les données extraites pour trouver des écritures similaires dans le FEC historique du dossier
+- Propose les écritures débit/crédit avec comptes PCG suggérés et libellé auto-rempli
+- Score de similarité FEC : plus le score est élevé, plus la proposition est fiable
+- Le collaborateur valide, modifie ou rejette — chaque décision enrichit le vecteur store
+
+**Tables Supabase** : `ecritures_proposees`, `fec_vectorstore` (pgvector)
+
+**Schedule** : Déclenché après chaque tri validé (trigger n8n)
+
+</details>
+
+---
+
+<details>
+<summary><strong>✅ Agent #5 — Vérificateur</strong> — Contrôle qualité automatique avant validation humaine</summary>
+
+### Vérificateur
+
+**Rôle business en 1 phrase**
+Effectue un contrôle qualité automatique sur les écritures proposées avant de les soumettre au collaborateur pour validation.
+
+**Problème résolu**
+Sans vérification automatique, des écritures déséquilibrées ou avec des comptes PCG incohérents peuvent passer en validation — le collaborateur perd du temps à les corriger.
+
+**Ce que fait l'agent en langage client**
+- Vérifie l'équilibre Débit = Crédit pour chaque écriture
+- Contrôle la cohérence des comptes PCG (numéros valides, classe correcte)
+- Détecte les doublons (même montant + même date + même fournisseur)
+- Écriture OK → soumise au collaborateur pour validation · Écriture KO → rejetée avec motif
+
+**Tables Supabase** : `controle_qualite`, `rejets_verif`
+
+**Schedule** : Déclenché après chaque pré-saisie (trigger n8n)
+
+</details>
+
+---
+
+### COMPTABILITÉ & FISCAL (#6, #7, #8, #10)
+
+---
+
+<details>
+<summary><strong>🧾 Agent #6 — TVA</strong> — Calcul et OD TVA automatique J-10</summary>
+
+### TVA
+
+**Rôle business en 1 phrase**
+Calcule automatiquement la TVA collectée et déductible, génère les OD TVA et déclenche le processus de déclaration J-10 avant l'échéance DGFiP.
+
+**Problème résolu**
+Oublier une déclaration TVA ou se tromper dans le calcul entraîne des pénalités DGFiP. La gestion des régimes différents (débits vs encaissements) ajoute de la complexité.
+
+**Ce que fait l'agent en langage client**
+- Calcule TVA collectée / TVA déductible à partir des écritures validées
+- Génère les OD (opérations diverses) TVA avec les bons comptes de TVA
+- Gère les régimes débits ET encaissements selon le paramétrage dossier
+- Déclenche automatiquement à J-10 avant chaque échéance DGFiP
+
+**Tables Supabase** : `declarations_tva`, `od_tva`
+
+**Schedule** : Cron J-10 (n8n scheduled trigger)
+
+</details>
+
+---
+
+<details>
+<summary><strong>💶 Agent #7 — IS</strong> — Acomptes IS et estimation résultat fiscal</summary>
+
+### IS
+
+**Rôle business en 1 phrase**
+Calcule les acomptes IS trimestriels, estime le résultat fiscal en cours d'exercice et alerte avant chaque deadline DGFiP.
+
+**Problème résolu**
+Les acomptes IS sur 4 tranches annuelles sont facilement oubliés, et estimer le résultat en cours d'exercice nécessite un accès temps réel aux données comptables.
+
+**Ce que fait l'agent en langage client**
+- Calcule les 4 acomptes IS selon le résultat N-1 (ou résultat estimé N si option)
+- Estime le résultat fiscal en temps réel à partir du FEC vivant
+- Alerte J-15/J-7/J-3 avant chaque tranche
+
+**Tables Supabase** : `acomptes_is`, `estimations_resultat`
+
+**Schedule** : Trimestriel (cron n8n) + calcul continu résultat estimé
+
+</details>
+
+---
+
+<details>
+<summary><strong>🔗 Agent #8 — Lettrage</strong> — Rapprochement règlements/factures automatique</summary>
+
+### Lettrage
+
+**Rôle business en 1 phrase**
+Rapproche automatiquement les règlements reçus avec les factures en attente, gère les virements en attente (compte 471) et apprend les patterns de paiement par dossier.
+
+**Problème résolu**
+Le lettrage manuel est long et source d'erreurs. Les virements non identifiés restent en compte 471, créant des positions ouvertes inexpliquées.
+
+**Ce que fait l'agent en langage client**
+- Rapproche les règlements entrants (flux Regate) avec les factures clients ouvertes
+- Lettrage par montant exact, puis par tolérance ±2€ (frais bancaires)
+- Identifie les virements non matchés → compte 471 avec note d'arbitrage
+- Apprentissage : mémorise les patterns IBAN → dossier pour accélérer les prochains lettrages
+
+**Tables Supabase** : `lettrages`, `compte_471`, `patterns_paiement`
+
+**Schedule** : Continu (déclenché après chaque import flux bancaire Regate)
+
+</details>
+
+---
+
+<details>
+<summary><strong>📋 Agent #10 — FNP/FAE</strong> — Provisions fin d'exercice (décembre uniquement)</summary>
+
+### FNP/FAE
+
+**Rôle business en 1 phrase**
+Détecte les factures non parvenues et les factures à établir en décembre pour générer automatiquement les provisions de clôture d'exercice.
+
+**Problème résolu**
+Les FNP et FAE sont systématiquement oubliées ou sous-estimées en décembre, ce qui fausse le résultat comptable de l'exercice.
+
+**Ce que fait l'agent en langage client**
+- Détecte les factures attendues non reçues (FNP) en comparant les engagements avec les pièces reçues
+- Identifie les prestations réalisées sans facture émise (FAE)
+- Génère les OD de provision avec les montants estimés et les comptes de charges à payer
+
+**Tables Supabase** : `provisions_fnp`, `provisions_fae`
+
+**Schedule** : Annuel — déclenché en décembre (cron n8n)
+
+</details>
+
+---
+
+### SYNCHRONISATION SAGE (#9, #11, #12)
+
+---
+
+<details>
+<summary><strong>🗂️ Agent #9 — GED</strong> — Archivage uniquement des documents validés (déplacé fin de chaîne v2.2)</summary>
+
+### GED
+
+**Rôle business en 1 phrase**
+Archive dans Supabase Storage uniquement les documents ayant été validés par un collaborateur — aucune pièce non vérifiée n'est archivée.
+
+**Problème résolu**
+En v2.1, la GED archivait dès la réception. En v2.2, le principe est inversé : seul ce qui est validé est archivé, garantissant la qualité de l'archive comptable.
+
+**Ce que fait l'agent en langage client**
+- Déclenché après chaque validation collaborateur
+- Upload le document dans Supabase Storage avec métadonnées complètes (dossier, date, type, montant, écritures associées)
+- Génère un identifiant d'archive unique référencé dans les écritures Sage
+
+**Tables Supabase** : `ged_documents` (métadonnées) · Supabase Storage (fichiers)
+
+**Schedule** : Déclenché après validation collaborateur (trigger n8n)
+
+</details>
+
+---
+
+<details>
+<summary><strong>🤖 Agent #11 — RPA Sage</strong> — Synchronisation Sage Desktop via Power Automate</summary>
+
+### RPA Sage
+
+**Rôle business en 1 phrase**
+Injecte automatiquement dans Sage Desktop les écritures comptables validées de la journée, via Power Automate Desktop, chaque nuit à 22h00.
+
+**Problème résolu**
+La double saisie (Supabase + Sage) est une source d'erreurs et de perte de temps. Le RPA automatise entièrement le transfert vers Sage sans intervention humaine.
+
+**Ce que fait l'agent en langage client**
+- Power Automate Desktop pilote l'interface Sage (RPA clavier/souris)
+- Injecte toutes les écritures validées depuis la dernière synchronisation
+- Log des écritures injectées avec timestamp et statut (succès/erreur)
+- En cas d'erreur → alerte Outlook avec détail de l'écriture problématique
+
+**Tables Supabase** : `sage_sync_log`, `ecritures_validees`
+
+**Schedule** : Cron 22h00 quotidien (n8n)
+
+</details>
+
+---
+
+<details>
+<summary><strong>📊 Agent #12 — Miroir Sage + Rapport Matinal</strong> — FEC vivant 23h + mail 06h</summary>
+
+### Miroir Sage + Rapport Matinal
+
+**Rôle business en 1 phrase**
+Génère un FEC vivant à 23h00 (miroir temps réel de Sage) et envoie un rapport matinal par email à 06h00 avec les KPIs de la veille et les actions à traiter.
+
+**Problème résolu**
+Sans FEC vivant, le collaborateur ne peut pas piloter la situation comptable en temps réel. Le rapport matinal remplace la "revue de la veille" manuelle.
+
+**Ce que fait l'agent en langage client**
+- 23h00 : extrait le FEC complet depuis Sage après synchronisation RPA, le stocke dans Supabase
+- Calcule les indicateurs clés : CA, charges, résultat estimé, soldes comptes
+- 06h00 : envoie un email récapitulatif avec anomalies détectées par l'Agent Révision, documents traités, actions en attente
+- Format adapté : lisible sur mobile, avec liens directs vers Lovable
+
+**Tables Supabase** : `fec_vivant`, `rapport_matinal_log`
+
+**Schedule** : FEC → Cron 23h00 · Rapport → Cron 06h00
+
+</details>
+
+---
+
+### INTELLIGENCE & CONTRÔLE (#13)
+
+---
+
+<details>
+<summary><strong>🔍 Agent #13 — Révision</strong> — Croisement anomalies 00h00</summary>
+
+### Révision
+
+**Rôle business en 1 phrase**
+Effectue un croisement automatique de toutes les anomalies comptables à minuit et injecte les résultats dans le rapport matinal de 06h00.
+
+**Problème résolu**
+Les anomalies comptables (doublons, écarts, TVA incohérente) ne sont détectées qu'en révision périodique — souvent trop tard. La révision nocturne automatique les détecte en temps réel.
+
+**Ce que fait l'agent en langage client**
+- Analyse le FEC vivant à 00h00 après synchronisation Sage
+- Détecte : doublons résiduels, écarts de lettrage non résolus, comptes déséquilibrés, TVA incohérente vs CA déclaré
+- Score d'anomalie par dossier : 🔴 critique / 🟠 à surveiller / 🟢 OK
+- Résultats injectés dans le rapport matinal 06h00 pour action immédiate au réveil
+
+**Tables Supabase** : `anomalies_revision`, `scores_dossiers`
+
+**Schedule** : Cron 00h00 quotidien (n8n)
+
+</details>
+
+---
+
+### ROADMAP MIGRATION v2.2 — Plan d'action 8 étapes
+
+| # | Étape | Responsable | Statut |
+|---|---|---|---|
+| 1 | Création boîte compta@jmpartners.fr | Admin IT | 🔄 En cours |
+| 2 | Reconnexion nœud Outlook n8n | Jeffrey + Michael | 🔄 En cours |
+| 3 | Création Agent OCR Edge Function | Michael | 🔜 À faire |
+| 4 | Refonte workflow n8n complet (11 phases) | Michael | 🔜 À faire |
+| 5 | Création vue "En attente" Lovable | Jeffrey | 🔜 À faire |
+| 6 | Ajout colonnes statut Supabase | Michael | 🔜 À faire |
+| 7 | Validation end-to-end dossier CIHAN | Jeffrey + Michael | 🔜 À faire |
+| 8 | Évaluation Sage Cloud Connector | Jeffrey | 🔜 Après Sprint 2 |
+
+---
+
+### INDICATEURS CIBLES v2.2 (KPIs)
+
+| KPI | Seuil cible | Mesure |
+|---|---|---|
+| Taux docs traités automatiquement | ≥ 85% | Hebdomadaire |
+| Temps mail → doc archivé | < 2 heures | Par document |
+| Taux erreur attribution dossier | < 2% | Mensuel |
+| Délai arbitrage collaborateur | < 4h ouvrées | Par doc en attente |
+| Réduction mises en attente | -10%/mois | Mensuel (apprentissage) |
+
+---
+
+### DÉCISION EN ATTENTE
+
+**Sage Cloud Connector vs Power Automate Desktop**
+
+> La synchronisation Sage est actuellement réalisée via Power Automate Desktop (RPA clavier/souris). Cette approche est fonctionnelle mais fragile aux mises à jour de l'interface Sage.
+>
+> **Option A — Power Automate Desktop** : immédiat, sans coût supplémentaire, fragile aux changements d'interface Sage.
+>
+> **Option B — Sage Cloud Connector** : plus robuste (API), coût licence à évaluer, nécessite Sage en mode cloud ou connecteur tiers.
+>
+> **Décision attendue** : après Sprint 2 du pilote CIHAN (évaluation Jeffrey). La performance du RPA sur les 5 premiers dossiers déterminera si le Cloud Connector vaut l'investissement.
+
+---
+
 ## PARTIE 3 — GRILLE TARIFAIRE GLOBALE
 
 ### Offres unitaires
@@ -809,7 +1194,7 @@ APScheduler exécute un cycle complet toutes les 30 minutes. Coordonne les 9 age
 |---|---|---|---|---|---|---|
 | **Mika Email Intelligence** | 6 agents email | 1 500 € | 290 € | 1 200-2 000 €/mois | 2 semaines | Cabinet +50 emails/jour |
 | **Mika Lead Hunter** | 5 agents lead | 1 800 € | 390 € | 2 000-5 000 €/mois | 2 semaines | PME prospection B2B IDF |
-| **Mika Compta Pilot** | 9 agents compta | 3 500 € | 590 € | 3 000-6 000 €/mois | 4 semaines | Cabinet 200-500 dossiers |
+| **Mika Compta Pilot v2.2** | 13 agents compta | 3 500 € | 690 € | ≥85% docs auto · <2h mail→archive | 6 semaines | Cabinet 150+ dossiers |
 
 ### 🎁 Bundles
 

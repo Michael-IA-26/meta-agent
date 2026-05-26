@@ -344,16 +344,16 @@
       </a>
 
       <a href="#compta-detail" class="offer-card compta-card">
-        <div class="offer-badge compta">9 agents</div>
-        <div class="offer-name">Mika Compta Pilot</div>
-        <div class="offer-tagline">Assistant comptable complet — relances clients, alertes TVA/IS, dashboard kanban, zéro oubli.</div>
+        <div class="offer-badge compta">13 agents</div>
+        <div class="offer-name">Mika Compta Pilot v2.2</div>
+        <div class="offer-tagline">Système comptable complet — OCR Claude Vision, chaîne documentaire, synchro Sage, FEC vivant. ≥85% docs traités automatiquement.</div>
         <div class="offer-price">
-          <span class="offer-price-setup" style="color:var(--compta-color);">2 500 €</span>
+          <span class="offer-price-setup" style="color:var(--compta-color);">3 500 €</span>
           <span class="offer-price-label">HT setup</span>
         </div>
-        <div class="offer-price-monthly">puis <strong>490 € HT/mois</strong></div>
-        <div class="offer-roi">⏱ ROI estimé : <strong>6h/semaine/comptable économisées</strong></div>
-        <div class="offer-agents">mail_handler · document_checker · relance_handler · tva_agent · echeance_agent + 4 autres</div>
+        <div class="offer-price-monthly">puis <strong>690 € HT/mois</strong></div>
+        <div class="offer-roi">⏱ ROI estimé : <strong>≥85% docs auto · &lt;2h mail→archive</strong></div>
+        <div class="offer-agents">Collecte · OCR · Tri · Pré-saisie · Vérificateur · TVA · IS · Lettrage · GED · RPA Sage · Miroir FEC · FNP/FAE · Révision</div>
         <div class="offer-cta">Voir la fiche →</div>
       </a>
 
@@ -613,8 +613,8 @@
     <div class="section-header">
       <div class="section-icon icon-purple">🏢</div>
       <div>
-        <h1 class="section-title">Mika Compta Pilot</h1>
-        <p class="section-desc">Assistant comptable complet. 9 agents. 3 sprints. Dashboard kanban. Cycle APScheduler toutes les 30 min.</p>
+        <h1 class="section-title">Mika Compta Pilot v2.2</h1>
+        <p class="section-desc">Système comptable complet. 13 agents. 11 phases. OCR Claude Vision · n8n · Lovable · Supabase 17 tables.</p>
       </div>
     </div>
 
@@ -622,8 +622,8 @@
       <div class="detail-header">
         <div class="detail-color-bar compta"></div>
         <div>
-          <div class="detail-name">Mika Compta Pilot</div>
-          <div class="detail-agents">9 agents · Setup 2 500 € HT · 490 € HT/mois</div>
+          <div class="detail-name">Mika Compta Pilot v2.2</div>
+          <div class="detail-agents">13 agents autonomes · Setup 3 500 € HT · 690 € HT/mois · ROI : ≥85% docs auto · &lt;2h mail→archive</div>
         </div>
       </div>
 
@@ -631,32 +631,39 @@
         <div class="detail-box">
           <div class="detail-box-label">Ce que ça automatise</div>
           <ul class="detail-list">
-            <li>Relances clients pour documents manquants</li>
-            <li>Alertes TVA avant chaque échéance (J-15/J-7/J-3)</li>
-            <li>Alertes acomptes IS avec montants et deadlines</li>
-            <li>Surveillance bilans et déclarations IS annuelles</li>
-            <li>Détection des clôtures de fin de mois</li>
-            <li>Notifications multi-canal selon l'urgence</li>
+            <li>OCR intelligent Claude Vision — lecture, extraction, découpage multi-factures</li>
+            <li>Détection automatique du dossier client (SIRET, logo, raison sociale)</li>
+            <li>Classification Fournisseur/Client/Banque/Fiscal</li>
+            <li>Propositions d'écritures comptables avec pgvector + apprentissage FEC</li>
+            <li>Vérification qualité automatique (équilibre D/C, cohérence PCG)</li>
+            <li>Archivage GED uniquement des docs validés</li>
+            <li>Synchronisation Sage automatique chaque nuit (22h)</li>
+            <li>Miroir FEC + rapport matinal 06h00</li>
+            <li>Détection anomalies comptables (révision 00h00)</li>
+            <li>TVA automatique J-10 + acomptes IS trimestriels</li>
+            <li>Lettrage règlements/factures + gestion 471</li>
+            <li>Vue "En attente" pour arbitrage humain avec apprentissage</li>
           </ul>
         </div>
         <div class="detail-box">
           <div class="detail-box-label">Ce que le client reçoit</div>
           <ul class="detail-list">
-            <li>Dashboard kanban : dossiers en retard / en attente / complets</li>
-            <li>Alertes Telegram pour les urgences J-3/J-0</li>
-            <li>Emails automatiques de relance clients</li>
-            <li>Rapport quotidien des échéances 30 jours</li>
-            <li>Journal complet de toutes les actions automatisées</li>
+            <li>Interface Lovable : dashboard + vue kanban + pastille orange En attente</li>
+            <li>Rapport matinal 06h00 : KPIs veille, anomalies, actions à traiter</li>
+            <li>Alertes TVA J-10 automatiques</li>
+            <li>FEC vivant mis à jour chaque nuit à 23h00</li>
+            <li>Sage synchronisé automatiquement (22h00 via Power Automate)</li>
+            <li>Log complet de toutes les actions automatisées</li>
           </ul>
         </div>
         <div class="detail-box">
-          <div class="detail-box-label">Prérequis techniques</div>
+          <div class="detail-box-label">Prérequis techniques v2.2</div>
           <ul class="detail-list">
-            <li>Accès IMAP du cabinet (ou Gmail)</li>
-            <li>Liste contacts clients (import CSV)</li>
-            <li>Liste dossiers actifs (import CSV)</li>
-            <li>Calendrier fiscal configuré (type dossier, dates)</li>
-            <li>Bot Telegram + SMTP configurés</li>
+            <li>Microsoft 365 (boîte compta@jmpartners.fr)</li>
+            <li>Regate API (flux bancaires ~150 dossiers)</li>
+            <li>Sage Desktop (Power Automate ou futur Cloud Connector)</li>
+            <li>Supabase Pro (pgvector + Storage)</li>
+            <li>n8n hébergé (ou n8n Cloud)</li>
           </ul>
         </div>
         <div class="detail-box">
@@ -666,51 +673,121 @@
             <li>Accès nominatif, logs auditables</li>
             <li>RGPD : hébergement EU, zéro transfert tiers</li>
             <li>Résiliation 30j, export complet 15j</li>
-            <li>Le code reste accessible sur GitHub</li>
+            <li>Claude Vision : zéro entraînement sur vos données (API Anthropic)</li>
           </ul>
         </div>
       </div>
 
-      <h2 class="sub">Les 9 agents — Sprint par Sprint</h2>
+      <h2 class="sub">Les 13 agents — par groupe fonctionnel</h2>
       <div class="detail-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
         <div class="detail-box">
-          <div class="detail-box-label" style="color:var(--accent);">Sprint 1 — Email & Documents ✅</div>
+          <div class="detail-box-label" style="color:var(--blue);">Chaîne documentaire (#1→#5)</div>
           <ul class="detail-list">
-            <li><strong>mail_handler</strong> — lecture IMAP, identification client, classification</li>
-            <li><strong>document_checker</strong> — pièces manquantes, urgences J-15/J-7/J-3/J-0</li>
-            <li><strong>relance_handler</strong> — email relance IA personnalisé, anti-doublon 48h</li>
-            <li><strong>tva_agent</strong> — alertes TVA avant deadline DGFiP</li>
-            <li><strong>echeance_agent</strong> — rapport quotidien toutes échéances 30 jours</li>
+            <li><strong>Collecte (#1)</strong> — compta@jmpartners.fr + Regate + PennyLane — continu</li>
+            <li><strong>OCR (#2)</strong> — Claude Vision Edge Function — après collecte</li>
+            <li><strong>Tri &amp; Classification (#3)</strong> — F/C/B/Autres, confiance ≥80% — après OCR</li>
+            <li><strong>Pré-saisie (#4)</strong> — Claude Vision + pgvector + FEC — après tri</li>
+            <li><strong>Vérificateur (#5)</strong> — D/C, PCG, doublons — après pré-saisie</li>
           </ul>
         </div>
         <div class="detail-box">
-          <div class="detail-box-label" style="color:var(--orange);">Sprint 2 — Clôtures & IS ✅</div>
+          <div class="detail-box-label" style="color:var(--orange);">Comptabilité &amp; Fiscal (#6, #7, #8, #10)</div>
           <ul class="detail-list">
-            <li><strong>cloture_handler</strong> — fin de mois, vérif pièces, notification comptable</li>
-            <li><strong>acompte_is_agent</strong> — alertes IS J-15/J-7/J-3 avec montants</li>
+            <li><strong>TVA (#6)</strong> — OD TVA, régimes débits/encaissements — cron J-10</li>
+            <li><strong>IS (#7)</strong> — acomptes 4 tranches, estimation résultat — trimestriel</li>
+            <li><strong>Lettrage (#8)</strong> — rapprochement règlements/factures, compte 471 — continu</li>
+            <li><strong>FNP/FAE (#10)</strong> — provisions fin d'exercice — annuel (décembre)</li>
           </ul>
-          <div class="detail-box-label" style="color:var(--purple);margin-top:12px;">Sprint 3 — Intelligence ✅</div>
+          <div class="detail-box-label" style="color:var(--purple);margin-top:12px;">Synchro Sage (#9, #11, #12)</div>
           <ul class="detail-list">
-            <li><strong>bilan_agent</strong> — J-30/J-15/J-7 avant deadline bilan</li>
-            <li><strong>declaration_is_agent</strong> — IS annuel, résumé éléments disponibles</li>
-            <li><strong>notification_agent</strong> — hub central, déduplication 24h, multi-canal</li>
+            <li><strong>GED (#9)</strong> — archive docs validés uniquement — Supabase Storage</li>
+            <li><strong>RPA Sage (#11)</strong> — Power Automate Desktop — 22h00</li>
+            <li><strong>Miroir + Rapport (#12)</strong> — FEC vivant 23h, mail 06h</li>
           </ul>
+          <div class="detail-box-label" style="color:var(--red);margin-top:12px;">Intelligence &amp; Contrôle (#13)</div>
+          <ul class="detail-list">
+            <li><strong>Révision (#13)</strong> — croisement anomalies — cron 00h00</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="sub" style="margin-top:20px;">Onboarding adapté — 6 semaines</h2>
+      <div class="onboarding-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 1</div>
+          <div class="onboarding-week-title">Discovery</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Cartographie processus cabinet</li>
+            <li>Accès systèmes Sage, Regate</li>
+            <li>Définition périmètre dossiers</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Cadrage signé</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 2</div>
+          <div class="onboarding-week-title">Setup boîte + n8n</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Création compta@jmpartners.fr</li>
+            <li>Connexion nœud Outlook n8n</li>
+            <li>Tables Supabase (17) créées</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Infra fonctionnelle</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 3</div>
+          <div class="onboarding-week-title">Agent OCR + Tri</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Edge Function OCR deployée</li>
+            <li>Tests sur pièces réelles</li>
+            <li>Calibration seuils confiance</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ OCR &gt;90% précision</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 4</div>
+          <div class="onboarding-week-title">Pré-saisie + Vérif + GED</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>pgvector alimenté avec FEC</li>
+            <li>Pré-saisie calibrée sur dossier</li>
+            <li>GED Supabase Storage</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Chaîne docs complète</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 5</div>
+          <div class="onboarding-week-title">Sage RPA + Miroir + Révision</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Power Automate configuré</li>
+            <li>FEC vivant 23h opérationnel</li>
+            <li>Rapport matinal 06h actif</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Flux nocturne OK</div>
+        </div>
+        <div class="onboarding-week">
+          <div class="onboarding-week-num">Semaine 6</div>
+          <div class="onboarding-week-title">Go Live pilote → 5 dossiers</div>
+          <ul class="detail-list" style="font-size:12px;">
+            <li>Validation dossier pilote CIHAN</li>
+            <li>Formation collaborateurs (1h)</li>
+            <li>Monitoring J+1, J+3, J+7</li>
+          </ul>
+          <div class="onboarding-week-deliverable">✅ Client autonome</div>
         </div>
       </div>
 
       <h2 class="sub" style="margin-top:20px;">Objections fréquentes</h2>
       <div class="objection-list">
         <div class="objection-item">
-          <div class="objection-q">❝ On a déjà un logiciel comptable (ACD, Cegid, MyUnisoft...) ❞</div>
-          <div class="objection-a">Mika Compta Pilot ne remplace pas votre logiciel comptable — il automatise la couche de communication et de surveillance que votre logiciel ne fait pas : relancer les clients, surveiller les échéances, alerter proactivement. Il s'intègre en parallèle, via Supabase comme intermédiaire.</div>
+          <div class="objection-q">❝ On a déjà un logiciel comptable (Sage, ACD, Cegid...) ❞</div>
+          <div class="objection-a">Mika Compta Pilot v2.2 ne remplace pas votre logiciel — il automatise la couche OCR, classification et pré-saisie que votre logiciel ne fait pas. Sage reste l'outil de référence : le RPA y injecte automatiquement les écritures validées chaque nuit. Vous gardez votre workflow, vous gagnez 2-3h/jour.</div>
         </div>
         <div class="objection-item">
-          <div class="objection-q">❝ 2 500 € de setup c'est beaucoup pour un cabinet de notre taille ❞</div>
-          <div class="objection-a">Un gestionnaire à 35k€/an passe environ 2h/jour sur des relances et la surveillance des échéances = 500h/an = 9 000€ de coût brut. Mika automatise 80% de ces tâches. Le setup est amorti en 3-4 mois. À partir du 5e mois, c'est du bénéfice net.</div>
+          <div class="objection-q">❝ 3 500 € de setup c'est beaucoup ❞</div>
+          <div class="objection-a">Un gestionnaire à 35k€/an passe en moyenne 2h/jour sur la saisie et le tri de documents = 500h/an = 9 000€ de coût brut. Mika automatise ≥85% de cette tâche. Le setup est amorti en 4-5 mois. À partir du 6e mois, c'est du bénéfice net — et la qualité de saisie augmente car les doublons et erreurs PCG sont détectés automatiquement.</div>
         </div>
         <div class="objection-item">
-          <div class="objection-q">❝ On n'a pas de technicien en interne pour maintenir ça ❞</div>
-          <div class="objection-a">L'abonnement mensuel inclut la maintenance complète : mise à jour des APIs, correction des bugs, monitoring Sentry 24h/24. Vous n'avez rien à gérer techniquement. Votre seul rôle : vérifier le dashboard le matin et valider les actions suggérées.</div>
+          <div class="objection-q">❝ On n'a pas de technicien pour maintenir ça ❞</div>
+          <div class="objection-a">L'abonnement mensuel inclut la maintenance complète : mise à jour APIs, correction bugs, monitoring. Votre rôle : vérifier le dashboard Lovable le matin, valider les documents en attente (pastille orange), et valider les écritures proposées. C'est tout. Le système apprend à chaque validation — il devient plus précis chaque semaine.</div>
         </div>
       </div>
     </div>
@@ -759,13 +836,13 @@
             <td><span class="target-tag">PME B2B IDF</span></td>
           </tr>
           <tr>
-            <td><strong style="color:var(--compta-color);">🏢 Mika Compta Pilot</strong></td>
-            <td>9 agents</td>
-            <td><span class="price-setup">2 500 €</span></td>
-            <td><span class="price-monthly">490 €/mois</span></td>
-            <td><span class="roi-badge">6h/sem./comptable</span></td>
-            <td>4 semaines</td>
-            <td><span class="target-tag">Cabinet 200+ dossiers</span></td>
+            <td><strong style="color:var(--compta-color);">🏢 Mika Compta Pilot v2.2</strong></td>
+            <td>13 agents</td>
+            <td><span class="price-setup">3 500 €</span></td>
+            <td><span class="price-monthly">690 €/mois</span></td>
+            <td><span class="roi-badge">≥85% docs auto</span></td>
+            <td>6 semaines</td>
+            <td><span class="target-tag">Cabinet 150+ dossiers</span></td>
           </tr>
         </tbody>
       </table>
@@ -804,9 +881,9 @@
     <div class="card" style="margin-top:20px; margin-bottom:0;">
       <p style="font-size:13px; color:var(--text-2); line-height:1.7;">
         <strong style="color:var(--text);">Exemple Scale</strong> — Les 3 agents à −20% :<br>
-        Setup : (1 500 + 1 200 + 2 500) × 0,80 = <strong>4 160 € HT</strong> (vs 5 200 € en unitaire)<br>
-        Mensuel : (290 + 250 + 490) × 0,80 = <strong>824 € HT/mois</strong> (vs 1 030 €/mois en unitaire)<br>
-        Économie annuelle : <strong>2 472 € HT</strong>
+        Setup : (1 500 + 1 200 + 3 500) × 0,80 = <strong>4 960 € HT</strong> (vs 6 200 € en unitaire)<br>
+        Mensuel : (290 + 250 + 690) × 0,80 = <strong>984 € HT/mois</strong> (vs 1 230 €/mois en unitaire)<br>
+        Économie annuelle : <strong>2 952 € HT</strong>
       </p>
     </div>
   </section>

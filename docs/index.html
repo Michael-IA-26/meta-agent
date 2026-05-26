@@ -451,12 +451,13 @@
     </div>
 
     <div class="nav-section">
-      <div class="nav-section-title">🏢 JM Partners</div>
+      <div class="nav-section-title">🏢 JM Partners v2.2</div>
       <a href="#jm-overview"  class="nav-link"><span class="nav-icon">👁</span> Vue d'ensemble</a>
-      <a href="#jm-sprint1"   class="nav-link"><span class="nav-icon">📬</span> Sprint 1 — Email & Docs</a>
-      <a href="#jm-sprint2"   class="nav-link"><span class="nav-icon">📅</span> Sprint 2 — Clôtures & IS</a>
-      <a href="#jm-sprint3"   class="nav-link"><span class="nav-icon">🔔</span> Sprint 3 — Intelligence</a>
-      <a href="#jm-flow"      class="nav-link"><span class="nav-icon">🔀</span> Orchestration</a>
+      <a href="#jm-group1"    class="nav-link"><span class="nav-icon">📄</span> Chaîne documentaire</a>
+      <a href="#jm-group2"    class="nav-link"><span class="nav-icon">🧾</span> Compta &amp; Fiscal</a>
+      <a href="#jm-group3"    class="nav-link"><span class="nav-icon">💻</span> Synchro Sage</a>
+      <a href="#jm-group4"    class="nav-link"><span class="nav-icon">🔍</span> Intelligence</a>
+      <a href="#jm-flow"      class="nav-link"><span class="nav-icon">🔀</span> Workflow 11 phases</a>
     </div>
 
     <div class="nav-section">
@@ -495,7 +496,7 @@
     </div>
     <h1 class="hero-title"><span>Meta-Agent</span></h1>
     <p class="hero-subtitle">L'IA qui automatise votre cabinet, votre prospection et vos emails</p>
-    <p class="hero-sub"><strong>3 agents autonomes</strong> · <strong>9 sous-agents spécialisés</strong> · <strong>308 tests</strong> · <strong>En production</strong></p>
+    <p class="hero-sub"><strong>3 agents autonomes</strong> · <strong>13 agents JM Partners v2.2</strong> · <strong>308 tests</strong> · <strong>En production</strong></p>
     <div class="hero-actions">
       <a href="#email-overview" class="btn-primary">Voir la démo →</a>
       <a href="https://github.com/Michael-IA-26/meta-agent" class="btn-secondary" target="_blank" rel="noopener">GitHub</a>
@@ -515,7 +516,7 @@
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-value stat-indigo">3</div><div class="stat-label">Agents autonomes</div></div>
       <div class="stat-card"><div class="stat-value stat-green">308</div><div class="stat-label">Tests pytest verts</div></div>
-      <div class="stat-card"><div class="stat-value stat-orange">9</div><div class="stat-label">Sous-agents JM Partners</div></div>
+      <div class="stat-card"><div class="stat-value stat-orange">13</div><div class="stat-label">Agents JM Partners</div></div>
       <div class="stat-card"><div class="stat-value stat-blue">6</div><div class="stat-label">Agents Email pipeline</div></div>
       <div class="stat-card"><div class="stat-value stat-purple">76%</div><div class="stat-label">Leads IDF qualifiés</div></div>
     </div>
@@ -552,12 +553,12 @@
           <div class="project-card-icon">🏢</div>
           <div>
             <div class="project-card-name">JM Partners</div>
-            <div class="project-card-status" style="color:var(--orange);"><span class="dot" style="background:var(--orange);"></span> Beta · 8 juin 2026</div>
+            <div class="project-card-status" style="color:var(--orange);"><span class="dot" style="background:var(--orange);"></span> Migration v2.2 · mai-juin 2026</div>
           </div>
         </div>
-        <p class="project-card-desc">Assistant comptable complet : relances clients, suivi TVA/IS, alertes échéances, dashboard kanban. 9 agents. 8 tables SQL.</p>
+        <p class="project-card-desc">Système comptable complet : OCR Claude Vision, chaîne documentaire automatisée, synchro Sage, miroir FEC. 13 agents. 17 tables Supabase. Pilote CIHAN.</p>
         <div class="project-card-meta">
-          <span class="meta-tag">9 agents</span><span class="meta-tag">3 sprints</span><span class="meta-tag">FastAPI</span><span class="meta-tag">APScheduler</span>
+          <span class="meta-tag">13 agents</span><span class="meta-tag">11 phases</span><span class="meta-tag">n8n</span><span class="meta-tag">Lovable</span>
         </div>
       </a>
     </div>
@@ -1172,395 +1173,381 @@
     <div class="section-header">
       <div class="section-icon icon-orange">🏢</div>
       <div>
-        <h1 class="section-title">JM Partners — Cabinet Comptable</h1>
-        <p class="section-desc">Assistant comptable complet. 9 agents spécialisés. 3 sprints livrés. Beta le 8 juin 2026.</p>
+        <h1 class="section-title">JM Partners — Système Multi-Agents Comptable v2.2</h1>
+        <p class="section-desc">13 agents autonomes · 17 tables Supabase · Dossier pilote CIHAN · Boîte compta@jmpartners.fr</p>
       </div>
     </div>
 
-    <div class="card">
-      <p style="font-size:14px; color:var(--text-2); line-height:1.7;">
-        JM Partners est un cabinet d'expertise comptable accompagnant des TPE/PME (SARL, SAS, EURL).
-        Le système automatise les tâches répétitives à faible valeur ajoutée : relances clients pour documents manquants,
-        surveillance du calendrier fiscal (TVA, IS, bilans), alertes proactives J-15/J-7/J-3,
-        et notifications multi-canal (email + Telegram) selon l'urgence.
-        <br><br>
-        Un <strong>dashboard FastAPI</strong> offre un kanban dossiers (Documents manquants / En attente / Complet),
-        un calendrier échéances J-30/J-15/J-7/J-3, et un bouton dry-run pour tester sans envoi réel.
-        APScheduler exécute un cycle complet toutes les 30 minutes en production.
-      </p>
+    <div class="stats-grid" style="margin-top:0; margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-value stat-orange">13</div><div class="stat-label">Agents spécialisés</div></div>
+      <div class="stat-card"><div class="stat-value stat-purple">17</div><div class="stat-label">Tables Supabase</div></div>
+      <div class="stat-card"><div class="stat-value stat-blue">11</div><div class="stat-label">Phases workflow</div></div>
+      <div class="stat-card"><div class="stat-value stat-green">85<span style="font-size:16px;letter-spacing:0;">%</span></div><div class="stat-label">Cible docs auto</div></div>
     </div>
 
-    <div class="stats-grid" style="margin-top:20px;">
-      <div class="stat-card"><div class="stat-value stat-orange">9</div><div class="stat-label">Agents spécialisés</div></div>
-      <div class="stat-card"><div class="stat-value stat-purple">8</div><div class="stat-label">Tables Supabase</div></div>
-      <div class="stat-card"><div class="stat-value stat-green">3</div><div class="stat-label">Sprints livrés</div></div>
-      <div class="stat-card"><div class="stat-value stat-blue">30<span style="font-size:16px;letter-spacing:0;">min</span></div><div class="stat-label">Cycle APScheduler</div></div>
-    </div>
-
-    <!-- SPRINT 1 -->
-    <div class="sprint-header" id="jm-sprint1">
-      <span class="sprint-badge">Sprint 1</span>
-      <span class="sprint-title">Flux email & documents</span>
-      <span class="sprint-status">✅ Livré</span>
+    <!-- GROUPE 1 — Chaîne documentaire -->
+    <div class="sprint-header" id="jm-group1">
+      <span class="sprint-badge">Groupe 1</span>
+      <span class="sprint-title">Chaîne documentaire — Agents #1 → #5</span>
+      <span class="sprint-status">Collecte → OCR → Tri → Pré-saisie → Vérificateur</span>
     </div>
     <div class="agents-grid">
 
       <div class="card">
         <div class="card-header">
           <span style="font-size:20px;">📬</span>
-          <h3 class="card-title">mail_handler</h3>
-          <span class="agent-badge badge-blue">S1-A</span>
+          <h3 class="card-title">Collecte</h3>
+          <span class="agent-badge badge-blue">#1 · Continu</span>
         </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Lit les emails IMAP entrants du cabinet. Identifie le client par matching email/nom dans Supabase. Classifie la demande et retourne une réponse structurée.</p>
+        <p style="font-size:12.5px;color:var(--text-2);">Surveillance de la boîte compta@jmpartners.fr (Outlook) et des flux Regate, PennyLane et Chaintrust. Point d'entrée unique de toutes les pièces comptables.</p>
         <div class="io-grid">
           <div class="io-box">
             <div class="io-label input">Input</div>
             <ul class="io-items">
-              <li>IMAP inbox (serveur)</li>
-              <li>emails non lus</li>
+              <li>compta@jmpartners.fr (Outlook)</li>
+              <li>Regate API (~150 dossiers)</li>
+              <li>PennyLane + Chaintrust</li>
             </ul>
           </div>
           <div class="io-box">
             <div class="io-label output">Output</div>
             <ul class="io-items">
-              <li>type_demande classifié</li>
-              <li>contact_id résolu</li>
-              <li>dossier_id si trouvé</li>
+              <li>PJ brutes extraites</li>
+              <li>Métadonnées email</li>
+              <li>Queue pour Agent OCR</li>
             </ul>
           </div>
         </div>
-        <span class="db-tag">🗄️ contacts</span>
-        <span class="db-tag">🗄️ dossiers</span>
+        <span class="db-tag">🗄️ documents_inbox</span>
+        <span class="db-tag">📧 Outlook API</span>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <span style="font-size:20px;">📋</span>
-          <h3 class="card-title">document_checker</h3>
-          <span class="agent-badge badge-indigo">S1-B</span>
+          <span style="font-size:20px;">👁</span>
+          <h3 class="card-title">OCR</h3>
+          <span class="agent-badge badge-indigo">#2 · Après collecte</span>
         </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Interroge Supabase pour lister les pièces manquantes par dossier. Compare avec la liste attendue selon le type (bilan, TVA, IS, paie). Calcule les deadlines et niveaux d'urgence.</p>
+        <p style="font-size:12.5px;color:var(--text-2);">Pivot central — Claude Vision lit chaque pièce jointe, extrait les données structurées, détecte le dossier client (SIRET, logo, raison sociale) et découpe les multi-factures.</p>
         <div class="io-grid">
           <div class="io-box">
             <div class="io-label input">Input</div>
             <ul class="io-items">
-              <li>dossier_id</li>
-              <li>type_dossier</li>
+              <li>PJ brutes (PDF, image)</li>
+              <li>Contexte email</li>
             </ul>
           </div>
           <div class="io-box">
             <div class="io-label output">Output</div>
             <ul class="io-items">
-              <li>pièces manquantes</li>
-              <li>urgence J-15/J-7/J-3/J-0</li>
-              <li>deadline calculée</li>
+              <li>Données structurées extraites</li>
+              <li>Dossier détecté (score confiance)</li>
+              <li>Documents découpés</li>
             </ul>
           </div>
         </div>
-        <span class="db-tag">🗄️ documents</span>
-        <span class="db-tag">🗄️ dossiers</span>
+        <span class="db-tag">🗄️ documents_ocr</span>
+        <span class="db-tag">🤖 Claude Vision</span>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <span style="font-size:20px;">✉️</span>
-          <h3 class="card-title">relance_handler</h3>
-          <span class="agent-badge badge-green">S1-C</span>
+          <span style="font-size:20px;">🏷️</span>
+          <h3 class="card-title">Tri &amp; Classification</h3>
+          <span class="agent-badge badge-orange">#3 · Après OCR</span>
         </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Compose l'email de relance via Claude API (ton professionnel, personnalisé avec nom client + liste documents). Envoie via SMTP. Évite les doublons (pas 2 relances dans les 48h).</p>
+        <p style="font-size:12.5px;color:var(--text-2);">Classification Fournisseur / Client / Banque / Autres avec score confiance ≥ 80%. Règles multi-dossiers : majorité stricte &gt;50%, mise en attente Lovable (pastille orange) pour les cas ambigus.</p>
         <div class="io-grid">
           <div class="io-box">
             <div class="io-label input">Input</div>
             <ul class="io-items">
-              <li>contact info</li>
-              <li>pièces manquantes</li>
-              <li>deadline urgence</li>
+              <li>Données OCR structurées</li>
+              <li>Dossier détecté</li>
             </ul>
           </div>
           <div class="io-box">
             <div class="io-label output">Output</div>
             <ul class="io-items">
-              <li>email envoyé (bool)</li>
-              <li>log dans journaux</li>
+              <li>Catégorie F/C/B/Autres</li>
+              <li>Score confiance ≥ 80%</li>
+              <li>Vue attente si ambigu</li>
             </ul>
           </div>
         </div>
-        <span class="db-tag">🤖 Claude API</span>
-        <span class="db-tag">🗄️ relances</span>
+        <span class="db-tag">🗄️ documents_classified</span>
+        <span class="db-tag">🟠 Vue En attente Lovable</span>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <span style="font-size:20px;">🧾</span>
-          <h3 class="card-title">tva_agent</h3>
-          <span class="agent-badge badge-orange">S1-D</span>
+          <span style="font-size:20px;">✍️</span>
+          <h3 class="card-title">Pré-saisie</h3>
+          <span class="agent-badge badge-green">#4 · Après tri</span>
         </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Surveille les déclarations TVA à venir. Vérifie la disponibilité des pièces. Alerte le comptable J-15/J-7/J-3 par email + Telegram.</p>
+        <p style="font-size:12.5px;color:var(--text-2);">Claude Vision + pgvector génèrent des propositions d'écritures comptables en s'appuyant sur le FEC historique du dossier. Apprentissage continu par validation collaborateur.</p>
         <div class="io-grid">
           <div class="io-box">
             <div class="io-label input">Input</div>
             <ul class="io-items">
-              <li>date courante</li>
-              <li>horizon 30 jours</li>
+              <li>Document classifié</li>
+              <li>FEC historique (pgvector)</li>
             </ul>
           </div>
           <div class="io-box">
             <div class="io-label output">Output</div>
             <ul class="io-items">
-              <li>liste échéances TVA</li>
-              <li>alertes envoyées</li>
+              <li>Écritures proposées D/C</li>
+              <li>Comptes PCG suggérés</li>
+              <li>Score similarité FEC</li>
             </ul>
           </div>
         </div>
-        <span class="db-tag">🗄️ declarations_tva</span>
-        <span class="db-tag">💬 Telegram</span>
+        <span class="db-tag">🗄️ ecritures_proposees</span>
+        <span class="db-tag">🤖 Claude Vision + pgvector</span>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <span style="font-size:20px;">📅</span>
-          <h3 class="card-title">echeance_agent</h3>
-          <span class="agent-badge badge-purple">S1-E</span>
+          <span style="font-size:20px;">✅</span>
+          <h3 class="card-title">Vérificateur</h3>
+          <span class="agent-badge badge-purple">#5 · Après pré-saisie</span>
         </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Scanne toutes les tables d'échéances pour les 30 prochains jours. Priorise par urgence (rouge/orange/vert). Génère un rapport quotidien email + Telegram.</p>
+        <p style="font-size:12.5px;color:var(--text-2);">Contrôle qualité automatique : équilibre Débit/Crédit, cohérence PCG, détection doublons. Bloque les écritures incohérentes avant la validation collaborateur.</p>
         <div class="io-grid">
           <div class="io-box">
             <div class="io-label input">Input</div>
             <ul class="io-items">
-              <li>horizon 30 jours</li>
+              <li>Écritures proposées</li>
+              <li>Règles PCG</li>
             </ul>
           </div>
           <div class="io-box">
             <div class="io-label output">Output</div>
             <ul class="io-items">
-              <li>rapport priorisé</li>
-              <li>🔴 rouge / 🟠 orange / 🟢 vert</li>
+              <li>Statut validation (OK / KO)</li>
+              <li>Alertes anomalies</li>
+              <li>Prêt validation humaine</li>
             </ul>
           </div>
         </div>
-        <span class="db-tag">🗄️ acomptes_is</span>
-        <span class="db-tag">🗄️ declarations_tva</span>
+        <span class="db-tag">🗄️ controle_qualite</span>
+        <span class="db-tag">✅ → Validation collaborateur</span>
       </div>
 
     </div>
 
-    <!-- SPRINT 2 -->
-    <div class="sprint-header" id="jm-sprint2">
-      <span class="sprint-badge">Sprint 2</span>
-      <span class="sprint-title">Clôtures & IS</span>
-      <span class="sprint-status">✅ Livré</span>
+    <!-- GROUPE 2 — Comptabilité & Fiscal -->
+    <div class="sprint-header" id="jm-group2">
+      <span class="sprint-badge">Groupe 2</span>
+      <span class="sprint-title">Comptabilité &amp; Fiscal — Agents #6, #7, #8, #10</span>
+      <span class="sprint-status">TVA · IS · Lettrage · FNP/FAE</span>
     </div>
     <div class="agents-grid">
 
       <div class="card">
         <div class="card-header">
-          <span style="font-size:20px;">🔐</span>
-          <h3 class="card-title">cloture_handler</h3>
-          <span class="agent-badge badge-blue">S2-A</span>
+          <span style="font-size:20px;">🧾</span>
+          <h3 class="card-title">TVA</h3>
+          <span class="agent-badge badge-orange">#6 · J-10</span>
         </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Détecte les dossiers en fin de mois (dernier jour ouvré). Déclenche la procédure de clôture comptable. Notifie le comptable responsable.</p>
-        <div class="io-grid">
-          <div class="io-box">
-            <div class="io-label input">Input</div>
-            <ul class="io-items">
-              <li>date courante</li>
-              <li>calendrier fiscal</li>
-            </ul>
-          </div>
-          <div class="io-box">
-            <div class="io-label output">Output</div>
-            <ul class="io-items">
-              <li>dossiers à clôturer</li>
-              <li>notification comptable</li>
-            </ul>
-          </div>
-        </div>
-        <span class="db-tag">🗄️ dossiers</span>
-        <span class="db-tag">📧 Email</span>
+        <p style="font-size:12.5px;color:var(--text-2);">Calcul TVA collectée / déductible, génération des OD TVA, gestion des régimes débits et encaissements. Déclenchement automatique J-10 avant échéance DGFiP.</p>
+        <span class="db-tag">🗄️ declarations_tva</span>
+        <span class="db-tag">⏰ Cron J-10</span>
       </div>
 
       <div class="card">
         <div class="card-header">
           <span style="font-size:20px;">💶</span>
-          <h3 class="card-title">acompte_is_agent</h3>
-          <span class="agent-badge badge-indigo">S2-B</span>
+          <h3 class="card-title">IS</h3>
+          <span class="agent-badge badge-indigo">#7 · Trimestriel</span>
         </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Surveille les acomptes IS (table acomptes_is). Alerte J-15/J-7/J-3. Envoie email + Telegram avec le montant et la deadline précise.</p>
-        <div class="io-grid">
-          <div class="io-box">
-            <div class="io-label input">Input</div>
-            <ul class="io-items">
-              <li>date courante</li>
-              <li>horizon 15 jours</li>
-            </ul>
-          </div>
-          <div class="io-box">
-            <div class="io-label output">Output</div>
-            <ul class="io-items">
-              <li>liste acomptes à venir</li>
-              <li>alertes J-15/J-7/J-3</li>
-              <li>montants + deadlines</li>
-            </ul>
-          </div>
-        </div>
+        <p style="font-size:12.5px;color:var(--text-2);">Acomptes IS automatiques sur 4 tranches, estimation du résultat fiscal en cours d'exercice, alertes avant chaque deadline DGFiP.</p>
         <span class="db-tag">🗄️ acomptes_is</span>
-        <span class="db-tag">💬 Telegram</span>
+        <span class="db-tag">⏰ Trimestriel</span>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:20px;">🔗</span>
+          <h3 class="card-title">Lettrage</h3>
+          <span class="agent-badge badge-blue">#8 · Continu</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-2);">Rapprochement automatique règlements / factures, gestion compte 471 (virements en attente), apprentissage des patterns de paiement par dossier.</p>
+        <span class="db-tag">🗄️ lettrages</span>
+        <span class="db-tag">🗄️ compte_471</span>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:20px;">📋</span>
+          <h3 class="card-title">FNP/FAE</h3>
+          <span class="agent-badge badge-red">#10 · Annuel déc.</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-2);">Factures Non Parvenues et Factures À Établir — détection et provision automatique en décembre pour clôture d'exercice.</p>
+        <span class="db-tag">🗄️ provisions_fnp</span>
+        <span class="db-tag">⏰ Annuel (décembre)</span>
       </div>
 
     </div>
 
-    <!-- SPRINT 3 -->
-    <div class="sprint-header" id="jm-sprint3">
-      <span class="sprint-badge">Sprint 3</span>
-      <span class="sprint-title">Intelligence & notifications</span>
-      <span class="sprint-status">✅ Livré</span>
+    <!-- GROUPE 3 — Synchronisation Sage -->
+    <div class="sprint-header" id="jm-group3">
+      <span class="sprint-badge">Groupe 3</span>
+      <span class="sprint-title">Synchronisation Sage — Agents #9, #11, #12</span>
+      <span class="sprint-status">GED · RPA Sage · Miroir FEC + Rapport Matinal</span>
     </div>
     <div class="agents-grid">
 
       <div class="card">
         <div class="card-header">
+          <span style="font-size:20px;">🗂️</span>
+          <h3 class="card-title">GED</h3>
+          <span class="agent-badge badge-green">#9 · Après vérif</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-2);">Archivage dans Supabase Storage uniquement des documents validés par le collaborateur. La GED est en fin de chaîne — aucun document non validé n'est archivé.</p>
+        <span class="db-tag">🗄️ Supabase Storage</span>
+        <span class="db-tag">✅ Docs validés seulement</span>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:20px;">🤖</span>
+          <h3 class="card-title">RPA Sage</h3>
+          <span class="agent-badge badge-blue">#11 · 22h00</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-2);">Synchronisation automatique dans Sage Desktop via Power Automate Desktop. Exécution chaque nuit à 22h00 sur les écritures validées de la journée.</p>
+        <span class="db-tag">🤖 Power Automate Desktop</span>
+        <span class="db-tag">⏰ Cron 22h00</span>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
           <span style="font-size:20px;">📊</span>
-          <h3 class="card-title">bilan_agent</h3>
-          <span class="agent-badge badge-green">S3-A</span>
+          <h3 class="card-title">Miroir Sage + Rapport Matinal</h3>
+          <span class="agent-badge badge-purple">#12 · 23h + 06h</span>
         </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Détecte les dossiers bilan à préparer. Vérifie la disponibilité des pièces. Alerte J-30/J-15/J-7 selon l'avancement.</p>
-        <div class="io-grid">
-          <div class="io-box">
-            <div class="io-label input">Input</div>
-            <ul class="io-items">
-              <li>date clôture exercice</li>
-              <li>liste dossiers actifs</li>
-            </ul>
-          </div>
-          <div class="io-box">
-            <div class="io-label output">Output</div>
-            <ul class="io-items">
-              <li>alertes J-30/J-15/J-7</li>
-              <li>pièces disponibles/manquantes</li>
-            </ul>
-          </div>
-        </div>
-        <span class="db-tag">🗄️ dossiers</span>
-        <span class="db-tag">🗄️ documents</span>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span style="font-size:20px;">📑</span>
-          <h3 class="card-title">declaration_is_agent</h3>
-          <span class="agent-badge badge-orange">S3-B</span>
-        </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Surveille les déclarations IS annuelles. Prépare un résumé des éléments disponibles. Alerte J-30/J-15/J-7 avant la deadline DGFiP.</p>
-        <div class="io-grid">
-          <div class="io-box">
-            <div class="io-label input">Input</div>
-            <ul class="io-items">
-              <li>exercice fiscal</li>
-              <li>date limite IS</li>
-            </ul>
-          </div>
-          <div class="io-box">
-            <div class="io-label output">Output</div>
-            <ul class="io-items">
-              <li>résumé éléments dispos</li>
-              <li>alertes J-30/J-15/J-7</li>
-            </ul>
-          </div>
-        </div>
-        <span class="db-tag">🗄️ declarations_is</span>
-        <span class="db-tag">🗄️ dossiers</span>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span style="font-size:20px;">🔔</span>
-          <h3 class="card-title">notification_agent</h3>
-          <span class="agent-badge badge-purple">S3-C · Hub</span>
-        </div>
-        <p style="font-size:12.5px;color:var(--text-2);">Hub central de toutes les alertes. Reçoit les notifications de tous les agents, choisit le bon canal selon l'urgence, déduplique sur 24h.</p>
-        <div class="io-grid">
-          <div class="io-box">
-            <div class="io-label input">Input</div>
-            <ul class="io-items">
-              <li>alertes de tous les agents</li>
-              <li>niveau urgence</li>
-            </ul>
-          </div>
-          <div class="io-box">
-            <div class="io-label output">Output</div>
-            <ul class="io-items">
-              <li>J-3 → Telegram immédiat</li>
-              <li>J-7 → email direct</li>
-              <li>J-15 → email digest</li>
-            </ul>
-          </div>
-        </div>
-        <span class="db-tag">🗄️ notification_log</span>
-        <span class="db-tag">💬 Telegram</span>
-        <span class="db-tag">📧 Email</span>
+        <p style="font-size:12.5px;color:var(--text-2);">FEC vivant généré à 23h00 (miroir temps réel de Sage). Rapport matinal email à 06h00 avec les KPIs de la veille, anomalies et actions à traiter.</p>
+        <span class="db-tag">🗄️ fec_vivant</span>
+        <span class="db-tag">⏰ 23h00 + 06h00</span>
       </div>
 
     </div>
 
-    <!-- FLOW JM -->
-    <h2 class="sub" id="jm-flow" style="margin-top:28px;">Orchestration complète</h2>
-    <div class="flow-diagram">
-      <div class="flow-schedule">⏰ APScheduler — cycle toutes les <strong style="color:var(--text);">30 minutes</strong> en production &nbsp;·&nbsp; flag <code>--dry-run</code> disponible</div>
+    <!-- GROUPE 4 — Intelligence & Contrôle -->
+    <div class="sprint-header" id="jm-group4">
+      <span class="sprint-badge">Groupe 4</span>
+      <span class="sprint-title">Intelligence &amp; Contrôle — Agent #13</span>
+      <span class="sprint-status">Révision · Croisement anomalies 00h00</span>
+    </div>
+    <div class="agents-grid">
 
-      <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;"><strong style="color:var(--text);">Flux email entrant</strong></p>
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:20px;">🔍</span>
+          <h3 class="card-title">Révision</h3>
+          <span class="agent-badge badge-red">#13 · 00h00</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-2);">Croisement automatique de toutes les anomalies comptables à minuit : doublons résiduels, écarts de lettrage, comptes déséquilibrés, TVA incohérente. Résultats injectés dans le rapport matinal 06h00.</p>
+        <div class="io-grid">
+          <div class="io-box">
+            <div class="io-label input">Input</div>
+            <ul class="io-items">
+              <li>FEC vivant J</li>
+              <li>Toutes tables du jour</li>
+            </ul>
+          </div>
+          <div class="io-box">
+            <div class="io-label output">Output</div>
+            <ul class="io-items">
+              <li>Anomalies détectées</li>
+              <li>Rapport injecté 06h00</li>
+            </ul>
+          </div>
+        </div>
+        <span class="db-tag">🗄️ anomalies_revision</span>
+        <span class="db-tag">⏰ Cron 00h00</span>
+      </div>
+
+    </div>
+
+    <!-- FLOW DIAGRAM — Workflow 11 phases -->
+    <h2 class="sub" id="jm-flow" style="margin-top:28px;">Workflow 11 phases</h2>
+    <div class="flow-diagram">
+      <div class="flow-schedule">Deux flux · Flux documentaire diurne (01→06) · Flux nocturne synchronisation (07→11)</div>
+
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;"><strong style="color:var(--text);">Flux documentaire (phases 01 → 06)</strong></p>
       <div class="flow-steps" style="margin-bottom:20px;">
         <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">📬</span><div class="fn-name">mail_handler</div><div class="fn-desc">IMAP entrant</div></div>
+          <div class="flow-node" style="border-color:var(--blue);"><span class="fn-emoji">📬</span><div class="fn-num">01</div><div class="fn-name">Collecte</div><div class="fn-desc">compta@ + flux</div></div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">📋</span><div class="fn-name">document_checker</div><div class="fn-desc">Pièces manquantes</div></div>
+          <div class="flow-node" style="border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface-2));"><span class="fn-emoji">👁</span><div class="fn-num">02</div><div class="fn-name">OCR</div><div class="fn-desc">Claude Vision</div></div>
+          <div class="flow-note">Pivot central</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">✉️</span><div class="fn-name">relance_handler</div><div class="fn-desc">Email relance</div></div>
+          <div class="flow-node"><span class="fn-emoji">🏷️</span><div class="fn-num">03</div><div class="fn-name">Tri</div><div class="fn-desc">F/C/B/Autres</div></div>
+          <div class="flow-note" style="color:var(--orange);">Attente Lovable si ambigu</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
-          <div class="flow-node" style="border-color:var(--purple);background:color-mix(in srgb,var(--purple) 6%,var(--surface-2));"><span class="fn-emoji">🔔</span><div class="fn-name">notification_agent</div><div class="fn-desc">Hub alertes</div></div>
+          <div class="flow-node"><span class="fn-emoji">✍️</span><div class="fn-num">04</div><div class="fn-name">Pré-saisie</div><div class="fn-desc">Écritures D/C</div></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-node"><span class="fn-emoji">✅</span><div class="fn-num">05</div><div class="fn-name">Vérif</div><div class="fn-desc">Contrôle qualité</div></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-node" style="border-color:var(--green);background:color-mix(in srgb,var(--green) 8%,var(--surface-2));"><span class="fn-emoji">👤</span><div class="fn-num"></div><div class="fn-name">Validation</div><div class="fn-desc">Collaborateur</div></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-node"><span class="fn-emoji">🗂️</span><div class="fn-num">06</div><div class="fn-name">GED</div><div class="fn-desc">Archive validés</div></div>
         </div>
       </div>
 
-      <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;"><strong style="color:var(--text);">Flux planifié (cron 30min)</strong></p>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;"><strong style="color:var(--text);">Flux nocturne synchronisation (phases 07 → 11)</strong></p>
       <div class="flow-steps">
         <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">🧾</span><div class="fn-name">tva_agent</div><div class="fn-desc">Décl. TVA</div></div>
+          <div class="flow-node"><span class="fn-emoji">🤖</span><div class="fn-num">07</div><div class="fn-name">RPA Sage</div><div class="fn-desc">22h00</div></div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">📅</span><div class="fn-name">echeance_agent</div><div class="fn-desc">Toutes échéances</div></div>
+          <div class="flow-node"><span class="fn-emoji">📊</span><div class="fn-num">08</div><div class="fn-name">Miroir FEC</div><div class="fn-desc">23h00</div></div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">🔐</span><div class="fn-name">cloture_handler</div><div class="fn-desc">Fin de mois</div></div>
+          <div class="flow-node"><span class="fn-emoji">🔍</span><div class="fn-num">09</div><div class="fn-name">Révision</div><div class="fn-desc">00h00</div></div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">💶</span><div class="fn-name">acompte_is_agent</div><div class="fn-desc">Acomptes IS</div></div>
+          <div class="flow-node"><span class="fn-emoji">📧</span><div class="fn-num">10</div><div class="fn-name">Rapport matinal</div><div class="fn-desc">06h00</div></div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">📊</span><div class="fn-name">bilan_agent</div><div class="fn-desc">Bilans</div></div>
-        </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-          <div class="flow-node"><span class="fn-emoji">📑</span><div class="fn-name">declaration_is</div><div class="fn-desc">IS annuel</div></div>
-        </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-          <div class="flow-node" style="border-color:var(--purple);background:color-mix(in srgb,var(--purple) 6%,var(--surface-2));"><span class="fn-emoji">🔔</span><div class="fn-name">notification_agent</div><div class="fn-desc">Hub alertes</div></div>
-        </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-          <div class="flow-node" style="border-color:var(--green);"><span class="fn-emoji">📧💬</span><div class="fn-name">Email + Telegram</div><div class="fn-desc">Multi-canal</div></div>
+          <div class="flow-node" style="border-color:var(--orange);"><span class="fn-emoji">🧾</span><div class="fn-num">11</div><div class="fn-name">TVA</div><div class="fn-desc">J-10 auto</div></div>
         </div>
       </div>
     </div>
+
+    <!-- STACK TECHNIQUE JM PARTNERS -->
+    <div class="card" style="margin-bottom:0; margin-top:16px;">
+      <h3 class="card-title" style="margin-bottom:12px;">Stack technique — JM Partners (dédié, distinct du stack Email/Lead)</h3>
+      <div class="stack-grid" style="margin-top:8px;">
+        <div class="stack-item"><span class="si-icon">🎨</span><div><div class="si-name">Lovable</div><div class="si-ver">React + Tailwind CSS</div></div></div>
+        <div class="stack-item"><span class="si-icon">⚙️</span><div><div class="si-name">n8n</div><div class="si-ver">Workflows · Retry · Cron</div></div></div>
+        <div class="stack-item"><span class="si-icon">🗄️</span><div><div class="si-name">Supabase</div><div class="si-ver">PostgreSQL + pgvector + Storage · 17 tables</div></div></div>
+        <div class="stack-item"><span class="si-icon">🤖</span><div><div class="si-name">Claude Vision</div><div class="si-ver">claude-sonnet-4-5</div></div></div>
+        <div class="stack-item"><span class="si-icon">⚡</span><div><div class="si-name">Edge Functions</div><div class="si-ver">TypeScript / Deno</div></div></div>
+        <div class="stack-item"><span class="si-icon">🖱️</span><div><div class="si-name">Power Automate Desktop</div><div class="si-ver">RPA Sage</div></div></div>
+        <div class="stack-item"><span class="si-icon">📧</span><div><div class="si-name">Outlook API</div><div class="si-ver">compta@jmpartners.fr</div></div></div>
+        <div class="stack-item"><span class="si-icon">🏦</span><div><div class="si-name">Regate API</div><div class="si-ver">~150 dossiers</div></div></div>
+        <div class="stack-item"><span class="si-icon">📊</span><div><div class="si-name">Pappers API</div><div class="si-ver">Enrichissement</div></div></div>
+      </div>
+    </div>
+
   </section>
 
   <!-- ── RÉSULTATS ── -->
@@ -1588,9 +1575,9 @@
       </div>
       <div class="result-card">
         <div class="result-icon">🏢</div>
-        <div class="result-metric" style="color:var(--purple);">9</div>
-        <div class="result-label">Agents JM Partners livrés</div>
-        <div class="result-detail">3 sprints terminés · 8 tables SQL · Beta 8 juin 2026</div>
+        <div class="result-metric" style="color:var(--purple);">13</div>
+        <div class="result-label">Agents JM Partners v2.2</div>
+        <div class="result-detail">11 phases · 17 tables Supabase · Migration mai-juin 2026 · Pilote CIHAN</div>
       </div>
       <div class="result-card">
         <div class="result-icon">✅</div>
@@ -1615,7 +1602,7 @@
       <li class="roadmap-item">
         <div class="roadmap-status">✅</div>
         <div>
-          <div class="roadmap-title">Sprint 1-3 JM Partners — 9 agents livrés</div>
+          <div class="roadmap-title">Sprint 1-3 JM Partners v2.1 — 9 agents livrés</div>
           <div class="roadmap-desc">Flux email & documents, clôtures & IS, intelligence & notifications. 308 tests verts.</div>
           <div class="roadmap-date">Livré — mai 2026</div>
         </div>
@@ -1639,32 +1626,48 @@
       <li class="roadmap-item">
         <div class="roadmap-status">🔄</div>
         <div>
-          <div class="roadmap-title">Beta JM Partners — premier client réel</div>
-          <div class="roadmap-desc">Déploiement sur l'infrastructure du cabinet, monitoring J+1/J+3/J+7, rapport de première semaine.</div>
-          <div class="roadmap-date">Prévu — 8 juin 2026</div>
+          <div class="roadmap-title">Migration v2.2 — 13 agents (en cours)</div>
+          <div class="roadmap-desc">Boîte compta@jmpartners.fr · Agent OCR Claude Vision · Refonte workflow n8n complet · Vue "En attente" Lovable.</div>
+          <div class="roadmap-date">En cours — mai-juin 2026</div>
+        </div>
+      </li>
+      <li class="roadmap-item">
+        <div class="roadmap-status">🔄</div>
+        <div>
+          <div class="roadmap-title">Dossier pilote CIHAN (en cours)</div>
+          <div class="roadmap-desc">Validation end-to-end sur le premier dossier réel avant déploiement 5 dossiers (Jeffrey + Michael).</div>
+          <div class="roadmap-date">En cours — juin 2026</div>
         </div>
       </li>
       <li class="roadmap-item">
         <div class="roadmap-status">🔜</div>
         <div>
-          <div class="roadmap-title">Interface client LeadCommercial — démo live</div>
-          <div class="roadmap-desc">Dashboard prospect avec vue kanban leads, filtres ICP, export CSV.</div>
-          <div class="roadmap-date">Q3 2026</div>
+          <div class="roadmap-title">Agent OCR en production</div>
+          <div class="roadmap-desc">Claude Vision Edge Function (TypeScript/Deno) — lecture, extraction, découpage multi-factures, détection dossier automatique.</div>
+          <div class="roadmap-date">Prévu — juin 2026</div>
         </div>
       </li>
       <li class="roadmap-item">
         <div class="roadmap-status">🔜</div>
         <div>
-          <div class="roadmap-title">API INSEE Sirene — token de production</div>
-          <div class="roadmap-desc">Renouvellement token INSEE Sirene pour accès production complet (hors test).</div>
-          <div class="roadmap-date">Q3 2026</div>
+          <div class="roadmap-title">Vue "En attente" Lovable</div>
+          <div class="roadmap-desc">Interface collaborateur avec pastille orange pour les documents ambigus. Apprentissage continu à chaque validation.</div>
+          <div class="roadmap-date">Prévu — juin 2026</div>
         </div>
       </li>
       <li class="roadmap-item">
         <div class="roadmap-status">🔜</div>
         <div>
-          <div class="roadmap-title">Nouveau client — assurance ou expert-comptable</div>
-          <div class="roadmap-desc">Adaptation du système JM Partners pour un deuxième cabinet. Configuration ICP, tables dédiées, dashboard branded.</div>
+          <div class="roadmap-title">Évaluation Sage Cloud Connector</div>
+          <div class="roadmap-desc">Alternative à Power Automate Desktop pour la synchro Sage. Décision après Sprint 2 pilote CIHAN (Jeffrey).</div>
+          <div class="roadmap-date">Prévu — Q3 2026</div>
+        </div>
+      </li>
+      <li class="roadmap-item">
+        <div class="roadmap-status">🔜</div>
+        <div>
+          <div class="roadmap-title">Déploiement 5 dossiers → 200</div>
+          <div class="roadmap-desc">Montée en charge progressive après validation du pilote CIHAN. Cible : 150+ dossiers cabinet JM Partners.</div>
           <div class="roadmap-date">Q3-Q4 2026</div>
         </div>
       </li>
