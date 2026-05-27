@@ -20,7 +20,9 @@ from apps.jmpartners.agents.document_checker import DocumentCheckerResult
 from apps.jmpartners.agents.document_checker import run as check_docs
 from apps.jmpartners.agents.echeance_agent import EcheanceAgentResult
 from apps.jmpartners.agents.echeance_agent import run as run_echeances
+from apps.jmpartners.agents.fnp_fae_agent import FNPFAEAgent
 from apps.jmpartners.agents.ged_agent import GEDAgent, GEDResult
+from apps.jmpartners.agents.lettrage_agent import LettrageAgent
 from apps.jmpartners.agents.mail_handler import MailHandlerResult
 from apps.jmpartners.agents.mail_handler import run as handle_mail
 from apps.jmpartners.agents.miroir_sage_agent import MiroirSageAgent
@@ -45,16 +47,6 @@ from apps.jmpartners.agents.verificateur_agent import (
 __all__ = ["OrchestratorResult", "run", "setup_nocturne_jobs"]
 
 logger = logging.getLogger(__name__)
-
-# Lettrage agent optionnel — peut ne pas exister en v2.2
-try:
-    from apps.jmpartners.agents.lettrage_agent import (
-        LettrageAgent as _LettrageAgent,  # type: ignore[import]
-    )
-    _HAS_LETTRAGE = True
-except ImportError:
-    _LettrageAgent = None  # type: ignore[assignment,misc]
-    _HAS_LETTRAGE = False
 
 
 class OrchestratorResult(TypedDict):
@@ -192,16 +184,13 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         logger.error("Orchestrateur — erreur verificateur_agent : %s", exc)
         erreurs.append(f"verificateur_agent: {exc}")
 
-    # ── 6. Lettrage (optionnel) ────────────────────────────────────────────────
-    if _HAS_LETTRAGE:
-        try:
-            _LettrageAgent().run()  # type: ignore[union-attr]
-            logger.info("lettrage_agent : terminé")
-        except Exception as exc:
-            logger.error("Orchestrateur — erreur lettrage_agent : %s", exc)
-            erreurs.append(f"lettrage_agent: {exc}")
-    else:
-        logger.debug("Orchestrateur — lettrage_agent absent, étape ignorée")
+    # ── 6. Lettrage — rapprochement règlements/factures ───────────────────────
+    try:
+        LettrageAgent().run()
+        logger.info("lettrage_agent : terminé")
+    except Exception as exc:
+        logger.error("Orchestrateur — erreur lettrage_agent : %s", exc)
+        erreurs.append(f"lettrage_agent: {exc}")
 
     # ── 7. GED — archivage documents validés ──────────────────────────────────
     ged_result: GEDResult | None = None
@@ -403,6 +392,23 @@ def _job_acomptes_is() -> None:
         logger.error("job acomptes_is — erreur : %s", exc)
 
 
+def _job_fnp_fae() -> None:
+    """1er décembre — provisions FNP/FAE clôture exercice."""
+    logger.info("job fnp_fae — démarrage")
+    t0 = datetime.now(timezone.utc)
+    try:
+        result = FNPFAEAgent().run()
+        logger.info(
+            "job fnp_fae — terminé | fnp=%d fae=%d montant_total=%.2f durée=%.1fs",
+            result["fnp_detectees"],
+            result["fae_detectees"],
+            result["montant_total_fnp"] + result["montant_total_fae"],
+            (datetime.now(timezone.utc) - t0).total_seconds(),
+        )
+    except Exception as exc:
+        logger.error("job fnp_fae — erreur : %s", exc)
+
+
 def setup_nocturne_jobs(scheduler: BackgroundScheduler) -> None:
     """Configure les jobs APScheduler du cycle nocturne.
 
@@ -470,4 +476,15 @@ def setup_nocturne_jobs(scheduler: BackgroundScheduler) -> None:
         id="acomptes_is",
         replace_existing=True,
     )
-    logger.info("Orchestrateur — %d jobs nocturnes configurés", 6)
+    # 1er décembre — FNP/FAE clôture exercice
+    scheduler.add_job(
+        _job_fnp_fae,
+        trigger="cron",
+        month=12,
+        day=1,
+        hour=9,
+        minute=0,
+        id="fnp_fae",
+        replace_existing=True,
+    )
+    logger.info("Orchestrateur — %d jobs nocturnes configurés", 7)
