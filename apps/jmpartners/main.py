@@ -89,14 +89,23 @@ def main() -> None:
         )
         return
 
-    # Mode scheduler
+    # Mode scheduler — cycle diurne + nocturne v2.2
     try:
+        from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.schedulers.blocking import BlockingScheduler
         from apscheduler.triggers.cron import CronTrigger
+
+        from apps.jmpartners.orchestrator import setup_nocturne_jobs
     except ImportError:
         logger.error("APScheduler non installé. Utilisez --once pour un run unique.")
         sys.exit(1)
 
+    # Scheduler nocturne (background) — jobs APScheduler v2.2
+    bg_scheduler = BackgroundScheduler(timezone="Europe/Paris")
+    setup_nocturne_jobs(bg_scheduler)
+    bg_scheduler.start()
+
+    # Scheduler diurne (blocking) — cycle principal
     scheduler = BlockingScheduler(timezone="Europe/Paris")
     scheduler.add_job(
         orchestrate,
@@ -113,11 +122,23 @@ def main() -> None:
         name="Rapport échéances fin de journée",
     )
 
-    logger.info("Scheduler JM Partners démarré (lun-ven 08h00 + 17h30)")
+    logger.info("Scheduler JM Partners v2.2 démarré — cycle diurne + %d jobs nocturnes", 7)
+
+    import signal
+
+    def _shutdown(signum, frame):
+        logger.info("Signal reçu — arrêt scheduler")
+        bg_scheduler.shutdown(wait=False)
+        scheduler.shutdown(wait=False)
+
+    signal.signal(signal.SIGTERM, _shutdown)
+    signal.signal(signal.SIGINT, _shutdown)
+
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
         logger.info("Scheduler arrêté")
+        bg_scheduler.shutdown(wait=False)
 
 
 if __name__ == "__main__":

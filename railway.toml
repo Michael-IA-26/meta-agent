@@ -9,3 +9,9 @@ dockerfilePath = "Dockerfile.leadcommercial-dashboard"
 
 [services.jmpartners-dashboard]
 dockerfilePath = "Dockerfile.jmpartners-dashboard"
+
+[services.jmpartners]
+dockerfilePath = "apps/jmpartners/Dockerfile"
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

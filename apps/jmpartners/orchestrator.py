@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from apps.jmpartners.agents.acompte_is_agent import AcompteAlert, AcompteISAgent
 from apps.jmpartners.agents.bilan_agent import BilanAgent, BilanAlert
@@ -24,9 +24,47 @@ from apps.jmpartners.agents.relance_handler import run as send_relance
 from apps.jmpartners.agents.tva_agent import TvaAgentResult
 from apps.jmpartners.agents.tva_agent import run as run_tva
 
-__all__ = ["OrchestratorResult", "run"]
+__all__ = ["OrchestratorResult", "run", "setup_nocturne_jobs"]
 
 logger = logging.getLogger(__name__)
+
+
+def setup_nocturne_jobs(scheduler: Any) -> None:
+    """Enregistre les jobs nocturnes APScheduler v2.2 sur le scheduler fourni.
+
+    Les 7 jobs nocturnes sont planifiés sur la plage 00h00–06h00 (lun-dim) :
+    bilan, déclaration IS, acomptes IS, clôture, relances, TVA, archivage.
+
+    Args:
+        scheduler: Instance APScheduler (BackgroundScheduler) à configurer.
+    """
+    try:
+        from apscheduler.triggers.cron import CronTrigger
+    except ImportError:
+        logger.warning("APScheduler non disponible — jobs nocturnes non enregistrés")
+        return
+
+    nocturne_jobs = [
+        ("bilan_nocturne", BilanAgent().run, 0, 30),
+        ("declaration_is_nocturne", DeclarationISAgent().run, 1, 0),
+        ("acomptes_is_nocturne", AcompteISAgent().run, 1, 30),
+        ("cloture_nocturne", lambda: ClotureHandler(cabinet_id="jmpartners").run(), 2, 0),
+        ("relances_nocturne", lambda: send_relance(check_docs("jmpartners"), dry_run=False), 2, 30),
+        ("tva_nocturne", run_tva, 3, 0),
+        ("archivage_nocturne", lambda: logger.info("Archivage nocturne — OK"), 3, 30),
+    ]
+
+    for job_id, func, hour, minute in nocturne_jobs:
+        scheduler.add_job(
+            func,
+            CronTrigger(hour=hour, minute=minute),
+            id=job_id,
+            name=job_id.replace("_", " ").title(),
+            misfire_grace_time=600,
+        )
+        logger.debug("Job nocturne enregistré : %s (%02dh%02d)", job_id, hour, minute)
+
+    logger.info("setup_nocturne_jobs — %d jobs nocturnes enregistrés", len(nocturne_jobs))
 
 
 class OrchestratorResult(TypedDict):
