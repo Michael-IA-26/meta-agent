@@ -1,103 +1,124 @@
-# JM Partners — Base de données Supabase v2.2
+# Base de données JM Partners v2.2
+
+Schéma Supabase PostgreSQL + pgvector pour le système de 13 agents autonomes.
+
+## Architecture
+
+| Couche | Tables |
+|---|---|
+| Cabinet | `utilisateurs`, `contacts`, `dossiers` |
+| Chaîne documentaire | `documents`, `journaux`, `embeddings` |
+| Comptabilité | `ecritures`, `ecritures_sage`, `syncs_sage`, `lettrages` |
+| Fiscal | `declarations_tva`, `acomptes_is`, `provisions_fnp` |
+| Qualité | `revision`, `doublons_detectes`, `apprentissage` |
+| GED | `ged_index` |
+
+**FK critique** : `dossiers.contact_id → contacts.id ON DELETE RESTRICT`  
+Un contact ne peut pas être supprimé tant qu'il a des dossiers — archiver les dossiers d'abord.
+
+---
 
 ## Prérequis
 
-- Projet Supabase actif
-- Variables d'env configurées : `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
+```bash
+# Supabase CLI
+brew install supabase/tap/supabase
 
-## Ordre d'exécution
+# psql
+brew install postgresql
 
-Exécuter les fichiers dans l'ordre numérique dans **Supabase SQL Editor** :
-
-```
-001_jmpartners_v2.2.sql   — schéma complet (17 tables + index + triggers + RPC)
-```
-
-## Activer pgvector
-
-Avant tout, activer l'extension dans le SQL Editor :
-
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
+# URL de connexion directe (Database → Settings → Connection string → URI)
+export SUPABASE_DB_URL="postgresql://postgres.[ref]:[password]@aws-0-eu-west-1.pooler.supabase.com:5432/postgres"
 ```
 
-Cette commande est incluse dans `001_jmpartners_v2.2.sql` mais peut aussi être
-exécutée séparément depuis **Database → Extensions → vector**.
+---
 
-## Exécuter la migration
+## Procédure d'application (5 étapes)
 
-1. Ouvrir Supabase Dashboard → **SQL Editor**
-2. Copier le contenu de `db/migrations/001_jmpartners_v2.2.sql`
-3. Cliquer **Run** — les `CREATE TABLE IF NOT EXISTS` sont idempotents
+### Étape 1 — Dry run (test sans modification)
 
-## Données de test (dossier CIHAN)
+Vérifie la migration sans toucher à la base. Le ROLLBACK final annule tout.
 
-Pour insérer les données de test du dossier pilote CIHAN :
-
-```sql
--- Copier et exécuter db/seeds/001_jmpartners_cihan_test.sql
+```bash
+psql $SUPABASE_DB_URL -f db/migrations/001_jmpartners_v2.2_DRY_RUN.sql
 ```
 
-Le seed crée :
-- 1 contact CIHAN (`compta@cihan.fr`)
-- 1 dossier restauration actif
-- 3 documents en attente OCR
-- 2 écritures à valider
-- 1 déclaration TVA mai 2026
-
-## Tables créées
-
-| Table | Rôle | Agent principal |
-|-------|------|-----------------|
-| `contacts` | Clients du cabinet | mail_handler, relance_handler |
-| `dossiers` | Dossiers comptables | Tous agents |
-| `documents` | Pièces justificatives | collecte, ocr, tri, ged |
-| `journaux` | Audit log | Tous agents |
-| `ecritures` | Écritures comptables proposées | presaisie, verificateur, lettrage |
-| `ecritures_sage` | Écritures importées depuis Sage | miroir_sage |
-| `syncs_sage` | Historique imports FEC | miroir_sage |
-| `lettrages` | Paires règlement/facture | lettrage |
-| `declarations_tva` | Déclarations TVA | tva_agent, echeance_agent |
-| `acomptes_is` | Acomptes impôt sur les sociétés | acompte_is_agent |
-| `provisions_fnp` | Provisions FNP/FAE décembre | fnp_fae_agent |
-| `revision` | Anomalies comptables | revision_agent |
-| `doublons_detectes` | Doublons documentaires | verificateur, revision |
-| `apprentissage` | Patterns libellés bancaires | lettrage_agent |
-| `ged_index` | Index archives GED | ged_agent |
-| `collaborateurs` | Collaborateurs du cabinet | miroir_sage (rapport) |
-| `embeddings` | Vecteurs pgvector historique FEC | presaisie_agent |
-
-## Variables d'environnement requises
-
+Résultat attendu :
 ```
-SUPABASE_URL=https://<project>.supabase.co
-SUPABASE_SERVICE_KEY=<service_role_key>
-ANTHROPIC_API_KEY=<key>
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=<email>
-SMTP_PASSWORD=<password>
-TELEGRAM_BOT_TOKEN=<token>
-TELEGRAM_CHAT_ID=<chat_id>
-OUTLOOK_MOCK_DIR=<path_local>        # optionnel, tests locaux
-REGATE_API_KEY=<key>                 # optionnel
-PENNYLANE_API_KEY=<key>              # optionnel
+NOTICE:  ✅ DRY RUN OK — migration v2.2 valide (ROLLBACK — aucune modification)
+ROLLBACK
 ```
 
-## RLS
+---
 
-RLS est **désactivé** sur toutes les tables — les agents utilisent la `service_key`
-qui bypasse le RLS. Ne pas activer le RLS sans adapter les policies.
+### Étape 2 — Application réelle
 
-## Rollback
-
-Aucun mécanisme de rollback automatique. En cas de problème :
-
-```sql
--- Suppression complète (DANGER — perte de données)
-DROP TABLE IF EXISTS embeddings, ged_index, apprentissage, doublons_detectes,
-    revision, provisions_fnp, acomptes_is, declarations_tva, lettrages,
-    syncs_sage, ecritures_sage, ecritures, journaux, documents,
-    collaborateurs, dossiers, contacts CASCADE;
-DROP EXTENSION IF EXISTS vector;
+```bash
+psql $SUPABASE_DB_URL -f db/migrations/001_jmpartners_v2.2.sql
 ```
+
+Résultat attendu :
+```
+NOTICE:  ✅ MIGRATION v2.2 VALIDÉE — 17 tables + pgvector + enum + indexes OK
+COMMIT
+```
+
+La migration est transactionnelle — si le DO BLOCK de vérification échoue, tout est annulé automatiquement.
+
+---
+
+### Étape 3 — Seed CIHAN (dossier pilote)
+
+À exécuter après la migration, en développement ou staging uniquement.
+
+```bash
+psql $SUPABASE_DB_URL -f db/seeds/001_cihan.sql
+```
+
+Insère :
+- 1 utilisateur (Michael Sadoun, michael@jmpartners.fr)
+- 2 contacts CIHAN (gérant Mohamed Hassani + comptable interne Sophie Martin)
+- 1 dossier TVA 2026, secteur restauration
+- 3 documents en statut `en_attente_ocr` (facture achat, facture vente, relevé bancaire)
+- 1 déclaration TVA mai-2026 en `pieces_manquantes`
+
+---
+
+### Étape 4 — Vérification post-migration
+
+```bash
+# 17 tables présentes
+psql $SUPABASE_DB_URL -c "\dt public.*"
+
+# Enum statut_document
+psql $SUPABASE_DB_URL -c "SELECT enum_range(NULL::statut_document);"
+
+# pgvector activé
+psql $SUPABASE_DB_URL -c "SELECT extname, extversion FROM pg_extension WHERE extname='vector';"
+
+# Index critiques
+psql $SUPABASE_DB_URL -c "SELECT indexname FROM pg_indexes WHERE schemaname='public' ORDER BY 1;"
+
+# Seed CIHAN OK
+psql $SUPABASE_DB_URL -c "SELECT nom, type_document, statut FROM documents WHERE dossier_id='cihan-0000-0000-0000-dossier00001';"
+```
+
+---
+
+### Étape 5 — Rollback (si nécessaire)
+
+⚠️ **Destructif** — supprime toutes les données. Uniquement si la migration a laissé la base dans un état incohérent.
+
+```bash
+psql $SUPABASE_DB_URL -f db/rollback/001_jmpartners_v2.2_rollback.sql
+```
+
+---
+
+## Notes importantes
+
+**pgvector** : l'index IVFFlat `idx_embeddings_vector` est créé vide et devient actif dès la première insertion. La RPC `match_historique_fec` retourne 0 résultats sur table vide — comportement normal.
+
+**RLS** : activé sur toutes les tables en mode beta (`authenticated USING (true)`). Les agents Python utilisent `SUPABASE_SERVICE_KEY` qui bypasse le RLS automatiquement. Resserrer en production via `responsable_id`.
+
+**Application via Dashboard** : coller `001_jmpartners_v2.2.sql` dans SQL Editor → Run. Le dry run nécessite psql (le Dashboard ne supporte pas ROLLBACK interactif).

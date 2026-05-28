@@ -1,16 +1,16 @@
 -- ============================================================
--- db/migrations/001_jmpartners_v2.2.sql
--- Migration JM Partners v2.1 → v2.2
--- Projet : Michael-IA-26's Project (eu-west-1)
--- Idempotente : peut être relancée sans erreur si tables existent
+-- db/migrations/001_jmpartners_v2.2_DRY_RUN.sql
+-- DRY RUN — identique à 001_jmpartners_v2.2.sql
+-- TERMINE PAR ROLLBACK : teste la migration sans rien modifier
+-- Usage : psql $SUPABASE_DB_URL -f db/migrations/001_jmpartners_v2.2_DRY_RUN.sql
 -- ============================================================
 
 BEGIN;
 
 -- ── 0. EXTENSIONS ────────────────────────────────────────────
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS vector;    -- pgvector 1536 dims (PresaisieAgent)
-CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- fuzzy libellés bancaires (LettrageAgent)
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- ── 1. FONCTION TRIGGER ──────────────────────────────────────
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -21,17 +21,16 @@ $$ LANGUAGE plpgsql;
 -- ── 2. ENUM ──────────────────────────────────────────────────
 DO $$ BEGIN
     CREATE TYPE statut_document AS ENUM (
-        'en_attente_ocr',           -- collecté, OCR pas encore fait
-        'a_trier',                  -- OCR ok (score ≥ 0.70), à classifier
-        'en_attente_collaborateur', -- score < 0.80 ou ambigu → intervention humaine
-        'a_saisir_sage',            -- validé, prêt pour RPA Sage
-        'valide',                   -- saisi et confirmé en Sage
-        'archive'                   -- archivé en GED
+        'en_attente_ocr',
+        'a_trier',
+        'en_attente_collaborateur',
+        'a_saisir_sage',
+        'valide',
+        'archive'
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ── 3. utilisateurs ──────────────────────────────────────────
--- Comptables du cabinet — cible FK pour contacts et dossiers
 CREATE TABLE IF NOT EXISTS utilisateurs (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nom              TEXT NOT NULL,
@@ -42,8 +41,6 @@ CREATE TABLE IF NOT EXISTS utilisateurs (
 );
 
 -- ── 4. contacts ──────────────────────────────────────────────
--- Clients du cabinet (ex: CIHAN, Le Bistrot du Port…)
--- RESTRICT : impossible de supprimer un comptable ayant des clients actifs
 CREATE TABLE IF NOT EXISTS contacts (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nom             TEXT NOT NULL,
@@ -60,16 +57,13 @@ CREATE TRIGGER contacts_updated_at
     BEFORE UPDATE ON contacts FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 5. dossiers ──────────────────────────────────────────────
--- RESTRICT sur contact_id : forcer l'archivage explicite du dossier
---   avant de pouvoir supprimer le client — zéro risque perte données
--- RESTRICT sur responsable_id : un comptable actif ne peut pas être supprimé
 CREATE TABLE IF NOT EXISTS dossiers (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     contact_id     UUID NOT NULL REFERENCES contacts(id) ON DELETE RESTRICT,
     type           TEXT NOT NULL CHECK (type IN ('bilan', 'tva', 'is', 'paie', 'creation')),
     exercice       TEXT NOT NULL,
     statut         TEXT DEFAULT 'en_cours' CHECK (statut IN ('en_cours', 'complet', 'valide', 'archive')),
-    secteur        TEXT,       -- restauration, btp, retail… (v2.2)
+    secteur        TEXT,
     responsable_id UUID REFERENCES utilisateurs(id) ON DELETE RESTRICT,
     deadline       DATE,
     created_at     TIMESTAMPTZ DEFAULT now(),
@@ -81,8 +75,6 @@ CREATE TRIGGER dossiers_updated_at
     BEFORE UPDATE ON dossiers FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 6. documents ─────────────────────────────────────────────
--- CASCADE : documents supprimés si leur dossier l'est
--- SET NULL : contact dissociable sans supprimer le document
 CREATE TABLE IF NOT EXISTS documents (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dossier_id      UUID NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
@@ -91,14 +83,14 @@ CREATE TABLE IF NOT EXISTS documents (
     type_document   TEXT NOT NULL,
     statut          statut_document NOT NULL DEFAULT 'en_attente_ocr',
     source          TEXT CHECK (source IN ('outlook', 'regate', 'pennylane', 'manuel')),
-    message_id      TEXT,               -- anti-doublon CollecteAgent (index unique partiel)
-    url_storage     TEXT,               -- URL Supabase Storage (fichier brut)
-    archive_path    TEXT,               -- chemin GED après archivage (GEDAgent)
-    contenu_extrait JSONB DEFAULT '{}', -- texte structuré retourné par OCR Claude
-    score_ocr       NUMERIC(4,2),       -- lisibilité OCR (0.00–1.00)
-    score_confiance NUMERIC(4,2),       -- confiance classification (0.00–1.00)
-    raison_attente  TEXT,               -- motif blocage : score_ocr_faible, multi_dossiers…
-    categorie       TEXT,               -- fournisseurs/clients/banques/fiscal_social/autres
+    message_id      TEXT,
+    url_storage     TEXT,
+    archive_path    TEXT,
+    contenu_extrait JSONB DEFAULT '{}',
+    score_ocr       NUMERIC(4,2),
+    score_confiance NUMERIC(4,2),
+    raison_attente  TEXT,
+    categorie       TEXT,
     multi_dossiers  BOOLEAN DEFAULT FALSE,
     badge_anomalie  BOOLEAN DEFAULT FALSE,
     anomalie_desc   TEXT,
@@ -114,8 +106,6 @@ CREATE TRIGGER documents_updated_at
     BEFORE UPDATE ON documents FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 7. journaux ──────────────────────────────────────────────
--- Append-only — pas d'updated_at
--- SET NULL partout : les journaux survivent à toute suppression
 CREATE TABLE IF NOT EXISTS journaux (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     contact_id     UUID REFERENCES contacts(id) ON DELETE SET NULL,
@@ -136,8 +126,6 @@ CREATE TABLE IF NOT EXISTS journaux (
 );
 
 -- ── 8. ecritures ─────────────────────────────────────────────
--- CASCADE : écritures supprimées si le dossier l'est
--- SET NULL : pièce justificative dissociable sans supprimer l'écriture
 CREATE TABLE IF NOT EXISTS ecritures (
     id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dossier_id             UUID NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
@@ -165,7 +153,6 @@ CREATE TABLE IF NOT EXISTS ecritures (
     created_at             TIMESTAMPTZ DEFAULT now(),
     updated_at             TIMESTAMPTZ DEFAULT now()
 );
--- ALTER safety : si ecritures existe déjà en v2.1 (sans les colonnes v2.2)
 ALTER TABLE ecritures ADD COLUMN IF NOT EXISTS montant_ht        NUMERIC(12,2);
 ALTER TABLE ecritures ADD COLUMN IF NOT EXISTS montant_ttc       NUMERIC(12,2);
 ALTER TABLE ecritures ADD COLUMN IF NOT EXISTS taux_tva          NUMERIC(5,2);
@@ -183,7 +170,6 @@ CREATE TRIGGER ecritures_updated_at
     BEFORE UPDATE ON ecritures FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 9. syncs_sage ────────────────────────────────────────────
--- Suivi des imports FEC depuis Sage (MiroirSageAgent)
 CREATE TABLE IF NOT EXISTS syncs_sage (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cabinet_id       TEXT NOT NULL,
@@ -200,9 +186,6 @@ CREATE TRIGGER syncs_sage_updated_at
     BEFORE UPDATE ON syncs_sage FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 10. ecritures_sage ───────────────────────────────────────
--- Miroir FEC Sage — immuable une fois importé, pas d'updated_at
--- CASCADE : lignes supprimées si le dossier l'est
--- SET NULL : on peut supprimer un sync sans perdre les lignes importées
 CREATE TABLE IF NOT EXISTS ecritures_sage (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dossier_id    UUID NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
@@ -217,13 +200,12 @@ CREATE TABLE IF NOT EXISTS ecritures_sage (
     tiers         TEXT,
     journal_code  TEXT,
     piece_ref     TEXT,
-    source        TEXT DEFAULT 'collaborateur',  -- paie / od_manuel / collaborateur
-    hash_md5      TEXT UNIQUE,                   -- anti-doublon strict (MiroirSageAgent)
+    source        TEXT DEFAULT 'collaborateur',
+    hash_md5      TEXT UNIQUE,
     created_at    TIMESTAMPTZ DEFAULT now()
 );
 
 -- ── 11. declarations_tva ─────────────────────────────────────
--- CASCADE : déclarations supprimées si le dossier ou le contact l'est
 CREATE TABLE IF NOT EXISTS declarations_tva (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dossier_id        UUID NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
@@ -244,8 +226,6 @@ CREATE TRIGGER declarations_tva_updated_at
     BEFORE UPDATE ON declarations_tva FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 12. acomptes_is ──────────────────────────────────────────
--- Quasi-immuables après création — pas d'updated_at
--- CASCADE : acomptes supprimés si le dossier ou le contact l'est
 CREATE TABLE IF NOT EXISTS acomptes_is (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dossier_id        UUID NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
@@ -260,14 +240,11 @@ CREATE TABLE IF NOT EXISTS acomptes_is (
 );
 
 -- ── 13. provisions_fnp ───────────────────────────────────────
--- FNP/FAE détectées en décembre uniquement (FNPFAEAgent)
--- CASCADE : provisions supprimées si le dossier l'est
--- SET NULL : suppression d'un collaborateur ne doit pas effacer la provision
 CREATE TABLE IF NOT EXISTS provisions_fnp (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dossier_id     UUID NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
     tiers          TEXT NOT NULL,
-    compte         TEXT NOT NULL,    -- 408xxx (FNP) ou 418xxx (FAE)
+    compte         TEXT NOT NULL,
     type_provision TEXT NOT NULL CHECK (type_provision IN ('fnp', 'fae')),
     montant_estime NUMERIC(12,2) NOT NULL,
     montant_reel   NUMERIC(12,2),
@@ -284,7 +261,6 @@ CREATE TRIGGER provisions_fnp_updated_at
     BEFORE UPDATE ON provisions_fnp FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 14. apprentissage ────────────────────────────────────────
--- Feedback collaborateur — règles de lettrage + ML futur (LettrageAgent)
 CREATE TABLE IF NOT EXISTS apprentissage (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     libelle_bancaire TEXT NOT NULL,
@@ -304,11 +280,10 @@ CREATE TRIGGER apprentissage_updated_at
     BEFORE UPDATE ON apprentissage FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 15. doublons_detectes ────────────────────────────────────
--- CASCADE : doublon supprimé si l'écriture source l'est
 CREATE TABLE IF NOT EXISTS doublons_detectes (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ecriture_id  UUID NOT NULL REFERENCES ecritures(id) ON DELETE CASCADE,
-    doublon_ref  TEXT,    -- piece_ref dans ecritures_sage (si cross-Sage)
+    doublon_ref  TEXT,
     type_doublon TEXT NOT NULL CHECK (type_doublon IN ('exact', 'approche', 'montant_tiers')),
     statut       TEXT DEFAULT 'en_attente' CHECK (statut IN (
         'en_attente', 'confirme', 'faux_positif'
@@ -317,8 +292,6 @@ CREATE TABLE IF NOT EXISTS doublons_detectes (
 );
 
 -- ── 16. revision ─────────────────────────────────────────────
--- Anomalies nocturnes (RevisionAgent) — corrigee=false = en attente traitement
--- SET NULL : l'historique survit à la suppression d'un dossier ou écriture
 CREATE TABLE IF NOT EXISTS revision (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dossier_id    UUID REFERENCES dossiers(id) ON DELETE SET NULL,
@@ -337,14 +310,12 @@ CREATE TRIGGER revision_updated_at
     BEFORE UPDATE ON revision FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── 17. lettrages ────────────────────────────────────────────
--- Immuable : dé-lettrage = nouvelle ligne, jamais de UPDATE
--- CASCADE sur les 3 FK : sans dossier ou écriture, le lettrage est orphelin
 CREATE TABLE IF NOT EXISTS lettrages (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dossier_id            UUID NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
     ecriture_reglement_id UUID NOT NULL REFERENCES ecritures(id) ON DELETE CASCADE,
     ecriture_facture_id   UUID NOT NULL REFERENCES ecritures(id) ON DELETE CASCADE,
-    code_lettre           TEXT NOT NULL,    -- A, B, C… séquentiel par dossier
+    code_lettre           TEXT NOT NULL,
     type_lettrage         TEXT NOT NULL CHECK (type_lettrage IN (
         'exact', 'approche', 'apprentissage'
     )),
@@ -353,8 +324,6 @@ CREATE TABLE IF NOT EXISTS lettrages (
 );
 
 -- ── 18. ged_index ────────────────────────────────────────────
--- Index d'archive GED — immuable une fois archivé (GEDAgent)
--- CASCADE : index supprimé si le document ou le dossier l'est
 CREATE TABLE IF NOT EXISTS ged_index (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id    UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -366,12 +335,11 @@ CREATE TABLE IF NOT EXISTS ged_index (
     )),
     annee          INT NOT NULL,
     mois           INT NOT NULL,
-    num_sequence   INT NOT NULL,    -- séquentiel par dossier+année+mois
+    num_sequence   INT NOT NULL,
     created_at     TIMESTAMPTZ DEFAULT now()
 );
 
--- ── 19. embeddings (pgvector) ────────────────────────────────
--- SET NULL sur les 2 FK : le vecteur survit à la suppression de sa source
+-- ── 19. embeddings ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS embeddings (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ecriture_id UUID REFERENCES ecritures(id) ON DELETE SET NULL,
@@ -383,51 +351,23 @@ CREATE TABLE IF NOT EXISTS embeddings (
 );
 
 -- ── 20. INDEX ────────────────────────────────────────────────
-
--- Vue "En attente" Lovable (filtre rapide dossier + statut)
-CREATE INDEX IF NOT EXISTS idx_documents_dossier_statut
-    ON documents(dossier_id, statut);
-CREATE INDEX IF NOT EXISTS idx_documents_statut
-    ON documents(statut);
-CREATE INDEX IF NOT EXISTS idx_documents_score_ocr
-    ON documents(score_ocr) WHERE score_ocr IS NOT NULL;
-
--- Écritures
-CREATE INDEX IF NOT EXISTS idx_ecritures_dossier_statut
-    ON ecritures(dossier_id, statut);
-CREATE INDEX IF NOT EXISTS idx_ecritures_est_lettree
-    ON ecritures(est_lettree) WHERE est_lettree = FALSE;
-CREATE INDEX IF NOT EXISTS idx_ecritures_compte_debit
-    ON ecritures(compte_debit);
-CREATE INDEX IF NOT EXISTS idx_ecritures_tiers
-    ON ecritures(tiers) WHERE tiers IS NOT NULL;
-
--- Miroir Sage
-CREATE INDEX IF NOT EXISTS idx_ecritures_sage_dossier
-    ON ecritures_sage(dossier_id);
-
--- Révision
-CREATE INDEX IF NOT EXISTS idx_revision_corrigee
-    ON revision(corrigee) WHERE corrigee = FALSE;
-CREATE INDEX IF NOT EXISTS idx_revision_dossier
-    ON revision(dossier_id);
-
--- GED
-CREATE INDEX IF NOT EXISTS idx_ged_dossier_annee_mois
-    ON ged_index(dossier_id, annee, mois);
-
--- Lettrage fuzzy (pg_trgm — LettrageAgent .like())
+CREATE INDEX IF NOT EXISTS idx_documents_dossier_statut ON documents(dossier_id, statut);
+CREATE INDEX IF NOT EXISTS idx_documents_statut ON documents(statut);
+CREATE INDEX IF NOT EXISTS idx_documents_score_ocr ON documents(score_ocr) WHERE score_ocr IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ecritures_dossier_statut ON ecritures(dossier_id, statut);
+CREATE INDEX IF NOT EXISTS idx_ecritures_est_lettree ON ecritures(est_lettree) WHERE est_lettree = FALSE;
+CREATE INDEX IF NOT EXISTS idx_ecritures_compte_debit ON ecritures(compte_debit);
+CREATE INDEX IF NOT EXISTS idx_ecritures_tiers ON ecritures(tiers) WHERE tiers IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ecritures_sage_dossier ON ecritures_sage(dossier_id);
+CREATE INDEX IF NOT EXISTS idx_revision_corrigee ON revision(corrigee) WHERE corrigee = FALSE;
+CREATE INDEX IF NOT EXISTS idx_revision_dossier ON revision(dossier_id);
+CREATE INDEX IF NOT EXISTS idx_ged_dossier_annee_mois ON ged_index(dossier_id, annee, mois);
 CREATE INDEX IF NOT EXISTS idx_apprentissage_trgm
     ON apprentissage USING gin(libelle_bancaire gin_trgm_ops);
-
--- pgvector IVFFlat (PresaisieAgent RPC match_historique_fec)
--- Note : index actif dès la première ligne insérée
 CREATE INDEX IF NOT EXISTS idx_embeddings_vector
     ON embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
 -- ── 21. RLS ──────────────────────────────────────────────────
--- Beta : tous les utilisateurs authentifiés voient tout
--- À resserrer en production (RLS par dossier/responsable_id)
 ALTER TABLE utilisateurs      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contacts          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dossiers          ENABLE ROW LEVEL SECURITY;
@@ -448,7 +388,7 @@ ALTER TABLE embeddings        ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE
-    t      TEXT;
+    t TEXT;
     tables TEXT[] := ARRAY[
         'utilisateurs', 'contacts', 'dossiers', 'documents', 'journaux',
         'ecritures', 'ecritures_sage', 'syncs_sage', 'declarations_tva',
@@ -466,7 +406,6 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 -- ── 22. RPC PGVECTOR ─────────────────────────────────────────
--- Utilisée par PresaisieAgent pour récupérer le contexte historique FEC
 CREATE OR REPLACE FUNCTION match_historique_fec(
     query_embedding vector(1536),
     match_threshold FLOAT DEFAULT 0.75,
@@ -486,7 +425,6 @@ END;
 $$;
 
 -- ── 23. DO BLOCK VÉRIFICATION ────────────────────────────────
--- Si une vérification échoue → RAISE EXCEPTION → ROLLBACK automatique
 DO $$
 DECLARE
     table_names TEXT[] := ARRAY[
@@ -497,7 +435,6 @@ DECLARE
     ];
     tbl TEXT;
 BEGIN
-    -- Vérif 1 : les 17 tables existent
     FOREACH tbl IN ARRAY table_names LOOP
         IF NOT EXISTS (
             SELECT 1 FROM information_schema.tables
@@ -506,44 +443,34 @@ BEGIN
             RAISE EXCEPTION 'TABLE MANQUANTE : %', tbl;
         END IF;
     END LOOP;
-
-    -- Vérif 2 : pgvector activé
     IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
         RAISE EXCEPTION 'Extension vector (pgvector) non activée';
     END IF;
-
-    -- Vérif 3 : enum statut_document existe
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statut_document') THEN
         RAISE EXCEPTION 'Type ENUM statut_document non créé';
     END IF;
-
-    -- Vérif 4 : index critique documents existe
     IF NOT EXISTS (
         SELECT 1 FROM pg_indexes
         WHERE schemaname = 'public' AND indexname = 'idx_documents_dossier_statut'
     ) THEN
         RAISE EXCEPTION 'Index idx_documents_dossier_statut manquant';
     END IF;
-
-    -- Vérif 5 : colonne score_ocr dans documents
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'documents'
-          AND column_name = 'score_ocr'
+        WHERE table_schema = 'public' AND table_name = 'documents' AND column_name = 'score_ocr'
     ) THEN
         RAISE EXCEPTION 'Colonne score_ocr manquante dans documents';
     END IF;
-
-    -- Vérif 6 : colonne embedding dans embeddings
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'embeddings'
-          AND column_name = 'embedding'
+        WHERE table_schema = 'public' AND table_name = 'embeddings' AND column_name = 'embedding'
     ) THEN
         RAISE EXCEPTION 'Colonne embedding manquante dans embeddings';
     END IF;
-
-    RAISE NOTICE '✅ MIGRATION v2.2 VALIDÉE — 17 tables + pgvector + enum + indexes OK';
+    RAISE NOTICE '✅ DRY RUN OK — migration v2.2 valide (ROLLBACK — aucune modification)';
 END $$;
 
-COMMIT;
+-- ============================================================
+-- ROLLBACK INTENTIONNEL : aucune modification en base
+-- ============================================================
+ROLLBACK;
