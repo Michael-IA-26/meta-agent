@@ -13,5 +13,15 @@ dockerfilePath = "Dockerfile.jmpartners-dashboard"
 [services.jmpartners]
 dockerfilePath = "apps/jmpartners/Dockerfile"
 healthcheckPath = "/health"
+healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+numReplicas = 1
+
+[environments.staging.variables]
+TZ = "Europe/Paris"
+RAILWAY_ENVIRONMENT = "staging"
+
+[environments.production.variables]
+TZ = "Europe/Paris"
+RAILWAY_ENVIRONMENT = "production"
