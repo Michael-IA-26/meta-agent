@@ -1,249 +1,245 @@
-# Specs Techniques — Vue "En attente" (Lovable)
-
-> Document destiné à Jeffrey pour l'implémentation dans Lovable.
-
----
-
-## 1. CONTEXTE TECHNIQUE
-
-### Tables Supabase utilisées
-
-**`documents`**
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | uuid | Identifiant unique |
-| `nom_fichier` | text | Nom du fichier |
-| `statut` | text | Statut du document |
-| `raison_attente` | text | Raison de mise en attente |
-| `contenu_extrait` | text | Contenu extrait par OCR |
-| `score_detection` | float | Score de confiance OCR/classification |
-| `expediteur` | text | Adresse email ou source d'envoi |
-| `date_reception` | timestamptz | Date de réception |
-| `dossier_id` | uuid | FK vers `dossiers.id` |
-
-**`dossiers`**
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | uuid | Identifiant unique |
-| `nom` | text | Nom du dossier client |
-| `type_dossier` | text | Type (comptabilité, juridique…) |
-
-**`journaux`**
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | uuid | Identifiant unique |
-| `agent` | text | Agent ayant effectué l'action |
-| `action` | text | Type d'action effectuée |
-| `statut` | text | Statut de l'action |
-| `document_id` | uuid | FK vers `documents.id` |
-| `created_at` | timestamptz | Date de création |
-
-### Variables d'environnement
-
-- URL Supabase : `VITE_SUPABASE_URL`
-- Authentification : `VITE_SUPABASE_ANON_KEY` (anon key côté Lovable)
+# Specs Techniques — Vue "En attente"
+> Pour Jeffrey · JM Partners v2.2 · Mai 2026
 
 ---
 
-## 2. REQUÊTE PRINCIPALE
+## 1. Objectif & contexte
+
+**Qui** : Collaborateurs JM Partners (Michael + comptables futurs)  
+**Quoi** : Arbitrer les documents bloqués par les agents IA  
+**Pourquoi** : KPI < 4h ouvrées par document en attente  
+**Périmètre** : Documents avec `statut IN ('en_attente_ocr', 'en_attente_collaborateur', 'a_trier')`
+
+---
+
+## 2. Requête SQL principale
 
 ```sql
-SELECT 
+SELECT
   d.id,
-  d.nom_fichier,
+  d.nom,
+  d.type_document,
+  d.statut,
   d.raison_attente,
-  d.score_detection,
-  d.expediteur,
-  d.date_reception,
-  d.contenu_extrait,
-  dos.nom as dossier_suggere
+  d.score_ocr,
+  d.score_confiance,
+  d.created_at,
+  d.updated_at,
+  dos.type        AS dossier_type,
+  dos.exercice    AS dossier_exercice,
+  dos.secteur     AS dossier_secteur,
+  c.nom           AS contact_nom,
+  c.email         AS contact_email
 FROM documents d
-LEFT JOIN dossiers dos ON d.dossier_id = dos.id
-WHERE d.statut = 'en_attente_collaborateur'
-ORDER BY d.date_reception ASC
+JOIN dossiers dos ON d.dossier_id = dos.id
+JOIN contacts c   ON dos.contact_id = c.id
+WHERE d.statut IN ('en_attente_ocr', 'en_attente_collaborateur', 'a_trier')
+ORDER BY d.created_at ASC
+LIMIT 50 OFFSET {offset}
 ```
 
-Cette requête retourne tous les documents en attente d'action manuelle, enrichis du nom du dossier suggéré. Le tri ASC garantit que les documents les plus anciens apparaissent en premier (priorité de traitement).
+**Filtres configurables** :
+- `dossier_id` = UUID (filtre par dossier)
+- `type_document` = TEXT (filtre par type)
+- `raison_attente` = TEXT (filtre par raison)
 
 ---
 
-## 3. ACTIONS DISPONIBLES PAR DOCUMENT
+## 3. Layout / wireframe ASCII
 
-### Valider
-Marque le document comme validé dans son dossier actuel.
-
-```sql
-UPDATE documents SET statut='valide', updated_at=NOW() WHERE id=?
+```
++──────────────────────────────────────────────────────────────────+
+│ 🔄 EN ATTENTE (12)   [Dossier ▼]  [Type ▼]  [🔍 Recherche]    │
++──────────────────────────────────────────────────────────────────+
+│                         │                                        │
+│  PDF preview            │  Facture Metro — mai 2026             │
+│  (200x300px)            │  Dossier : CIHAN · TVA 2026           │
+│  [thumbnail Supabase    │  Contact : Mohamed Hassani            │
+│   Storage]              │  Type    : facture_achat              │
+│                         │  Raison  : 🔴 Score OCR 0.62         │
+│                         │  Reçu   : 28 mai 2026 · 10h30        │
+│                         │                                        │
+│                         │  [✅ Valider]  [🔁 Réassigner]       │
+│                         │  [❓ Demander] [🗑️ Rejeter]          │
+│                         │                                        │
++──────────────────────────────────────────────────────────────────+
+│  ◀ Précédent   Doc 1 sur 12   Suivant ▶                        │
++──────────────────────────────────────────────────────────────────+
 ```
 
-### Réassigner
-Ouvre une modale de sélection de dossier, puis réassigne le document.
-
-```sql
-UPDATE documents SET dossier_id=?, statut='a_trier', updated_at=NOW() WHERE id=?
-```
-
-### Demander au client
-Crée une entrée dans les journaux pour tracer la demande au client.
-
-```sql
-INSERT INTO journaux (agent, action, document_id) VALUES ('collaborateur', 'demande_client', ?)
-```
-
-### Rejeter
-Marque le document comme rejeté.
-
-```sql
-UPDATE documents SET statut='rejete', updated_at=NOW() WHERE id=?
-```
+**Composants Tailwind + shadcn/ui** :
+- Container : `flex gap-4 p-4 border rounded-lg`
+- Preview : `w-48 h-72 object-contain border rounded`
+- Badge raison : `inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs`
+- Boutons : `Button variant="outline"` (shadcn) sauf Valider = `variant="default"`
 
 ---
 
-## 4. PASTILLE ORANGE (compteur temps réel)
+## 4. Les 4 actions
 
-### Requête compteur
+| Action | Effet DB | Notification | Condition |
+|---|---|---|---|
+| **Valider** | `statut → a_saisir_sage` | Aucune | `score_ocr > 0.70` ou override manuel |
+| **Réassigner** | `dossier_id` changé + `statut → a_trier` | Mail collaborateur dossier cible | `dossier_id` valide |
+| **Demander info** | `statut → en_attente_client` + flag dans metadata | Mail contact via Outlook (compta@jmpartners.fr) | `contact.email NOT NULL` |
+| **Rejeter** | `statut → archive` + `raison_attente → 'rejete_collaborateur'` | Log dans `apprentissage` | Aucune condition |
 
-```sql
-SELECT COUNT(*) FROM documents WHERE statut = 'en_attente_collaborateur'
-```
-
-### Subscription Realtime Supabase
-
-- Activer le Realtime sur la table `documents`
-- Filtre : `statut='en_attente_collaborateur'`
-- Écouter les événements `INSERT`, `UPDATE`, `DELETE`
-- Mise à jour automatique du compteur sans rechargement de page
+**Requêtes de mutation** :
 
 ```typescript
-const subscription = supabase
-  .channel('en-attente-count')
+// Valider
+await supabase
+  .from('documents')
+  .update({ statut: 'a_saisir_sage', updated_at: new Date().toISOString() })
+  .eq('id', documentId)
+
+// Réassigner
+await supabase
+  .from('documents')
+  .update({ dossier_id: newDossierId, statut: 'a_trier', updated_at: new Date().toISOString() })
+  .eq('id', documentId)
+
+// Demander info
+await supabase
+  .from('documents')
+  .update({ statut: 'en_attente_client', updated_at: new Date().toISOString() })
+  .eq('id', documentId)
+
+// Rejeter
+await supabase
+  .from('documents')
+  .update({ statut: 'archive', raison_attente: 'rejete_collaborateur', updated_at: new Date().toISOString() })
+  .eq('id', documentId)
+```
+
+---
+
+## 5. Badges raison_attente
+
+| `raison_attente` | Badge | Couleur | Explication |
+|---|---|---|---|
+| `score_ocr_faible` | 🔴 Score OCR faible | rouge | `score_ocr < 0.70` — document illisible |
+| `confiance_faible` | 🟡 Confiance faible | jaune | `score_confiance < 0.80` — classification incertaine |
+| `multi_dossiers_ambigu` | 🟠 Multi-dossiers | orange | Le doc appartient à plusieurs dossiers |
+| `doublon_potentiel` | 🟣 Doublon potentiel | violet | Déjà reçu (même message_id détecté) |
+| `type_inconnu` | 🔵 Type inconnu | bleu | Classification impossible |
+| `null` | ⚪ En attente OCR | gris | Pas encore traité |
+
+**Mapping TypeScript** :
+```typescript
+const BADGE_CONFIG = {
+  score_ocr_faible:      { color: 'red',    icon: '🔴', label: 'Score OCR faible' },
+  confiance_faible:      { color: 'yellow', icon: '🟡', label: 'Confiance faible' },
+  multi_dossiers_ambigu: { color: 'orange', icon: '🟠', label: 'Multi-dossiers' },
+  doublon_potentiel:     { color: 'purple', icon: '🟣', label: 'Doublon potentiel' },
+  type_inconnu:          { color: 'blue',   icon: '🔵', label: 'Type inconnu' },
+} as const
+```
+
+---
+
+## 6. Subscription Supabase Realtime
+
+```typescript
+const channel = supabase
+  .channel('documents_en_attente')
   .on(
     'postgres_changes',
     {
       event: '*',
       schema: 'public',
       table: 'documents',
-      filter: "statut=eq.en_attente_collaborateur",
+      filter: "statut=in.(en_attente_ocr,en_attente_collaborateur,a_trier)",
     },
-    () => refetchCount()
+    (payload) => {
+      if (payload.eventType === 'INSERT') {
+        // Ajouter au début de la liste
+        setDocuments(prev => [payload.new as Document, ...prev])
+      } else if (payload.eventType === 'UPDATE') {
+        // Si un autre user a validé → retirer de la liste
+        const newStatut = (payload.new as Document).statut
+        if (!['en_attente_ocr', 'en_attente_collaborateur', 'a_trier'].includes(newStatut)) {
+          setDocuments(prev => prev.filter(d => d.id !== payload.new.id))
+        }
+      } else if (payload.eventType === 'DELETE') {
+        setDocuments(prev => prev.filter(d => d.id !== payload.old.id))
+      }
+    }
   )
   .subscribe()
+
+// Cleanup
+return () => { supabase.removeChannel(channel) }
 ```
 
 ---
 
-## 5. COMPOSANTS UI À CRÉER
+## 7. États UI à gérer
 
-### `EnAttentePage`
-Page principale accessible via la route `/en-attente`.
-
-| Prop | Type | Description |
+| État | Composant | Comportement |
 |---|---|---|
-| — | — | Pas de props externes, gère son propre état |
-
-### `DocumentEnAttenteCard`
-Carte affichant les informations d'un document en attente avec ses 4 actions.
-
-| Prop | Type | Description |
-|---|---|---|
-| `document` | `DocumentEnAttente` | Objet document complet |
-| `onValider` | `(id: string) => void` | Callback validation |
-| `onReassigner` | `(id: string, dossierId: string) => void` | Callback réassignation |
-| `onDemanderClient` | `(id: string) => void` | Callback demande client |
-| `onRejeter` | `(id: string) => void` | Callback rejet |
-
-### `BadgeRaison`
-Badge coloré indiquant la raison de mise en attente du document.
-
-| Prop | Type | Description |
-|---|---|---|
-| `raison_attente` | `string` | Code de la raison d'attente |
-
-### `CompteurEnAttente`
-Pastille orange affichée dans la navigation sidebar avec le nombre de documents en attente.
-
-| Prop | Type | Description |
-|---|---|---|
-| `count` | `number` | Nombre de documents en attente |
-
-### `ModalReassignation`
-Modale permettant de sélectionner un dossier cible pour réassigner un document.
-
-| Prop | Type | Description |
-|---|---|---|
-| `documentId` | `string` | ID du document à réassigner |
-| `onConfirm` | `(dossierId: string) => void` | Callback confirmation avec dossier sélectionné |
-| `onCancel` | `() => void` | Callback annulation |
-
-### `ConfirmationDialog`
-Dialog générique de confirmation utilisé pour les actions irréversibles (valider, rejeter).
-
-| Prop | Type | Description |
-|---|---|---|
-| `action` | `'valider' \| 'rejeter' \| 'demander_client'` | Type d'action à confirmer |
-| `onConfirm` | `() => void` | Callback confirmation |
-| `onCancel` | `() => void` | Callback annulation |
+| **Loading** | Skeleton 5 cartes | `animate-pulse`, hauteur fixe |
+| **Empty state** | Illustration + message | "✨ Aucun document en attente — les agents travaillent !" |
+| **Error state** | Toast rouge | Message d'erreur + bouton "Réessayer" |
+| **Optimistic update** | Retrait immédiat du DOM | Rollback si la requête échoue (toast d'erreur) |
+| **Action en cours** | Boutons disabled + spinner | Pendant la mutation Supabase |
 
 ---
 
-## 6. BADGES DE RAISON
+## 8. Permissions / RLS
 
-Mapping exact des codes `raison_attente` vers labels et couleurs :
+**Beta** : tous les utilisateurs authentifiés voient tous les dossiers.
 
-| Code | Couleur | Label affiché |
-|---|---|---|
-| `"score_insuffisant"` | 🟡 Jaune | `"Score OCR faible"` |
-| `"illisible"` | 🔴 Rouge | `"Document illisible"` |
-| `"multi_dossiers"` | 🟠 Orange | `"Multi-dossiers"` |
-| `"score_confiance_insuffisant"` | 🟡 Jaune | `"Classification ambiguë"` |
-| *(default)* | ⚪ Gris | `"En attente"` |
+```sql
+-- Policy actuelle (beta)
+CREATE POLICY "beta_auth_all_documents" ON documents
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+```
 
-```typescript
-const BADGE_CONFIG: Record<string, { color: string; label: string }> = {
-  score_insuffisant: { color: 'yellow', label: 'Score OCR faible' },
-  illisible: { color: 'red', label: 'Document illisible' },
-  multi_dossiers: { color: 'orange', label: 'Multi-dossiers' },
-  score_confiance_insuffisant: { color: 'yellow', label: 'Classification ambiguë' },
-}
-
-function getBadgeConfig(raison: string) {
-  return BADGE_CONFIG[raison] ?? { color: 'gray', label: 'En attente' }
-}
+**Production (à implémenter après la beta)** :
+```sql
+-- À créer quand multi-utilisateurs
+CREATE POLICY "prod_documents_par_responsable" ON documents
+  FOR SELECT TO authenticated
+  USING (
+    dossier_id IN (
+      SELECT id FROM dossiers WHERE responsable_id = auth.uid()
+    )
+  );
 ```
 
 ---
 
-## 7. WIREFRAME ASCII
+## 9. Checklist Jeffrey (livrables)
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ 🟠 En attente (12)                      [Filtres ▼]    │
-├─────────────────────────────────────────────────────────┤
-│ [PDF]  facture_cihan_mai.pdf                            │
-│ 📁 Dossier suggéré : CIHAN              🟠 Multi-dossier│
-│ 👤 De : factures@fournisseur.fr                         │
-│ 📅 Reçu : 27 mai 2026 09:14                             │
-│ 💰 Montant détecté : 1 200,00 €                         │
-│                                                         │
-│ [✅ Valider] [📁 Réassigner] [💬 Demander] [❌ Rejeter] │
-├─────────────────────────────────────────────────────────┤
-│ [PDF]  releve_bancaire_mai.pdf                          │
-│ 📁 Dossier suggéré : CIHAN              🟡 Score faible │
-│ 👤 De : (import automatique)                             │
-│ 📅 Reçu : 27 mai 2026 08:30                             │
-│                                                         │
-│ [✅ Valider] [📁 Réassigner] [💬 Demander] [❌ Rejeter] │
-└─────────────────────────────────────────────────────────┘
-```
+- [ ] Composant `<VueEnAttente />` autonome (React + TypeScript)
+- [ ] Hook `useDocumentsEnAttente(supabaseClient)` avec Realtime
+- [ ] Gestion des 4 actions (mutations Supabase + optimistic updates)
+- [ ] Badge mapping `raison_attente` → couleur + icône
+- [ ] Skeleton loading (5 cartes)
+- [ ] Empty state ("✨ Aucun document en attente")
+- [ ] Toast confirmations (shadcn/ui `useToast`)
+- [ ] Test manuel avec les 5 docs seed CIHAN (`dossier_id = 'cihan-0000-0000-0000-dossier00001'`)
+- [ ] Capture vidéo Loom (2 min — navigation + 1 action Valider)
+- [ ] Deploy preview Lovable + URL partagée avec Michael
 
 ---
 
-## 8. CHECKLIST JEFFREY
+## 10. Hors scope (V1)
 
-- [ ] Créer la page `/en-attente` dans Lovable
-- [ ] Connecter Supabase Realtime (subscription sur documents)
-- [ ] Implémenter les 4 actions avec confirmation dialog
-- [ ] Ajouter la pastille 🟠 dans le layout principal (nav sidebar)
-- [ ] Test sur dossier CIHAN avec les 3 docs de test du seed
-- [ ] Vérifier que les actions mettent bien à jour le compteur en temps réel
-- [ ] Responsive mobile : cartes empilées sur petit écran
+- Pas d'édition inline du PDF
+- Pas de bulk actions (V2 ultérieure)
+- Pas de stats / dashboard (vue dédiée)
+- Pas d'export CSV (V2 ultérieure)
+- Pas de tri configurable côté client (ORDER BY created_at ASC fixe en V1)
+
+---
+
+## 11. Performance
+
+| Contrainte | Valeur | Justification |
+|---|---|---|
+| Pagination | 50 docs/page | Éviter rechargement complet |
+| Refresh Realtime | Max 1x/500ms | Déduplique les events rapides |
+| Cache local | 30s | Évite re-fetch si navigation retour |
+| Preview PDF | Lazy load | Seulement si doc visible |
