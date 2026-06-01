@@ -58,9 +58,10 @@ def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
-def get_anthropic_client() -> anthropic.Anthropic:
-    """Retourne un client Anthropic initialisé."""
-    return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+def get_anthropic_client():
+    """Retourne un client Anthropic avec suivi token_usage."""
+    from apps.shared.claude_client import get_client
+    return get_client("relance_handler")
 
 
 def _urgence_max(result: DocumentCheckerResult) -> str | None:
