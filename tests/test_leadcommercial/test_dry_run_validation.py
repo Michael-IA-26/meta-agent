@@ -23,6 +23,7 @@ from apps.leadcommercial.icp_filter import (
     evaluate_batch,
     evaluate_lead,
     resolve_date,
+    _detect_franchise,
 )
 from apps.leadcommercial.email_generator import generate_cold_email, generate_fiche_lead
 
@@ -33,7 +34,7 @@ FIXTURES_PATH = ROOT / "tests" / "fixtures" / "validation_leads.json"
 ASSERTIONS = {
     "TEST-01": {"statut_in": ["CHAUD"]},
     "TEST-02": {"statut_in": ["CHAUD"]},
-    "TEST-03": {"statut_in": ["CHAUD", "TIÈDE"]},
+    "TEST-03": {"statut_in": ["TIÈDE"]},   # J2 : tech NAF 62xx abaissé à +3 → 73 pts
     "TEST-04": {"statut_in": ["CHAUD", "TIÈDE"]},
     "TEST-05": {"statut": "EXCLU", "raison_contains": "effectif"},
     "TEST-06": {"statut": "EXCLU"},
@@ -87,12 +88,14 @@ def test_02_btp_secteur_prioritaire():
 
 # ── TEST-03 : Tech Paris 11e ─────────────────────────────────────────────────
 
-def test_03_tech_chaud_ou_tiede():
+def test_03_tech_tiede_apres_ajustement_j2():
+    """J2 : NAF 62xx abaissé de +7 à +3 → score 73 → TIÈDE (< 75)."""
     lead = load_lead("TEST-03")
     result = evaluate_lead(lead, TODAY)
-    assert result["statut"] in {"CHAUD", "TIÈDE"}, (
-        f"TEST-03 : attendu CHAUD ou TIÈDE, obtenu {result['statut']}"
+    assert result["statut"] == "TIÈDE", (
+        f"TEST-03 J2 : attendu TIÈDE (score < 75), obtenu {result['statut']} ({result['score']}/100)"
     )
+    assert result["score"] < 75, f"Score {result['score']} devrait être < 75 après ajustement J2"
 
 
 # ── TEST-04 : Assurance Aubervilliers ─────────────────────────────────────────
@@ -103,6 +106,38 @@ def test_04_assurance_chaud_ou_tiede():
     assert result["statut"] in {"CHAUD", "TIÈDE"}, (
         f"TEST-04 : attendu CHAUD ou TIÈDE, obtenu {result['statut']}"
     )
+
+
+def test_04_axa_flag_franchise_probable():
+    """AXA + NAF 6622Z → franchise_probable=True avec avertissement."""
+    lead = load_lead("TEST-04")
+    result = evaluate_lead(lead, TODAY)
+    assert result["franchise_probable"] is True, (
+        "TEST-04 AXA : franchise_probable doit être True (marque AXA + NAF 6622Z)"
+    )
+    assert len(result["warnings"]) > 0
+    assert "AXA" in result["warnings"][0] or "franchise" in result["warnings"][0].lower()
+
+
+def test_04_axa_non_exclu_malgre_franchise():
+    """Le flag franchise ne doit pas exclure le lead — il reste CHAUD ou TIÈDE."""
+    lead = load_lead("TEST-04")
+    result = evaluate_lead(lead, TODAY)
+    assert result["statut"] != "EXCLU", (
+        "TEST-04 AXA : franchise_probable ne doit pas forcer l'exclusion"
+    )
+
+
+def test_franchise_detection_naf_hors_assurance():
+    """Un lead non-assurance (BTP) ne doit pas déclencher le flag franchise."""
+    result = _detect_franchise("AXA RENOVATION BTP", "4391B")
+    assert result is None, "NAF BTP ne doit pas déclencher le flag franchise assurance"
+
+
+def test_franchise_detection_sans_marque():
+    """NAF assurance sans nom de grande marque → pas de flag."""
+    result = _detect_franchise("DUPONT ASSURANCES CONSEILS", "6622Z")
+    assert result is None, "Assurance indépendante sans marque ne doit pas déclencher le flag"
 
 
 # ── TEST-05 : Holding 120 salariés ────────────────────────────────────────────

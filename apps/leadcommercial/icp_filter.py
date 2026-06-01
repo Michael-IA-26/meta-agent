@@ -31,6 +31,13 @@ SEUIL_CHAUD = 75
 SEUIL_TIEDE = 50
 SEUIL_FROID = 30
 
+# Codes NAF et noms de marques déclenchant un avertissement franchise
+NAF_FRANCHISE_ASSURANCE: frozenset[str] = frozenset({"6621Z", "6622Z"})
+MARQUES_FRANCHISE: frozenset[str] = frozenset({
+    "AXA", "ALLIANZ", "MAIF", "GROUPAMA", "APRIL", "GENERALI",
+    "MACIF", "MATMUT", "COVEA", "MMA", "GMF",
+})
+
 
 # ── Résolution des dates relatives ────────────────────────────────────────────
 
@@ -61,12 +68,32 @@ def _score_secteur(code_naf: str) -> tuple[int, str]:
     if p2 in {"70", "71", "72", "73", "74"}:
         return 7, "Services aux entreprises"
     if p2 in {"62", "63"}:
-        return 7, "Informatique / Tech"
+        return 3, "Informatique / Tech (moins prioritaire)"
     if p2 in {"65", "66", "67"}:
         return 5, "Assurance / profession réglementée"
     if p2 in {"64"}:
         return 0, "Holding / Finance (hors cible)"
     return 5, "Secteur neutre"
+
+
+# ── Détection franchise ───────────────────────────────────────────────────────
+
+def _detect_franchise(denomination: str, code_naf: str) -> str | None:
+    """Retourne un message d'avertissement si le lead est probablement une franchise.
+
+    Critères : NAF assurance (6621Z / 6622Z) ET nom de grande marque détecté.
+    N'exclut pas le lead — déclenche seulement une vérification manuelle.
+    """
+    if code_naf not in NAF_FRANCHISE_ASSURANCE:
+        return None
+    denom_upper = denomination.upper()
+    detected = [m for m in MARQUES_FRANCHISE if m in denom_upper]
+    if detected:
+        return (
+            f"Franchise probable ({', '.join(detected)}) — "
+            "vérification manuelle recommandée : le mandant impose souvent un EC dédié"
+        )
+    return None
 
 
 # ── Pipeline principal ────────────────────────────────────────────────────────
@@ -178,6 +205,13 @@ def evaluate_lead(lead: dict[str, Any], today: date | None = None) -> dict[str, 
     else:
         statut = "FROID"
 
+    # ── Avertissements (flags non-bloquants) ─────────────────────────────────
+
+    warnings: list[str] = []
+    franchise_warning = _detect_franchise(denomination, code_naf)
+    if franchise_warning:
+        warnings.append(franchise_warning)
+
     return {
         "id": lead_id,
         "denomination": denomination,
@@ -187,6 +221,8 @@ def evaluate_lead(lead: dict[str, Any], today: date | None = None) -> dict[str, 
         "statut": statut,
         "raison_exclusion": None,
         "scoring_details": details,
+        "warnings": warnings,
+        "franchise_probable": franchise_warning is not None,
         "representant": representant,
         "code_naf": code_naf,
         "libelle_naf": lead.get("libelle_naf", ""),
@@ -212,6 +248,8 @@ def _exclu(
         "statut": "EXCLU",
         "raison_exclusion": raison,
         "scoring_details": [f"EXCLU : {raison}"],
+        "warnings": [],
+        "franchise_probable": False,
         "representant": representant,
     }
 
