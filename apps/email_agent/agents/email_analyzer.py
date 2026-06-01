@@ -13,16 +13,16 @@ if _EMAIL_AGENT_DIR not in sys.path:
 
 import json  # noqa: E402
 
-import anthropic  # noqa: E402
 from analyzer import _build_system_prompt  # noqa: E402
 from analyzer import load_icp as _load_icp  # noqa: E402
+from apps.shared.claude_client import get_client  # noqa: E402
 
 if TYPE_CHECKING:
     from agents import EmailAnalyzed, EmailRaw  # type: ignore[import]  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
-_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+_client = get_client("email_analyzer")
 
 
 def load_icp(icp_name: str = "agence_conseil") -> str:

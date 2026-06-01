@@ -1086,6 +1086,84 @@ async def dry_run() -> JSONResponse:
         )
 
 
+@app.get("/dashboard/tokens")
+async def get_token_dashboard() -> JSONResponse:
+    """Agrégats de consommation tokens Anthropic par agent.
+
+    Retourne : by_agent (total + par période) + totals (jour/semaine/mois)
+    + history (30 derniers jours pour graphe).
+    """
+    try:
+        from datetime import timezone
+
+        from supabase import create_client
+
+        sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        today = date.today()
+        day_start = today.isoformat()
+        week_start = (today - timedelta(days=7)).isoformat()
+        month_start = (today - timedelta(days=30)).isoformat()
+
+        rows = (
+            sb.table("token_usage")
+            .select("agent_name,model,date,input_tokens,output_tokens,cost_eur")
+            .gte("date", month_start)
+            .order("date", desc=True)
+            .execute()
+        ).data or []
+
+        # Aggregate by agent
+        agents: dict[str, dict[str, Any]] = {}
+        totals: dict[str, dict[str, float]] = {
+            "today": {"input": 0, "output": 0, "cost_eur": 0.0, "calls": 0},
+            "week":  {"input": 0, "output": 0, "cost_eur": 0.0, "calls": 0},
+            "month": {"input": 0, "output": 0, "cost_eur": 0.0, "calls": 0},
+        }
+
+        for r in rows:
+            name = r["agent_name"]
+            if name not in agents:
+                agents[name] = {
+                    "agent_name": name,
+                    "today":  {"input": 0, "output": 0, "cost_eur": 0.0, "calls": 0},
+                    "week":   {"input": 0, "output": 0, "cost_eur": 0.0, "calls": 0},
+                    "month":  {"input": 0, "output": 0, "cost_eur": 0.0, "calls": 0},
+                }
+            _add_row(agents[name]["month"], r)
+            _add_row(totals["month"], r)
+            if r["date"] >= week_start:
+                _add_row(agents[name]["week"], r)
+                _add_row(totals["week"], r)
+            if r["date"] == day_start:
+                _add_row(agents[name]["today"], r)
+                _add_row(totals["today"], r)
+
+        # History: daily cost over last 30 days for graph
+        history: dict[str, float] = {}
+        for r in rows:
+            d = r["date"]
+            history[d] = round(history.get(d, 0.0) + float(r["cost_eur"]), 6)
+        history_list = [{"date": k, "cost_eur": v} for k, v in sorted(history.items())]
+
+        return JSONResponse(content={
+            "by_agent": sorted(agents.values(), key=lambda a: a["month"]["cost_eur"], reverse=True),
+            "totals": totals,
+            "history_30d": history_list,
+        })
+
+    except Exception as exc:
+        logger.warning("token_dashboard: Supabase unavailable — %s", exc)
+        return JSONResponse(content={"by_agent": [], "totals": {}, "history_30d": [], "error": str(exc)})
+
+
+def _add_row(bucket: dict[str, Any], r: dict[str, Any]) -> None:
+    """Accumule une ligne token_usage dans un bucket d'agrégat."""
+    bucket["input"] = bucket.get("input", 0) + int(r["input_tokens"])
+    bucket["output"] = bucket.get("output", 0) + int(r["output_tokens"])
+    bucket["cost_eur"] = round(bucket.get("cost_eur", 0.0) + float(r["cost_eur"]), 6)
+    bucket["calls"] = bucket.get("calls", 0) + 1
+
+
 if __name__ == "__main__":
     import uvicorn
 
