@@ -13,8 +13,8 @@ if _DIR not in sys.path:
     sys.path.insert(0, _DIR)
 
 import agents.email_analyzer as email_analyzer  # noqa: E402
-import agents.gmail_fetcher as gmail_fetcher  # noqa: E402
-import agents.gmail_reporter as gmail_reporter  # noqa: E402
+import agents.outlook_fetcher as outlook_fetcher  # noqa: E402
+import agents.outlook_reporter as outlook_reporter  # noqa: E402
 import agents.report_builder as report_builder  # noqa: E402
 import agents.supabase_writer as supabase_writer  # noqa: E402
 import agents.telegram_sender as telegram_sender  # noqa: E402
@@ -40,7 +40,7 @@ def run(max_results: int = 20, icp_name: str = "agence_conseil") -> None:
 
     # 1. Fetch emails
     try:
-        emails = gmail_fetcher.fetch_emails(max_results=max_results)
+        emails = outlook_fetcher.fetch_emails(max_results=max_results)
     except Exception as exc:
         logger.error("Orchestrator: GmailFetcher failed — %s", exc)
         return
@@ -83,7 +83,7 @@ def run(max_results: int = 20, icp_name: str = "agence_conseil") -> None:
     # 5. Send report by email
     if html:
         today = datetime.now().strftime("%d/%m/%Y")
-        gmail_reporter.send_email_report(
+        outlook_reporter.send_email_report(
             html, subject=f"Votre rapport du jour - {today}"
         )
 
