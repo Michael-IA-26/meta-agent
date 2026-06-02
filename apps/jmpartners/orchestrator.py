@@ -112,7 +112,10 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         dry_run: Si True, simule le flux sans écrire en base ni envoyer d'alertes.
         cabinet_id: Identifiant du cabinet pour la clôture.
     """
-    logger.info("Orchestrateur JM Partners v2.2 — démarrage (dry_run=%s)", dry_run)
+    import os
+    from apps.jmpartners.backends.factory import get_backend
+    backend = get_backend(os.getenv("COMPTA_BACKEND", "sage"))  # noqa: F841 — Sprint 4 l'utilisera
+    logger.info("Orchestrateur JM Partners v2.2 — démarrage (dry_run=%s, backend=%s)", dry_run, os.getenv("COMPTA_BACKEND", "sage"))
     erreurs: list[str] = []
 
     # ── 1. Collecte documents (Outlook + Regate + PennyLane + manuel) ──────────
