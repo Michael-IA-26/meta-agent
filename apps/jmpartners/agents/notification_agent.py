@@ -70,7 +70,7 @@ class NotificationAgent:
                 .table("journaux")
                 .select("id", count=CountMethod.exact)
                 .eq("dossier_id", dossier_id)
-                .eq("action", action)
+                .eq("type_action", action)
                 .gte("created_at", seuil)
                 .execute()
             )
@@ -90,12 +90,15 @@ class NotificationAgent:
         try:
             self._get_supabase().table("journaux").insert(
                 {
-                    "cabinet_id": CABINET_ID or None,
                     "dossier_id": payload["dossier_id"],
-                    "agent": "notification_agent",
-                    "action": action,
-                    "message": payload["message"][:500],
-                    "niveau": "info" if statut == "ok" else "warning",
+                    "type_action": action,
+                    "contenu": payload["message"][:500],
+                    "statut": statut,
+                    "metadata": {
+                        "agent": "notification_agent",
+                        "cabinet_id": CABINET_ID or None,
+                        "niveau": "info" if statut == "ok" else "warning",
+                    },
                 }
             ).execute()
         except Exception as exc:

@@ -179,12 +179,15 @@ class DeclarationISAgent:
         try:
             self._get_supabase().table("journaux").insert(
                 {
-                    "cabinet_id": CABINET_ID or None,
                     "dossier_id": dossier_id,
-                    "agent": "declaration_is_agent",
-                    "action": action,
-                    "message": message[:500],
-                    "niveau": niveau,
+                    "type_action": action,
+                    "contenu": message[:500],
+                    "statut": "ok",
+                    "metadata": {
+                        "agent": "declaration_is_agent",
+                        "cabinet_id": CABINET_ID or None,
+                        "niveau": niveau,
+                    },
                 }
             ).execute()
         except Exception as exc:
