@@ -1,12 +1,11 @@
 import json
 import logging
 import os
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import anthropic
 from anthropic.types import TextBlock
-from storage import save_email
+
+from apps.email_agent.storage import save_email
 
 logger = logging.getLogger(__name__)
 _client: anthropic.Anthropic | None = None

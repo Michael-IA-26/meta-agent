@@ -1,18 +1,15 @@
 import logging
 import os
-import sys
 import time
 
 import schedule
 import sentry_sdk
 
+from apps.email_agent.analyzer import analyze_emails
+from apps.email_agent.gmail_client import get_emails
+from apps.email_agent.sender import send_report
+
 logger = logging.getLogger(__name__)
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from analyzer import analyze_emails  # noqa: E402
-from gmail_client import get_emails  # noqa: E402
-from sender import send_report  # noqa: E402
 
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),

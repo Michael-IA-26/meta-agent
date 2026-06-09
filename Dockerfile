@@ -23,4 +23,4 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python3.11 -c "import anthropic; print('OK')" || exit 1
 
-CMD ["uv", "run", "python3.11", "apps/email_agent/main.py"]
+CMD ["uv", "run", "python3.11", "-m", "apps.email_agent.main"]

@@ -1,18 +1,16 @@
 import base64
 import logging
 import os
-import sys
 import time
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from apps.email_agent.gmail_client import get_gmail_service
+from apps.email_agent.storage import calculate_and_save_kpis
+from apps.email_agent.telegram_sender import send_telegram_report
 
 logger = logging.getLogger(__name__)
-from gmail_client import get_gmail_service  # noqa: E402
-from storage import calculate_and_save_kpis  # noqa: E402
-from telegram_sender import send_telegram_report  # noqa: E402
 
 
 def report_to_html(analyzed_emails):
@@ -86,8 +84,8 @@ def send_report(analyzed_emails, temps_agent_sec=0):
 
 
 if __name__ == "__main__":
-    from analyzer import analyze_emails
-    from gmail_client import get_emails
+    from apps.email_agent.analyzer import analyze_emails
+    from apps.email_agent.gmail_client import get_emails
 
     start = time.time()
     emails = get_emails(max_results=20)
