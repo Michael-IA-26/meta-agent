@@ -53,6 +53,8 @@ class TvaAgentResult(TypedDict):
 
 def get_supabase_client() -> Client:
     """Retourne un client Supabase initialisé depuis les variables d'env."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise ValueError("SUPABASE_URL et SUPABASE_SERVICE_KEY sont requis — configure Doppler")
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 

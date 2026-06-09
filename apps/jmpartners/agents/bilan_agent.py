@@ -58,6 +58,8 @@ class BilanAgent:
 
     def _get_supabase(self) -> Client:
         if self._supabase is None:
+            if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+                raise ValueError("SUPABASE_URL et SUPABASE_SERVICE_KEY sont requis — configure Doppler")
             self._supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
         return self._supabase
 
