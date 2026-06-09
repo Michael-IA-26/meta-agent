@@ -47,6 +47,7 @@ def fetch_new_companies(max_results: int = 20, date: str | None = None) -> list[
 
     query = build_query(date)
     params = {"q": query, "nombre": str(max_results), "champs": CHAMPS}
+    proxies = os.getenv("FIXIE_URL")
 
     try:
         response = httpx.get(
@@ -54,6 +55,7 @@ def fetch_new_companies(max_results: int = 20, date: str | None = None) -> list[
             headers=get_headers(),
             params=params,
             timeout=30,
+            proxy=proxies,
         )
         response.raise_for_status()
     except httpx.HTTPStatusError as e:
