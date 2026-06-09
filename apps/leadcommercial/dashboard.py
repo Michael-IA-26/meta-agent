@@ -345,7 +345,7 @@ async def run_now() -> JSONResponse:
     try:
         import apps.leadcommercial.main as lc_main  # noqa: PLC0415
 
-        thread = threading.Thread(target=lc_main.main, daemon=True)
+        thread = threading.Thread(target=lc_main.main, args=(["--once"],), daemon=True)
         thread.start()
         return JSONResponse(content={"status": "started"})
     except Exception as exc:
