@@ -1031,7 +1031,7 @@ async def relancer_dossier(dossier_id: str) -> JSONResponse:
         return JSONResponse(
             content={
                 "dossier_id": dossier_id,
-                "statut": relance_result.get("statut", "ok"),
+                "statut": "ok" if relance_result.get("envoye") else "skipped",
                 "message": f"Relance envoyée pour le dossier {dossier_id}",
                 "details": relance_result,
             }

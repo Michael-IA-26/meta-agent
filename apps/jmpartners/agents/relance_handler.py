@@ -19,7 +19,7 @@ from apps.jmpartners.agents.document_checker import (
     DocumentManquant,
 )
 
-__all__ = ["RelanceResult", "run"]
+__all__ = ["RelanceResult", "RelanceHandler", "run"]
 
 logger = logging.getLogger(__name__)
 
@@ -319,3 +319,16 @@ def run(result: DocumentCheckerResult, dry_run: bool = False) -> RelanceResult:
         corps=corps,
         journal_id=journal_id,
     )
+
+
+class RelanceHandler:
+    """Façade orientée-objet pour déclencher une relance depuis un dossier_id."""
+
+    def __init__(self, cabinet_id: str | None = None) -> None:
+        self.cabinet_id = cabinet_id
+
+    def run(self, dossier_id: str, dry_run: bool = False) -> RelanceResult:
+        from apps.jmpartners.agents.document_checker import run as check_docs  # noqa: PLC0415
+
+        doc_result = check_docs(dossier_id, dry_run=dry_run)
+        return run(doc_result, dry_run=dry_run)
