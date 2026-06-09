@@ -19,15 +19,30 @@ CREDENTIALS_FILE = os.path.join(BASE_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(BASE_DIR, os.getenv("TOKEN_FILE", "token.json"))
 
 
+def _bootstrap_token_from_env() -> None:
+    """Écrit token.json depuis GMAIL_TOKEN_B64 si le fichier est absent.
+
+    Permet d'injecter le token OAuth en prod via une variable d'env Railway
+    sans le committer dans le repo.
+    """
+    if os.path.exists(TOKEN_FILE):
+        return
+    token_b64 = os.getenv("GMAIL_TOKEN_B64", "")
+    if not token_b64:
+        return
+    token_json = base64.b64decode(token_b64).decode("utf-8")
+    with open(TOKEN_FILE, "w") as f:
+        f.write(token_json)
+    logger.info("gmail_client: token.json restauré depuis GMAIL_TOKEN_B64")
+
+
 def get_gmail_service():
-    # En production headless, credentials.json et token.json doivent être présents.
-    # Sans credentials.json, run_local_server() tente d'ouvrir un navigateur et bloque.
-    # Solution prod recommandée : utiliser un Service Account Google ou injecter
-    # token.json via une variable d'env (TOKEN_FILE pointant vers un fichier monté).
+    _bootstrap_token_from_env()
+
     if not os.path.exists(CREDENTIALS_FILE):
         raise RuntimeError(
             f"Gmail OAuth non configuré : {CREDENTIALS_FILE} introuvable. "
-            "En prod, montez credentials.json dans le container ou utilisez un Service Account."
+            "En prod, injectez GMAIL_TOKEN_B64 (token seul suffit si refresh_token présent)."
         )
     creds = None
     if os.path.exists(TOKEN_FILE):
