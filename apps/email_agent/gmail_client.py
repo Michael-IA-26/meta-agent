@@ -20,6 +20,15 @@ TOKEN_FILE = os.path.join(BASE_DIR, os.getenv("TOKEN_FILE", "token.json"))
 
 
 def get_gmail_service():
+    # En production headless, credentials.json et token.json doivent être présents.
+    # Sans credentials.json, run_local_server() tente d'ouvrir un navigateur et bloque.
+    # Solution prod recommandée : utiliser un Service Account Google ou injecter
+    # token.json via une variable d'env (TOKEN_FILE pointant vers un fichier monté).
+    if not os.path.exists(CREDENTIALS_FILE):
+        raise RuntimeError(
+            f"Gmail OAuth non configuré : {CREDENTIALS_FILE} introuvable. "
+            "En prod, montez credentials.json dans le container ou utilisez un Service Account."
+        )
     creds = None
     if os.path.exists(TOKEN_FILE):
         creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
