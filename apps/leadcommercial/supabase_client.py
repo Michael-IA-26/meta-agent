@@ -123,6 +123,13 @@ def persist_lead(lead: dict) -> bool:
         return False
 
     lead_id = insert_lead(lead)
-    create_lock(siren)
+    try:
+        create_lock(siren)
+    except Exception as exc:
+        logger.error(
+            f"Lead {siren} inséré (id={lead_id}) mais lock non créé — "
+            f"doublon possible au prochain cycle : {exc}"
+        )
+        return True
     logger.info(f"Lead {siren} persiste (id={lead_id}) et lock cree")
     return True
