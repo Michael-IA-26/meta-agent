@@ -219,6 +219,11 @@ def run(dry_run: bool = False) -> MailHandlerResult:
         MailHandlerResult avec les emails traités et les statistiques.
     """
     logger.info("mail_handler — démarrage")
+
+    if not IMAP_HOST or not IMAP_USER or not IMAP_PASSWORD:
+        logger.warning("mail_handler — IMAP non configuré (IMAP_HOST/IMAP_USER/IMAP_PASSWORD manquants)")
+        return MailHandlerResult(traites=0, non_matches=0, emails=[], erreurs=["IMAP non configuré"])
+
     supabase = get_supabase_client()
     ai_client = get_anthropic_client()
 
