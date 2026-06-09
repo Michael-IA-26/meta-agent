@@ -62,6 +62,8 @@ def get_supabase_client() -> Client:
 
 def get_anthropic_client() -> anthropic.Anthropic:
     """Retourne un client Anthropic initialisé."""
+    if not ANTHROPIC_API_KEY:
+        raise ValueError("ANTHROPIC_API_KEY est requis — configure Doppler")
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 

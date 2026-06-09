@@ -8,8 +8,18 @@ import anthropic
 from anthropic.types import TextBlock
 from storage import save_email
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 logger = logging.getLogger(__name__)
+_client: anthropic.Anthropic | None = None
+
+
+def _get_client() -> anthropic.Anthropic:
+    global _client
+    if _client is None:
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY est requis — configure Doppler")
+        _client = anthropic.Anthropic(api_key=api_key)
+    return _client
 
 SYSTEM_BASE = (
     "Tu es un assistant expert en classification d'emails professionnels. "
@@ -59,7 +69,7 @@ Reponds avec exactement ce format JSON:
   "suggested_reply": "suggestion de reponse ou null"
 }}"""
 
-    response = client.messages.create(
+    response = _get_client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=500,
         system=system,
