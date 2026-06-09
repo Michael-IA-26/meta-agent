@@ -22,7 +22,7 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASS = os.getenv("SMTP_PASS", "")
+SMTP_PASSWORDWORD = os.getenv("SMTP_PASSWORDWORD", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
@@ -92,7 +92,7 @@ class AcompteISAgent:
             return []
 
     def _send_email(self, destinataire: str, sujet: str, corps: str) -> bool:
-        if not SMTP_USER or not SMTP_PASS:
+        if not SMTP_USER or not SMTP_PASSWORD:
             logger.warning("SMTP non configuré — email IS non envoyé")
             return False
         try:
@@ -103,7 +103,7 @@ class AcompteISAgent:
             msg.attach(MIMEText(corps, "plain", "utf-8"))
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
                 server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
+                server.login(SMTP_USER, SMTP_PASSWORD)
                 server.sendmail(SMTP_USER, [destinataire], msg.as_string())
             return True
         except Exception as exc:

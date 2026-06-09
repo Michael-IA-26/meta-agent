@@ -22,7 +22,7 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASS = os.getenv("SMTP_PASS", "")
+SMTP_PASSWORDWORD = os.getenv("SMTP_PASSWORDWORD", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 CABINET_ID = os.getenv("CABINET_ID", "")
@@ -129,7 +129,7 @@ class DeclarationISAgent:
 
     def _send_email(self, sujet: str, corps: str) -> bool:
         """Envoie un email via SMTP."""
-        if not SMTP_USER or not SMTP_PASS:
+        if not SMTP_USER or not SMTP_PASSWORD:
             logger.warning(
                 "declaration_is_agent — SMTP non configuré, email non envoyé"
             )
@@ -142,7 +142,7 @@ class DeclarationISAgent:
             msg.attach(MIMEText(corps, "plain", "utf-8"))
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
                 server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
+                server.login(SMTP_USER, SMTP_PASSWORD)
                 server.sendmail(SMTP_USER, [SMTP_USER], msg.as_string())
             return True
         except Exception as exc:
