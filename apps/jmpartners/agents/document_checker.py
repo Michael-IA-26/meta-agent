@@ -119,7 +119,11 @@ def fetch_documents_presents(supabase: Client, dossier_id: str) -> list[str]:
             .in_("statut", ["recu", "valide"])
             .execute()
         )
-        return [cast(dict, row)["type_document"] for row in (resp.data or [])]
+        return [
+            cast(dict, row)["type_document"]
+            for row in (resp.data or [])
+            if cast(dict, row).get("statut") in ("recu", "valide")
+        ]
     except Exception as exc:
         logger.error(f"Erreur fetch documents {dossier_id} : {exc}")
         return []
