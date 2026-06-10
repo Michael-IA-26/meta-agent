@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
+import threading
+import time
 
 from apps.jmpartners.agents.document_checker import run as check_docs
 from apps.jmpartners.agents.echeance_agent import run as run_echeances
+from apps.jmpartners.agents.mail_handler import run as handle_mail
 from apps.jmpartners.agents.tva_agent import run as run_tva
 from apps.jmpartners.orchestrator import OrchestratorResult
 from apps.jmpartners.orchestrator import run as orchestrate
@@ -18,6 +22,57 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
+
+
+def _scheduler_enabled() -> bool:
+    """Retourne True si le scheduler cron doit démarrer (SCHEDULER_ENABLED != 'false')."""
+    return os.getenv("SCHEDULER_ENABLED", "true").strip().lower() != "false"
+
+
+def _cron_schedule() -> str:
+    """Retourne l'expression cron du cycle principal (défaut : 07h00 lun-ven)."""
+    return os.getenv("CRON_SCHEDULE", "0 7 * * 1-5")
+
+
+def _imap_poll_minutes() -> int:
+    """Retourne l'intervalle de polling IMAP en minutes (défaut : 15)."""
+    try:
+        return int(os.getenv("IMAP_POLL_MINUTES", "15"))
+    except ValueError:
+        return 15
+
+
+def run_imap_poll(
+    stop_event: threading.Event | None = None,
+    poll_minutes: int | None = None,
+) -> None:
+    """Boucle infinie qui appelle mail_handler.run() toutes les N minutes.
+
+    Args:
+        stop_event: si levé, la boucle s'arrête avant le prochain appel.
+        poll_minutes: intervalle en minutes (None = lit IMAP_POLL_MINUTES).
+    """
+    if stop_event is not None and stop_event.is_set():
+        return
+    interval = poll_minutes if poll_minutes is not None else _imap_poll_minutes()
+    logger.info(f"IMAP poll démarré (intervalle : {interval} min)")
+    while True:
+        if stop_event is not None and stop_event.is_set():
+            break
+        try:
+            result = handle_mail(dry_run=False)
+            logger.info(
+                f"IMAP poll : {result['traites']} traités, "
+                f"{result['non_matches']} non matchés"
+            )
+        except Exception as exc:
+            logger.error(f"IMAP poll — erreur mail_handler : {exc}")
+        if stop_event is not None:
+            stop_event.wait(interval * 60)
+            if stop_event.is_set():
+                break
+        else:
+            time.sleep(interval * 60)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -90,6 +145,10 @@ def main() -> None:
         return
 
     # Mode scheduler
+    if not _scheduler_enabled():
+        logger.info("Scheduler désactivé (SCHEDULER_ENABLED=false) — arrêt.")
+        return
+
     try:
         from apscheduler.schedulers.blocking import BlockingScheduler
         from apscheduler.triggers.cron import CronTrigger
@@ -97,13 +156,14 @@ def main() -> None:
         logger.error("APScheduler non installé. Utilisez --once pour un run unique.")
         sys.exit(1)
 
+    cron = _cron_schedule()
     scheduler = BlockingScheduler(timezone="Europe/Paris")
     scheduler.add_job(
         orchestrate,
-        CronTrigger(hour=8, minute=0, day_of_week="mon-fri"),
+        CronTrigger.from_crontab(cron, timezone="Europe/Paris"),
         kwargs={"dry_run": dry_run},
-        id="cycle_matin",
-        name="Cycle quotidien matin",
+        id="cycle_principal",
+        name=f"Cycle principal ({cron})",
     )
     scheduler.add_job(
         run_echeances,
@@ -113,10 +173,24 @@ def main() -> None:
         name="Rapport échéances fin de journée",
     )
 
-    logger.info("Scheduler JM Partners démarré (lun-ven 08h00 + 17h30)")
+    # Démarrage du polling IMAP en arrière-plan si configuré
+    imap_stop = threading.Event()
+    imap_host = os.getenv("IMAP_HOST", "")
+    if imap_host:
+        imap_thread = threading.Thread(
+            target=run_imap_poll,
+            kwargs={"stop_event": imap_stop},
+            daemon=True,
+            name="imap-poll",
+        )
+        imap_thread.start()
+        logger.info(f"IMAP poll démarré en arrière-plan ({_imap_poll_minutes()} min)")
+
+    logger.info(f"Scheduler JM Partners démarré — cron principal : {cron}")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
+        imap_stop.set()
         logger.info("Scheduler arrêté")
 
 
