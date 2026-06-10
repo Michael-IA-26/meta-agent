@@ -155,16 +155,18 @@ def _next_is_deadlines() -> list[dict[str, Any]]:
 
 def _supabase_available() -> bool:
     """Vérifie que les variables Supabase sont configurées."""
-    return bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
+    return bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SERVICE_KEY"))
 
 
 def _get_supabase_client() -> Any:
     """Retourne un client Supabase ou lève une ValueError si manquant."""
     from supabase import create_client  # type: ignore[import-untyped]
 
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    url = os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_KEY", "")
+    if not url or not key:
         raise ValueError("SUPABASE_URL ou SUPABASE_SERVICE_KEY manquant")
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    return create_client(url, key)
 
 
 def _compute_alertes(deadline_str: str | None) -> list[str]:
@@ -1045,6 +1047,50 @@ async def relancer_dossier(dossier_id: str) -> JSONResponse:
                 "message": f"Relance simulée pour le dossier {dossier_id} (config email absente)",
             }
         )
+
+
+_AGENT_NAMES = [
+    "mail_handler", "tva_agent", "echeance_agent", "cloture_handler",
+    "acompte_is_agent", "bilan_agent", "declaration_is_agent",
+    "document_checker", "relance_handler", "notification_agent",
+]
+
+
+@app.get("/health")
+async def health() -> JSONResponse:
+    """Retourne l'état du service et le dernier run depuis journaux."""
+    agents = {name: "ok" for name in _AGENT_NAMES}
+    dernier_run: dict[str, Any] | None = None
+
+    if _supabase_available():
+        try:
+            client = _get_supabase_client()
+            resp = (
+                client.table("journaux")
+                .select("created_at, metadata")
+                .eq("type_action", "orchestrator_run")
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if resp.data:
+                row = resp.data[0]
+                meta = row.get("metadata") or {}
+                dernier_run = {
+                    "timestamp": row.get("created_at"),
+                    "duree_secondes": meta.get("duree_secondes"),
+                    "agents_ok": meta.get("agents_ok"),
+                    "agents_ko": meta.get("agents_ko"),
+                    "erreurs": meta.get("erreurs", []),
+                }
+        except Exception as exc:
+            logger.warning(f"Health — impossible de lire journaux : {exc}")
+
+    return JSONResponse(content={
+        "statut": "ok",
+        "agents": agents,
+        "dernier_run": dernier_run,
+    })
 
 
 @app.post("/api/dry-run")
