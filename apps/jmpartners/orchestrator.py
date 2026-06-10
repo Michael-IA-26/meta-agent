@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TypedDict
+import os
+import time
+from typing import TypedDict, cast
 
 from apps.jmpartners.agents.acompte_is_agent import AcompteAlert, AcompteISAgent
 from apps.jmpartners.agents.bilan_agent import BilanAgent, BilanAlert
@@ -27,6 +29,42 @@ from apps.jmpartners.agents.tva_agent import run as run_tva
 __all__ = ["OrchestratorResult", "run"]
 
 logger = logging.getLogger(__name__)
+
+
+def get_supabase_client():  # type: ignore[return]
+    """Retourne un client Supabase si configuré, sinon None."""
+    from supabase import create_client  # noqa: PLC0415
+    url = os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_KEY", "")
+    if not url or not key:
+        return None
+    return create_client(url, key)
+
+
+def _log_orchestrator_run(
+    supabase,
+    duree: float,
+    agents_ok: int,
+    agents_ko: int,
+    erreurs: list[str],
+) -> None:
+    """Insère un enregistrement orchestrator_run dans journaux (silencieux si indisponible)."""
+    if supabase is None:
+        return
+    try:
+        supabase.table("journaux").insert({
+            "type_action": "orchestrator_run",
+            "statut": "ok" if agents_ko == 0 else "erreur",
+            "contenu": f"{agents_ok} agents OK, {agents_ko} KO, durée {duree:.1f}s",
+            "metadata": {
+                "duree_secondes": round(duree, 2),
+                "agents_ok": agents_ok,
+                "agents_ko": agents_ko,
+                "erreurs": erreurs,
+            },
+        }).execute()
+    except Exception as exc:
+        logger.warning(f"Orchestrateur — impossible de logguer dans journaux : {exc}")
 
 
 class OrchestratorResult(TypedDict):
@@ -100,6 +138,8 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
     """
     logger.info(f"Orchestrateur JM Partners — démarrage (dry_run={dry_run})")
     erreurs: list[str] = []
+    _t0 = time.monotonic()
+    _supabase = get_supabase_client()
 
     # 1. Traitement des emails entrants
     mail_result, relances = _handle_emails(dry_run)
@@ -161,6 +201,12 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
     logger.debug(
         f"Orchestrateur — notification_agent disponible : {_notification_agent}"
     )
+
+    _duree = time.monotonic() - _t0
+    # Comptage des agents OK/KO — 7 agents tentés (mail toujours dans _handle_emails)
+    _agents_ko = len(erreurs)
+    _agents_ok = 7 - _agents_ko
+    _log_orchestrator_run(_supabase, _duree, _agents_ok, _agents_ko, erreurs)
 
     logger.info("Orchestrateur JM Partners — cycle terminé")
     return OrchestratorResult(
