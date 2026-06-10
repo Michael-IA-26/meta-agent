@@ -5,11 +5,14 @@ Couvre : ordre d'exécution, résilience aux pannes, dry_run, idempotence.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apps.jmpartners.orchestrator import OrchestratorResult, run, run_document_relance_flow
+from apps.jmpartners.orchestrator import (
+    run,
+    run_document_relance_flow,
+)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -95,7 +98,7 @@ def test_run_sans_dry_run_appelle_cloture_acomptes_bilans_declarations():
         mock_acompte.return_value.run.return_value = []
         mock_bilan.return_value.run.return_value = []
         mock_decl.return_value.run.return_value = []
-        result = run(dry_run=False)
+        run(dry_run=False)
 
     mock_cloture.return_value.run.assert_called_once()
     mock_acompte.return_value.run.assert_called_once()
@@ -359,7 +362,8 @@ def test_report_builder_appele_dernier_jour_ouvre(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_KEY", "key123")
 
     mock_sb = MagicMock()
-    mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+    # Une seule chaîne .eq() (plus de filtre cabinet_id)
+    mock_sb.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         {"id": "doss-1"},
         {"id": "doss-2"},
     ]
@@ -379,8 +383,11 @@ def test_report_builder_appele_dernier_jour_ouvre(monkeypatch):
         run(dry_run=False)
 
     assert mock_rapport.call_count == 2
-    called_dossier_ids = {c.args[0] for c in mock_rapport.call_args_list}
+    # Assertions sur kwargs pour détecter toute régression de signature
+    called_dossier_ids = {c.kwargs["dossier_id"] for c in mock_rapport.call_args_list}
+    called_mois = {c.kwargs["mois"] for c in mock_rapport.call_args_list}
     assert called_dossier_ids == {"doss-1", "doss-2"}
+    assert len(called_mois) == 1  # même période pour tous les dossiers
 
 
 def test_report_builder_non_appele_sinon():

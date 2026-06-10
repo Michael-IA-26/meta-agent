@@ -6,11 +6,15 @@ import logging
 import os
 import time
 from datetime import date
-from typing import TypedDict, cast
+from typing import TypedDict
 
 from apps.jmpartners.agents.acompte_is_agent import AcompteAlert, AcompteISAgent
 from apps.jmpartners.agents.bilan_agent import BilanAgent, BilanAlert
-from apps.jmpartners.agents.cloture_handler import ClotureHandler, ClotureResult, _is_dernier_jour_ouvre
+from apps.jmpartners.agents.cloture_handler import (
+    ClotureHandler,
+    ClotureResult,
+    _is_dernier_jour_ouvre,
+)
 from apps.jmpartners.agents.declaration_is_agent import (
     DeclarationISAgent,
     DeclarationISAlert,
@@ -236,12 +240,11 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
                 _dossiers_resp = (
                     _supabase.table("dossiers")
                     .select("id")
-                    .eq("cabinet_id", cabinet_id)
                     .eq("statut", "en_cours")
                     .execute()
                 )
                 for _doss in (_dossiers_resp.data or []):
-                    run_rapport_mensuel(_doss["id"], _periode)
+                    run_rapport_mensuel(mois=_periode, dossier_id=_doss["id"])
         except Exception as exc:
             logger.error(f"Orchestrateur — erreur report_builder : {exc}")
 
