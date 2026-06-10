@@ -62,9 +62,10 @@ def get_supabase_client() -> Client:
 
 def get_anthropic_client() -> anthropic.Anthropic:
     """Retourne un client Anthropic initialisé."""
-    if not ANTHROPIC_API_KEY:
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
         raise ValueError("ANTHROPIC_API_KEY est requis — configure Doppler")
-    return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    return anthropic.Anthropic(api_key=api_key)
 
 
 def _urgence_max(result: DocumentCheckerResult) -> str | None:
@@ -286,7 +287,11 @@ def run(result: DocumentCheckerResult, dry_run: bool = False) -> RelanceResult:
 
     urgence = _urgence_max(result)
     tonalite = TONALITE_PAR_URGENCE.get(urgence, "cordial")
-    ai_client = get_anthropic_client()
+    try:
+        ai_client = get_anthropic_client()
+    except Exception as exc:
+        logger.warning(f"relance_handler — Anthropic non disponible, fallback statique : {exc}")
+        ai_client = None  # type: ignore[assignment]
     sujet, corps = compose_relance(
         ai_client, contact_nom or "Client", result["manquants"], tonalite
     )
