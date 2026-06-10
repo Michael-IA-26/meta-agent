@@ -220,14 +220,18 @@ def run(dry_run: bool = False) -> MailHandlerResult:
     """
     logger.info("mail_handler — démarrage")
 
-    if not IMAP_HOST or not IMAP_USER or not IMAP_PASSWORD:
+    _imap_host = os.getenv("IMAP_HOST", "")
+    _imap_user = os.getenv("IMAP_USER", "")
+    _imap_password = os.getenv("IMAP_PASSWORD", "")
+
+    if not _imap_host or not _imap_user or not _imap_password:
         logger.warning("mail_handler — IMAP non configuré (IMAP_HOST/IMAP_USER/IMAP_PASSWORD manquants)")
         return MailHandlerResult(traites=0, non_matches=0, emails=[], erreurs=["IMAP non configuré"])
 
     supabase = get_supabase_client()
     ai_client = get_anthropic_client()
 
-    raw_emails = fetch_unseen_emails(IMAP_HOST, IMAP_USER, IMAP_PASSWORD)
+    raw_emails = fetch_unseen_emails(_imap_host, _imap_user, _imap_password)
     logger.info(f"mail_handler : {len(raw_emails)} emails non lus")
 
     items: list[EmailItem] = []
