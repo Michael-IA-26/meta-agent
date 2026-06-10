@@ -41,6 +41,24 @@ def get_supabase_client():  # type: ignore[return]
     return create_client(url, key)
 
 
+def _notify_agent_error(agent_name: str, error: str) -> None:
+    """Envoie une notification Telegram si configuré (silencieux sinon)."""
+    import httpx  # noqa: PLC0415
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        return
+    try:
+        msg = f"[JM Partners] Agent {agent_name} en erreur :\n{error[:200]}"
+        httpx.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": msg},
+            timeout=5,
+        )
+    except Exception as exc:
+        logger.warning(f"Orchestrateur — notification Telegram échouée : {exc}")
+
+
 def _log_orchestrator_run(
     supabase,
     duree: float,
@@ -151,6 +169,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
     except Exception as exc:
         logger.error(f"Orchestrateur — erreur tva_agent : {exc}")
         erreurs.append(f"tva_agent: {exc}")
+        _notify_agent_error("tva_agent", str(exc))
 
     # 3. Rapport échéances quotidien
     echeance_result: EcheanceAgentResult | None = None
@@ -159,6 +178,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
     except Exception as exc:
         logger.error(f"Orchestrateur — erreur echeance_agent : {exc}")
         erreurs.append(f"echeance_agent: {exc}")
+        _notify_agent_error("echeance_agent", str(exc))
 
     # 4. Clôture comptable (fin de mois) — ignorée en dry_run
     cloture_result: ClotureResult | None = None
@@ -168,6 +188,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         except Exception as exc:
             logger.error(f"Orchestrateur — erreur cloture_handler : {exc}")
             erreurs.append(f"cloture_handler: {exc}")
+            _notify_agent_error("cloture_handler", str(exc))
 
     # 5. Alertes acomptes IS — ignorées en dry_run
     acomptes_is: list[AcompteAlert] = []
@@ -177,6 +198,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         except Exception as exc:
             logger.error(f"Orchestrateur — erreur acompte_is_agent : {exc}")
             erreurs.append(f"acompte_is_agent: {exc}")
+            _notify_agent_error("acompte_is_agent", str(exc))
 
     # 6. Alertes bilan (Sprint 3) — ignorées en dry_run
     bilans: list[BilanAlert] = []
@@ -186,6 +208,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         except Exception as exc:
             logger.error(f"Orchestrateur — erreur bilan_agent : {exc}")
             erreurs.append(f"bilan_agent: {exc}")
+            _notify_agent_error("bilan_agent", str(exc))
 
     # 7. Alertes déclarations IS (Sprint 3) — ignorées en dry_run
     declarations_is: list[DeclarationISAlert] = []
@@ -195,6 +218,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         except Exception as exc:
             logger.error(f"Orchestrateur — erreur declaration_is_agent : {exc}")
             erreurs.append(f"declaration_is_agent: {exc}")
+            _notify_agent_error("declaration_is_agent", str(exc))
 
     # 8. Hub de notifications Sprint 3 (service interne, pas exposé dans le résultat)
     _notification_agent = NotificationAgent()
