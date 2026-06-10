@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 import os
 import time
+from datetime import date
 from typing import TypedDict, cast
 
 from apps.jmpartners.agents.acompte_is_agent import AcompteAlert, AcompteISAgent
 from apps.jmpartners.agents.bilan_agent import BilanAgent, BilanAlert
-from apps.jmpartners.agents.cloture_handler import ClotureHandler, ClotureResult
+from apps.jmpartners.agents.cloture_handler import ClotureHandler, ClotureResult, _is_dernier_jour_ouvre
 from apps.jmpartners.agents.declaration_is_agent import (
     DeclarationISAgent,
     DeclarationISAlert,
@@ -23,6 +24,7 @@ from apps.jmpartners.agents.mail_handler import run as handle_mail
 from apps.jmpartners.agents.notification_agent import NotificationAgent
 from apps.jmpartners.agents.relance_handler import RelanceResult
 from apps.jmpartners.agents.relance_handler import run as send_relance
+from apps.jmpartners.agents.report_builder import run as run_rapport_mensuel
 from apps.jmpartners.agents.tva_agent import TvaAgentResult
 from apps.jmpartners.agents.tva_agent import run as run_tva
 
@@ -225,6 +227,23 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
     logger.debug(
         f"Orchestrateur — notification_agent disponible : {_notification_agent}"
     )
+
+    # 9. Rapports mensuels PDF (dernier jour ouvré du mois uniquement)
+    if not dry_run and _is_dernier_jour_ouvre(date.today()):
+        _periode = date.today().strftime("%Y-%m")
+        try:
+            if _supabase:
+                _dossiers_resp = (
+                    _supabase.table("dossiers")
+                    .select("id")
+                    .eq("cabinet_id", cabinet_id)
+                    .eq("statut", "en_cours")
+                    .execute()
+                )
+                for _doss in (_dossiers_resp.data or []):
+                    run_rapport_mensuel(_doss["id"], _periode)
+        except Exception as exc:
+            logger.error(f"Orchestrateur — erreur report_builder : {exc}")
 
     _duree = time.monotonic() - _t0
     # Comptage des agents OK/KO — 7 agents tentés (mail toujours dans _handle_emails)

@@ -348,3 +348,72 @@ def test_run_document_relance_flow_dry_run_passe_flag():
         run_document_relance_flow("dos-1", dry_run=True)
 
     m_rel.assert_called_once_with(mock_doc, dry_run=True)
+
+
+# ── report_builder mensuel ────────────────────────────────────────────────────
+
+
+def test_report_builder_appele_dernier_jour_ouvre(monkeypatch):
+    """run_rapport_mensuel est appelé pour chaque dossier actif le dernier jour ouvré."""
+    monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_KEY", "key123")
+
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+        {"id": "doss-1"},
+        {"id": "doss-2"},
+    ]
+
+    with (
+        patch("apps.jmpartners.orchestrator.handle_mail", return_value=_mail_result()),
+        patch("apps.jmpartners.orchestrator.run_tva", return_value=_tva_result()),
+        patch("apps.jmpartners.orchestrator.run_echeances", return_value=_echeance_result()),
+        patch("apps.jmpartners.orchestrator.ClotureHandler"),
+        patch("apps.jmpartners.orchestrator.AcompteISAgent"),
+        patch("apps.jmpartners.orchestrator.BilanAgent"),
+        patch("apps.jmpartners.orchestrator.DeclarationISAgent"),
+        patch("apps.jmpartners.orchestrator._is_dernier_jour_ouvre", return_value=True),
+        patch("apps.jmpartners.orchestrator.get_supabase_client", return_value=mock_sb),
+        patch("apps.jmpartners.orchestrator.run_rapport_mensuel") as mock_rapport,
+    ):
+        run(dry_run=False)
+
+    assert mock_rapport.call_count == 2
+    called_dossier_ids = {c.args[0] for c in mock_rapport.call_args_list}
+    assert called_dossier_ids == {"doss-1", "doss-2"}
+
+
+def test_report_builder_non_appele_sinon():
+    """run_rapport_mensuel n'est PAS appelé quand ce n'est pas le dernier jour ouvré."""
+    with (
+        patch("apps.jmpartners.orchestrator.handle_mail", return_value=_mail_result()),
+        patch("apps.jmpartners.orchestrator.run_tva", return_value=_tva_result()),
+        patch("apps.jmpartners.orchestrator.run_echeances", return_value=_echeance_result()),
+        patch("apps.jmpartners.orchestrator.ClotureHandler"),
+        patch("apps.jmpartners.orchestrator.AcompteISAgent"),
+        patch("apps.jmpartners.orchestrator.BilanAgent"),
+        patch("apps.jmpartners.orchestrator.DeclarationISAgent"),
+        patch("apps.jmpartners.orchestrator._is_dernier_jour_ouvre", return_value=False),
+        patch("apps.jmpartners.orchestrator.run_rapport_mensuel") as mock_rapport,
+    ):
+        run(dry_run=False)
+
+    mock_rapport.assert_not_called()
+
+
+def test_report_builder_non_appele_en_dry_run():
+    """run_rapport_mensuel n'est jamais appelé en dry_run même le dernier jour ouvré."""
+    with (
+        patch("apps.jmpartners.orchestrator.handle_mail", return_value=_mail_result()),
+        patch("apps.jmpartners.orchestrator.run_tva", return_value=_tva_result()),
+        patch("apps.jmpartners.orchestrator.run_echeances", return_value=_echeance_result()),
+        patch("apps.jmpartners.orchestrator.ClotureHandler"),
+        patch("apps.jmpartners.orchestrator.AcompteISAgent"),
+        patch("apps.jmpartners.orchestrator.BilanAgent"),
+        patch("apps.jmpartners.orchestrator.DeclarationISAgent"),
+        patch("apps.jmpartners.orchestrator._is_dernier_jour_ouvre", return_value=True),
+        patch("apps.jmpartners.orchestrator.run_rapport_mensuel") as mock_rapport,
+    ):
+        run(dry_run=True)
+
+    mock_rapport.assert_not_called()
