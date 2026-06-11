@@ -107,12 +107,19 @@ def _generate_pdf_rapport(
     Raises:
         ImportError: Si reportlab n'est pas installé.
     """
-    from reportlab.lib.pagesizes import A4  # noqa: PLC0415
-    from reportlab.lib.units import cm  # noqa: PLC0415
-    from reportlab.lib import colors  # noqa: PLC0415
-    from reportlab.lib.styles import getSampleStyleSheet  # noqa: PLC0415
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer  # noqa: PLC0415
     import io  # noqa: PLC0415
+
+    from reportlab.lib import colors  # noqa: PLC0415
+    from reportlab.lib.pagesizes import A4  # noqa: PLC0415
+    from reportlab.lib.styles import getSampleStyleSheet  # noqa: PLC0415
+    from reportlab.lib.units import cm  # noqa: PLC0415
+    from reportlab.platypus import (  # noqa: PLC0415
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm,
@@ -238,19 +245,20 @@ def _upload_pdf(supabase, dossier_id: str, periode: str, pdf_bytes: bytes) -> st
 
 def run(
     dossier_id: str,
-    periode: str,
+    mois: str,
     dry_run: bool = False,
 ) -> ReportBuilderResult:
     """Génère et envoie le rapport mensuel d'un dossier.
 
     Args:
         dossier_id: UUID du dossier.
-        periode: Période au format "YYYY-MM".
+        mois: Période au format "YYYY-MM".
         dry_run: Si True, calcule sans envoyer ni stocker.
 
     Returns:
         ReportBuilderResult avec les soldes, l'URL PDF et le statut.
     """
+    periode = mois
     logger.info(f"report_builder — dossier {dossier_id}, période {periode}")
 
     try:
