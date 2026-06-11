@@ -9,6 +9,7 @@ Génère :
   - 8 déclarations TVA (deadlines J+3 à J+30, statuts variés)
   - 6 acomptes IS (deadlines variées, champs compatibles echeance_agent + declaration_is_agent)
   - 18 documents (mix recu/valide/illisible/en_attente pour les cas limites)
+  - 14 écritures sur le mois courant (D1 + D2, pour alimenter report_builder)
 
 Idempotent : upsert avec ignore_duplicates=True — pas de doublon si relancé.
 """
@@ -46,12 +47,52 @@ IS = [f"seed0000-0000-0000-0004-{i:012d}" for i in range(1, 7)]
 # documents
 DOC = [f"seed0000-0000-0000-0005-{i:012d}" for i in range(1, 19)]
 
+# écritures
+ECR = [f"seed0000-0000-0000-0006-{i:012d}" for i in range(1, 15)]
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _d(days: int) -> str:
     """Retourne une date ISO à J+days."""
     return (date.today() + timedelta(days=days)).isoformat()
+
+
+def _m(day: int) -> str:
+    """Retourne une date ISO dans le mois courant (plafonnée au 28)."""
+    t = date.today()
+    return date(t.year, t.month, min(day, 28)).isoformat()
+
+
+def _ecr(
+    uid: str,
+    dossier_id: str,
+    libelle: str,
+    debit: str,
+    credit: str,
+    montant: float,
+    statut: str = "valide",
+    jour: int = 10,
+    tiers: str | None = None,
+    badge_anomalie: bool = False,
+    anomalie_desc: str | None = None,
+) -> dict:
+    """Construit une écriture comptable du mois courant."""
+    row: dict = {
+        "id": uid,
+        "dossier_id": dossier_id,
+        "date_ecriture": _m(jour),
+        "libelle": libelle,
+        "compte_debit": debit,
+        "compte_credit": credit,
+        "montant": montant,
+        "statut": statut,
+        "tiers": tiers,
+        "badge_anomalie": badge_anomalie,
+    }
+    if anomalie_desc:
+        row["anomalie_desc"] = anomalie_desc
+    return row
 
 
 def _doc(
@@ -305,6 +346,32 @@ def _documents() -> list[dict]:
     return rows
 
 
+def _ecritures() -> list[dict]:
+    """14 écritures sur le mois courant — D1 + D2, pour alimenter report_builder."""
+    return [
+        # D1 — achats
+        _ecr(ECR[0],  D1, "Achat fournitures de bureau",   "6064",  "401",   250.0, "valide",     4,  "Fourni-Bureau"),
+        _ecr(ECR[1],  D1, "TVA deductible fournitures",    "44566", "401",    50.0, "valide",     4),
+        _ecr(ECR[2],  D1, "Honoraires conseil",            "6226",  "401",   800.0, "valide",     6,  "Cabinet Conseil"),
+        _ecr(ECR[3],  D1, "TVA deductible honoraires",     "44566", "401",   160.0, "valide",     6),
+        # D1 — ventes
+        _ecr(ECR[4],  D1, "Prestation de services",        "411",   "706",  3000.0, "valide",     8,  "Client Alpha"),
+        _ecr(ECR[5],  D1, "TVA collectee prestation",      "411",   "44571", 600.0, "valide",     8),
+        _ecr(ECR[6],  D1, "Vente de marchandises",         "411",   "707",  1500.0, "a_valider",  12, "Client Beta"),
+        _ecr(ECR[7],  D1, "TVA collectee marchandises",    "411",   "44571", 300.0, "a_valider",  12),
+        # D1 — charges diverses
+        _ecr(ECR[8],  D1, "Loyer du local",                "6132",  "401",  1200.0, "valide",     5,  "SCI Immo"),
+        _ecr(ECR[9],  D1, "Electricite",                   "6061",  "401",    90.0, "a_presaisir", 9, "Energie+",
+             badge_anomalie=True, anomalie_desc="Montant inhabituel vs historique"),
+        # D2 — ventes
+        _ecr(ECR[10], D2, "Vente de services",             "411",   "706",  2200.0, "valide",     7,  "Client Gamma"),
+        _ecr(ECR[11], D2, "TVA collectee services",        "411",   "44571", 440.0, "valide",     7),
+        # D2 — achats
+        _ecr(ECR[12], D2, "Sous-traitance",                "611",   "401",   700.0, "a_valider",  14, "Sous-traitant X"),
+        _ecr(ECR[13], D2, "TVA deductible sous-traitance", "44566", "401",   140.0, "a_valider",  14),
+    ]
+
+
 # ── Logique d'insertion ────────────────────────────────────────────────────────
 
 def _upsert(sb, table: str, rows: list[dict]) -> tuple[int, int]:
@@ -362,6 +429,7 @@ def main() -> None:
         ("declarations_tva", _declarations_tva()),
         ("acomptes_is",     _acomptes_is()),
         ("documents",       _documents()),
+        ("ecritures",       _ecritures()),
     ]
 
     for table, rows in datasets:
@@ -374,17 +442,17 @@ def main() -> None:
     print(f"   Total : {totals['insérés']} insérés, {totals['skippés']} déjà présents")
 
     # Résumé métier
-    today = date.today()
     print("\n📋 Résumé des données insérées :")
-    print(f"   5 contacts  — Dupont, Martin, Lemaire, Bernard, Petit Négoce")
-    print(f"   7 dossiers  — 5 en_cours (bilan/tva), 1 cloture_envoyee (is), 1 bilan complet")
-    print(f"   8 décl. TVA — J+3 🔴, J+7 🟠×2, J+15 🟡×2, J+30 ×3 (dont 1 valide)")
-    print(f"   6 acomptes IS — J+3 🔴, J+7 🟠×2, J+15 🟡, J+20, J+45, 1 payé")
-    print(f"  18 documents — recu×5, valide×8, illisible×3, en_attente×1, orphelin×1")
+    print("   5 contacts  — Dupont, Martin, Lemaire, Bernard, Petit Négoce")
+    print("   7 dossiers  — 5 en_cours (bilan/tva), 1 cloture_envoyee (is), 1 bilan complet")
+    print("   8 décl. TVA — J+3 🔴, J+7 🟠×2, J+15 🟡×2, J+30 ×3 (dont 1 valide)")
+    print("   6 acomptes IS — J+3 🔴, J+7 🟠×2, J+15 🟡, J+20, J+45, 1 payé")
+    print("  18 documents — recu×5, valide×8, illisible×3, en_attente×1, orphelin×1")
+    print("  14 écritures (D1 + D2) sur le mois courant pour report_builder")
 
-    print(f"\n✅ Seed terminé. Lancez maintenant :")
-    print(f"   python -m apps.jmpartners.main --once --dry-run  # vérification sans envoi")
-    print(f"   curl https://<votre-service>/health              # état du service\n")
+    print("\n✅ Seed terminé. Lancez maintenant :")
+    print("   python -m apps.jmpartners.main --once --dry-run  # vérification sans envoi")
+    print("   curl https://<votre-service>/health              # état du service\n")
 
 
 if __name__ == "__main__":
