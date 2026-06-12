@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from apps.jmpartners.orchestrator import (
+    _process_documents,
     run,
     run_document_relance_flow,
 )
@@ -406,6 +407,107 @@ def test_report_builder_non_appele_sinon():
         run(dry_run=False)
 
     mock_rapport.assert_not_called()
+
+
+# ── _process_documents pipeline ───────────────────────────────────────────────
+
+
+def _mock_supabase_with_docs(docs):
+    sb = MagicMock()
+    sb.table.return_value.select.return_value.in_.return_value.execute.return_value.data = docs
+    sb.table.return_value.update.return_value.eq.return_value.execute.return_value = None
+    return sb
+
+
+def test_process_documents_recu_triggers_analyzer_and_transition():
+    """Document 'recu' → document_analyzer appelé → statut mis à 'analysé'."""
+    sb = _mock_supabase_with_docs([
+        {"id": "doc-1", "url": "https://x/doc.pdf", "type_document": "facture_achat", "statut": "recu"}
+    ])
+    with (
+        patch("apps.jmpartners.orchestrator.run_document_analyzer") as mock_analyzer,
+        patch("apps.jmpartners.orchestrator.run_ecriture_generator"),
+    ):
+        mock_analyzer.return_value = {"statut": "ok"}
+        _process_documents(sb, dry_run=False)
+
+    mock_analyzer.assert_called_once_with(
+        "doc-1", url="https://x/doc.pdf", type_document="facture_achat"
+    )
+    sb.table.return_value.update.assert_called()
+
+
+def test_process_documents_analyse_triggers_generator_and_transition():
+    """Document 'analysé' → ecriture_generator appelé → statut mis à 'presaisi'."""
+    sb = _mock_supabase_with_docs([
+        {"id": "doc-2", "url": "", "type_document": "facture_vente", "statut": "analysé"}
+    ])
+    with (
+        patch("apps.jmpartners.orchestrator.run_document_analyzer"),
+        patch("apps.jmpartners.orchestrator.run_ecriture_generator") as mock_gen,
+    ):
+        mock_gen.return_value = {"statut": "ok", "ecritures": []}
+        _process_documents(sb, dry_run=False)
+
+    mock_gen.assert_called_once_with("doc-2")
+    sb.table.return_value.update.assert_called()
+
+
+def test_process_documents_presaisi_not_reprocessed():
+    """Document 'presaisi' est ignoré — ni analyzer ni generator appelés."""
+    sb = _mock_supabase_with_docs([
+        {"id": "doc-3", "url": "", "type_document": "facture_achat", "statut": "presaisi"}
+    ])
+    with (
+        patch("apps.jmpartners.orchestrator.run_document_analyzer") as mock_a,
+        patch("apps.jmpartners.orchestrator.run_ecriture_generator") as mock_g,
+    ):
+        _process_documents(sb, dry_run=False)
+
+    mock_a.assert_not_called()
+    mock_g.assert_not_called()
+
+
+def test_process_documents_exception_on_one_does_not_stop_others():
+    """Exception sur doc-1 n'empêche pas le traitement de doc-2."""
+    sb = _mock_supabase_with_docs([
+        {"id": "doc-1", "url": "", "type_document": "facture_achat", "statut": "recu"},
+        {"id": "doc-2", "url": "", "type_document": "facture_vente", "statut": "analysé"},
+    ])
+    with (
+        patch("apps.jmpartners.orchestrator.run_document_analyzer",
+              side_effect=RuntimeError("analyzer crash")),
+        patch("apps.jmpartners.orchestrator.run_ecriture_generator") as mock_gen,
+    ):
+        mock_gen.return_value = {"statut": "ok", "ecritures": []}
+        erreurs = _process_documents(sb, dry_run=False)
+
+    mock_gen.assert_called_once_with("doc-2")
+    assert len(erreurs) == 1
+    assert "doc-1" in erreurs[0]
+
+
+def test_process_documents_dry_run_no_writes():
+    """dry_run=True → agents non appelés, pas de mise à jour statut."""
+    sb = _mock_supabase_with_docs([
+        {"id": "doc-1", "url": "u", "type_document": "facture_achat", "statut": "recu"},
+        {"id": "doc-2", "url": "", "type_document": "facture_vente", "statut": "analysé"},
+    ])
+    with (
+        patch("apps.jmpartners.orchestrator.run_document_analyzer") as mock_a,
+        patch("apps.jmpartners.orchestrator.run_ecriture_generator") as mock_g,
+    ):
+        _process_documents(sb, dry_run=True)
+
+    mock_a.assert_not_called()
+    mock_g.assert_not_called()
+    sb.table.return_value.update.assert_not_called()
+
+
+def test_process_documents_none_supabase_returns_empty():
+    """Supabase None → retourne [] sans crash."""
+    erreurs = _process_documents(None, dry_run=False)
+    assert erreurs == []
 
 
 def test_report_builder_non_appele_en_dry_run():

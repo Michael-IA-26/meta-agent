@@ -19,10 +19,12 @@ from apps.jmpartners.agents.declaration_is_agent import (
     DeclarationISAgent,
     DeclarationISAlert,
 )
+from apps.jmpartners.agents.document_analyzer import run as run_document_analyzer
 from apps.jmpartners.agents.document_checker import DocumentCheckerResult
 from apps.jmpartners.agents.document_checker import run as check_docs
 from apps.jmpartners.agents.echeance_agent import EcheanceAgentResult
 from apps.jmpartners.agents.echeance_agent import run as run_echeances
+from apps.jmpartners.agents.ecriture_generator import run as run_ecriture_generator
 from apps.jmpartners.agents.mail_handler import MailHandlerResult
 from apps.jmpartners.agents.mail_handler import run as handle_mail
 from apps.jmpartners.agents.notification_agent import NotificationAgent
@@ -31,8 +33,9 @@ from apps.jmpartners.agents.relance_handler import run as send_relance
 from apps.jmpartners.agents.report_builder import run as run_rapport_mensuel
 from apps.jmpartners.agents.tva_agent import TvaAgentResult
 from apps.jmpartners.agents.tva_agent import run as run_tva
+from apps.jmpartners.jobs import run_pending_jobs
 
-__all__ = ["OrchestratorResult", "run"]
+__all__ = ["OrchestratorResult", "_process_documents", "run"]
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +133,53 @@ def _handle_emails(
         )
 
     return mail_result, relances
+
+
+def _process_documents(supabase, dry_run: bool = False) -> list[str]:
+    """State machine recu→analysé→presaisi.
+
+    Returns list of error strings (one per failed document).
+    """
+    if supabase is None:
+        return []
+
+    erreurs: list[str] = []
+
+    try:
+        resp = (
+            supabase.table("documents")
+            .select("id, url, type_document, statut")
+            .in_("statut", ["recu", "analysé"])
+            .execute()
+        )
+        docs = resp.data or []
+    except Exception as exc:
+        logger.error(f"Orchestrateur — lecture documents pipeline : {exc}")
+        return [f"_process_documents fetch: {exc}"]
+
+    for doc in docs:
+        doc_id: str = doc["id"]
+        statut: str = doc.get("statut", "")
+        try:
+            if statut == "recu":
+                url = doc.get("url") or ""
+                type_doc = doc.get("type_document") or ""
+                if not dry_run:
+                    run_document_analyzer(doc_id, url=url, type_document=type_doc)
+                    supabase.table("documents").update({"statut": "analysé"}).eq("id", doc_id).execute()
+                logger.info(f"Orchestrateur — document {doc_id} : recu → analysé")
+
+            elif statut == "analysé":
+                if not dry_run:
+                    run_ecriture_generator(doc_id)
+                    supabase.table("documents").update({"statut": "presaisi"}).eq("id", doc_id).execute()
+                logger.info(f"Orchestrateur — document {doc_id} : analysé → presaisi")
+
+        except Exception as exc:
+            logger.error(f"Orchestrateur — pipeline document {doc_id} : {exc}")
+            erreurs.append(f"document {doc_id}: {exc}")
+
+    return erreurs
 
 
 def run_document_relance_flow(
@@ -232,7 +282,18 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         f"Orchestrateur — notification_agent disponible : {_notification_agent}"
     )
 
-    # 9. Rapports mensuels PDF (dernier jour ouvré du mois uniquement)
+    # 9. Pipeline documents : recu → analysé → presaisi
+    _doc_erreurs = _process_documents(_supabase, dry_run=dry_run)
+    erreurs.extend(_doc_erreurs)
+
+    # 10. File de jobs Lovable
+    if not dry_run:
+        try:
+            run_pending_jobs({}, supabase=_supabase)
+        except Exception as exc:
+            logger.warning(f"Orchestrateur — jobs poller : {exc}")
+
+    # 11. Rapports mensuels PDF (dernier jour ouvré du mois uniquement)
     if not dry_run and _is_dernier_jour_ouvre(date.today()):
         _periode = date.today().strftime("%Y-%m")
         try:

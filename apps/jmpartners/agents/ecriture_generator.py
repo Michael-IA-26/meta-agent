@@ -28,6 +28,20 @@ logger = logging.getLogger(__name__)
 # Types de documents supportés avec leur mappage
 _SUPPORTED_TYPES = {"facture_achat", "facture_vente", "releve_bancaire"}
 
+_JOURNAL_MAP = {
+    "facture_achat": "ACH",
+    "facture_vente": "VEN",
+    "releve_bancaire": "BQ",
+}
+_CONFIDENCE_THRESHOLD = 0.85
+
+
+def _compute_score_confiance(analyse: dict) -> float:
+    """Heuristic: ratio of non-empty fields out of key fields."""
+    key_fields = ["tiers", "montants", "dates", "references", "tva"]
+    filled = sum(1 for f in key_fields if analyse.get(f))
+    return round(filled / len(key_fields), 2)
+
 
 class EcritureGeneratorResult(TypedDict):
     document_id: str
@@ -192,6 +206,27 @@ _BUILDERS = {
 }
 
 
+def _enrich_ecritures(ecritures: list[dict], type_doc: str, analyse: dict, montant_ttc: float) -> list[dict]:
+    """Injecte journal, reference, montant_ttc, source, score_confiance, statut."""
+    journal = _JOURNAL_MAP.get(type_doc, "")
+    references = analyse.get("references") or []
+    reference = references[0] if references else ""
+    score = _compute_score_confiance(analyse)
+    statut = "valide" if score >= _CONFIDENCE_THRESHOLD else "a_valider"
+    enriched = []
+    for e in ecritures:
+        enriched.append({
+            **e,
+            "journal": journal,
+            "reference": reference,
+            "montant_ttc": montant_ttc,
+            "source": "ia",
+            "score_confiance": score,
+            "statut": statut,
+        })
+    return enriched
+
+
 # ── Persistance ───────────────────────────────────────────────────────────────
 
 def _insert_ecritures(supabase, dossier_id: str, document_id: str, ecritures: list[dict]) -> None:
@@ -280,6 +315,16 @@ def run(document_id: str, dry_run: bool = False) -> EcritureGeneratorResult:
 
     try:
         ecritures = builder(analyse, date)
+        # Compute montant_ttc for enrichment (re-derive from built rows)
+        _ttc = 0.0
+        for e in ecritures:
+            if e.get("debit") and e.get("compte", "").startswith(("411", "401")):
+                _ttc = float(e["debit"] or 0)
+                break
+            if e.get("credit") and e.get("compte", "").startswith(("411", "401")):
+                _ttc = float(e["credit"] or 0)
+                break
+        ecritures = _enrich_ecritures(ecritures, type_doc, analyse, _ttc)
     except Exception as exc:
         logger.error(f"ecriture_generator — génération échouée {document_id} : {exc}")
         return EcritureGeneratorResult(

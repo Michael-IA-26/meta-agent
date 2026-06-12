@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
+import apps.jmpartners.agents.ecriture_generator as eg_mod
 
 # ── Données d'entrée type ─────────────────────────────────────────────────────
 
@@ -355,3 +355,79 @@ def test_run_retourne_result_avec_bonne_structure(monkeypatch):
     for field in ("document_id", "ecritures", "statut", "erreur"):
         assert field in result, f"Champ manquant : {field}"
     assert result["document_id"] == "doc-rb"
+
+
+# ── Lovable contract fields ────────────────────────────────────────────────────
+
+def test_journal_facture_achat():
+    ecritures = eg_mod._build_ecritures_facture_achat(_analyse_facture_achat(), "2026-05-15")
+    enriched = eg_mod._enrich_ecritures(ecritures, "facture_achat", _analyse_facture_achat(), 1200.0)
+    assert all(e["journal"] == "ACH" for e in enriched)
+
+
+def test_journal_facture_vente():
+    ecritures = eg_mod._build_ecritures_facture_vente(_analyse_facture_vente(), "2026-05-20")
+    enriched = eg_mod._enrich_ecritures(ecritures, "facture_vente", _analyse_facture_vente(), 2400.0)
+    assert all(e["journal"] == "VEN" for e in enriched)
+
+
+def test_journal_releve_bancaire():
+    ecritures = eg_mod._build_ecritures_releve(_analyse_releve_bancaire(), "2026-05-31")
+    enriched = eg_mod._enrich_ecritures(ecritures, "releve_bancaire", _analyse_releve_bancaire(), 15230.50)
+    assert all(e["journal"] == "BQ" for e in enriched)
+
+
+def test_reference_propagated_from_analyse():
+    analyse = _analyse_facture_achat()
+    ecritures = eg_mod._build_ecritures_facture_achat(analyse, "2026-05-15")
+    enriched = eg_mod._enrich_ecritures(ecritures, "facture_achat", analyse, 1200.0)
+    assert all(e["reference"] == "FA-2026-0542" for e in enriched)
+
+
+def test_montant_ttc_set_on_entries():
+    analyse = _analyse_facture_achat()
+    ecritures = eg_mod._build_ecritures_facture_achat(analyse, "2026-05-15")
+    enriched = eg_mod._enrich_ecritures(ecritures, "facture_achat", analyse, 1200.0)
+    assert all(e["montant_ttc"] == 1200.0 for e in enriched)
+
+
+def test_source_ia_on_every_entry():
+    analyse = _analyse_facture_vente()
+    ecritures = eg_mod._build_ecritures_facture_vente(analyse, "2026-05-20")
+    enriched = eg_mod._enrich_ecritures(ecritures, "facture_vente", analyse, 2400.0)
+    assert all(e["source"] == "ia" for e in enriched)
+
+
+def test_score_confiance_high_sets_statut_valide():
+    """All 5 key fields filled → score 1.0 → statut 'valide'."""
+    analyse = _analyse_facture_achat()  # has tiers, montants, dates, references, tva
+    ecritures = eg_mod._build_ecritures_facture_achat(analyse, "2026-05-15")
+    enriched = eg_mod._enrich_ecritures(ecritures, "facture_achat", analyse, 1200.0)
+    assert all(e["score_confiance"] >= 0.85 for e in enriched)
+    assert all(e["statut"] == "valide" for e in enriched)
+
+
+def test_score_confiance_low_sets_statut_a_valider():
+    """Only 2 fields filled → score < 0.85 → statut 'a_valider'."""
+    analyse = {
+        "type_document": "facture_achat",
+        "montants": [{"libelle": "Total", "montant": 100.0, "devise": "EUR"}],
+        "dates": ["2026-05-15"],
+        "tiers": None,
+        "references": None,
+        "tva": None,
+    }
+    ecritures = eg_mod._build_ecritures_facture_achat(analyse, "2026-05-15")
+    enriched = eg_mod._enrich_ecritures(ecritures, "facture_achat", analyse, 100.0)
+    assert all(e["score_confiance"] < 0.85 for e in enriched)
+    assert all(e["statut"] == "a_valider" for e in enriched)
+
+
+def test_debit_credit_balance_still_holds():
+    """Enrichment does not break debit==credit invariant."""
+    analyse = _analyse_facture_achat(montant_ht=1000.0, montant_tva=200.0)
+    ecritures = eg_mod._build_ecritures_facture_achat(analyse, "2026-05-15")
+    enriched = eg_mod._enrich_ecritures(ecritures, "facture_achat", analyse, 1200.0)
+    total_debit = sum(float(e["debit"] or 0) for e in enriched)
+    total_credit = sum(float(e["credit"] or 0) for e in enriched)
+    assert abs(total_debit - total_credit) < 0.01
