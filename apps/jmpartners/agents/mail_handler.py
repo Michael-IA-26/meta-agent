@@ -1,27 +1,27 @@
-"""Agent mail_handler — lecture IMAP, identification client, classification demande."""
+"""Agent mail_handler — ingestion Outlook via Microsoft Graph, identification client, classification."""
 
 from __future__ import annotations
 
-import email
-import imaplib
+import hashlib
+import json
 import logging
 import os
-from email.header import decode_header
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import anthropic
 from supabase import Client, create_client
+
+from apps.jmpartners.integrations import graph_mail
 
 __all__ = ["MailHandlerResult", "EmailItem", "run"]
 
 logger = logging.getLogger(__name__)
 
-IMAP_HOST = os.getenv("IMAP_HOST", "")
-IMAP_USER = os.getenv("IMAP_USER", "")
-IMAP_PASSWORD = os.getenv("IMAP_PASSWORD", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+GRAPH_MAILBOX = os.getenv("GRAPH_MAILBOX", "")
+STORAGE_BUCKET = "documents"
 
 TYPES_DEMANDE = ("document_manquant", "question_tva", "relance", "autre")
 
@@ -37,6 +37,7 @@ class EmailItem(TypedDict):
     contact_nom: str | None
     type_demande: str
     journal_id: str | None
+    pieces_jointes: int
 
 
 class MailHandlerResult(TypedDict):
@@ -49,86 +50,27 @@ class MailHandlerResult(TypedDict):
 
 
 def get_supabase_client() -> Client:
-    """Retourne un client Supabase initialisé depuis les variables d'env."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise ValueError("SUPABASE_URL et SUPABASE_SERVICE_KEY sont requis — configure Doppler")
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 def get_anthropic_client() -> anthropic.Anthropic:
-    """Retourne un client Anthropic initialisé."""
     if not ANTHROPIC_API_KEY:
         raise ValueError("ANTHROPIC_API_KEY est requis — configure Doppler")
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
-def decode_str(value: str | bytes) -> str:
-    """Décode un header email encodé (RFC 2047)."""
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    parts = decode_header(value)
-    decoded = []
-    for part, charset in parts:
-        if isinstance(part, bytes):
-            decoded.append(part.decode(charset or "utf-8", errors="replace"))
-        else:
-            decoded.append(part)
-    return "".join(decoded)
-
-
-def fetch_unseen_emails(
-    host: str, user: str, password: str
-) -> list[tuple[str, str, str, str]]:
-    """Se connecte en IMAP et retourne les emails non lus (message_id, expediteur, sujet, corps).
-
-    Returns list of (message_id, from_addr, subject, body) tuples.
-    """
-    results: list[tuple[str, str, str, str]] = []
-    try:
-        mail = imaplib.IMAP4_SSL(host)
-        mail.login(user, password)
-        mail.select("INBOX")
-        _, data = mail.search(None, "UNSEEN")
-        ids = data[0].split() if data[0] else []
-        for uid in ids:
-            _, msg_data = mail.fetch(uid, "(RFC822)")
-            raw = msg_data[0][1] if msg_data and msg_data[0] else None
-            if not raw:
-                continue
-            msg = email.message_from_bytes(cast(bytes, raw))
-            message_id = msg.get("Message-ID", str(uid))
-            from_addr = decode_str(msg.get("From", ""))
-            subject = decode_str(msg.get("Subject", ""))
-            body = ""
-            if msg.is_multipart():
-                for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
-                        payload = part.get_payload(decode=True)
-                        if payload and isinstance(payload, bytes):
-                            body = payload.decode("utf-8", errors="replace")
-                            break
-            else:
-                payload = msg.get_payload(decode=True)
-                if payload and isinstance(payload, bytes):
-                    body = payload.decode("utf-8", errors="replace")
-            results.append((message_id, from_addr, subject, body))
-        mail.logout()
-    except Exception as exc:
-        logger.error(f"Erreur IMAP : {exc}")
-    return results
-
-
 def identify_contact(
     supabase: Client, expediteur: str
 ) -> tuple[str | None, str | None]:
-    """Recherche un contact dans Supabase par email ou nom extrait de l'expéditeur.
+    """Recherche un contact par email.
 
-    Returns (contact_id, contact_nom) ou (None, None) si non trouvé.
+    Returns (contact_id, contact_nom) ou (None, None).
     """
     email_addr = expediteur
     if "<" in expediteur:
         email_addr = expediteur.split("<")[1].rstrip(">").strip()
-
     try:
         resp = (
             supabase.table("contacts")
@@ -141,23 +83,16 @@ def identify_contact(
             row = cast(dict, resp.data[0])
             return row["id"], row["nom"]
     except Exception as exc:
-        logger.warning(f"Erreur matching contact par email : {exc}")
-
+        logger.warning(f"Erreur matching contact : {exc}")
     return None, None
 
 
 def classify_request(client: anthropic.Anthropic, sujet: str, corps: str) -> str:
-    """Classifie le type de demande via Claude (JSON structured output).
-
-    Returns one of: document_manquant, question_tva, relance, autre.
-    """
+    """Classifie le type de demande via Claude."""
     prompt = (
         f"Sujet : {sujet[:200]}\n\nCorps : {corps[:800]}\n\n"
-        "Classifie cette demande dans UNE des catégories suivantes :\n"
-        "- document_manquant : le client signale ou demande un document\n"
-        "- question_tva : question relative à la TVA\n"
-        "- relance : relance de paiement ou de dossier\n"
-        "- autre : tout autre sujet\n\n"
+        "Classifie cette demande dans UNE des catégories :\n"
+        "- document_manquant\n- question_tva\n- relance\n- autre\n\n"
         'Réponds UNIQUEMENT avec le JSON : {"type": "<categorie>"}'
     )
     try:
@@ -168,13 +103,9 @@ def classify_request(client: anthropic.Anthropic, sujet: str, corps: str) -> str
         )
         block = msg.content[0]
         raw_text = block.text if hasattr(block, "text") else ""
-        import json
-
         data = json.loads(raw_text.strip())
         type_demande = data.get("type", "autre")
-        if type_demande not in TYPES_DEMANDE:
-            return "autre"
-        return type_demande
+        return type_demande if type_demande in TYPES_DEMANDE else "autre"
     except Exception as exc:
         logger.warning(f"Erreur classification Claude : {exc}")
         return "autre"
@@ -187,7 +118,7 @@ def log_journal(
     sujet: str,
     statut: str = "ok",
 ) -> str | None:
-    """Insère une entrée dans la table journaux et retourne son id."""
+    """Insère une entrée dans la table journaux."""
     try:
         resp = (
             supabase.table("journaux")
@@ -209,36 +140,115 @@ def log_journal(
     return None
 
 
-def run(dry_run: bool = False) -> MailHandlerResult:
-    """Point d'entrée principal : lit les emails IMAP, identifie les clients, classifie.
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
-    Args:
-        dry_run: Si True, ne logue pas en base et n'effectue aucun effet de bord.
 
-    Returns:
-        MailHandlerResult avec les emails traités et les statistiques.
+def _document_exists(supabase: Client, sha256_hash: str) -> bool:
+    """Return True si un document avec ce hash existe déjà."""
+    try:
+        resp = (
+            supabase.table("documents")
+            .select("id")
+            .eq("hash", sha256_hash)
+            .limit(1)
+            .execute()
+        )
+        return bool(resp.data)
+    except Exception as exc:
+        logger.warning(f"Erreur vérification hash document : {exc}")
+        return False
+
+
+def _upload_and_insert(
+    supabase: Client,
+    filename: str,
+    content: bytes,
+    sha256_hash: str,
+    contact_id: str | None,
+    dossier_id: str | None,
+) -> None:
+    """Upload vers Storage puis insert dans documents."""
+    storage_path = f"{dossier_id or 'unknown'}/{sha256_hash[:8]}_{filename}"
+    supabase.storage.from_(STORAGE_BUCKET).upload(
+        path=storage_path,
+        file=content,
+        file_options={"content-type": "application/octet-stream"},
+    )
+    supabase.table("documents").insert(
+        {
+            "nom": filename,
+            "hash": sha256_hash,
+            "statut": "recu",
+            "source": "outlook",
+            "dossier_id": dossier_id,
+            "contact_id": contact_id,
+            "storage_path": storage_path,
+        }
+    ).execute()
+
+
+def _process_attachments(
+    supabase: Client,
+    message: dict[str, Any],
+    contact_id: str | None,
+    dossier_id: str | None,
+    dry_run: bool,
+) -> int:
+    """Traite les pièces jointes : dédup SHA-256, upload Storage, insert documents.
+
+    Returns le nombre de pièces réellement uploadées.
     """
-    logger.info("mail_handler — démarrage")
+    uploaded = 0
+    for filename, content in graph_mail.decode_attachments(message):
+        h = _sha256(content)
+        if _document_exists(supabase, h):
+            logger.info(f"Pièce jointe dupliquée ignorée : {filename} ({h[:8]}…)")
+            continue
+        if not dry_run:
+            try:
+                _upload_and_insert(supabase, filename, content, h, contact_id, dossier_id)
+                uploaded += 1
+            except Exception as exc:
+                logger.error(f"Erreur upload pièce jointe {filename} : {exc}")
+        else:
+            uploaded += 1
+    return uploaded
 
-    _imap_host = os.getenv("IMAP_HOST", "")
-    _imap_user = os.getenv("IMAP_USER", "")
-    _imap_password = os.getenv("IMAP_PASSWORD", "")
 
-    if not _imap_host or not _imap_user or not _imap_password:
-        logger.warning("mail_handler — IMAP non configuré (IMAP_HOST/IMAP_USER/IMAP_PASSWORD manquants)")
-        return MailHandlerResult(traites=0, non_matches=0, emails=[], erreurs=["IMAP non configuré"])
+def _graph_configured() -> bool:
+    return bool(os.getenv("GRAPH_TENANT_ID") and os.getenv("GRAPH_CLIENT_ID") and os.getenv("GRAPH_CLIENT_SECRET"))
+
+
+def run(dry_run: bool = False) -> MailHandlerResult:
+    """Point d'entrée : lit les emails Graph, identifie les clients, classifie, traite les pièces."""
+    logger.info("mail_handler — démarrage (Graph)")
+
+    if not _graph_configured():
+        logger.warning("mail_handler — Graph non configuré (GRAPH_TENANT_ID/CLIENT_ID/CLIENT_SECRET manquants)")
+        return MailHandlerResult(traites=0, non_matches=0, emails=[], erreurs=["Graph non configuré"])
 
     supabase = get_supabase_client()
     ai_client = get_anthropic_client()
 
-    raw_emails = fetch_unseen_emails(_imap_host, _imap_user, _imap_password)
-    logger.info(f"mail_handler : {len(raw_emails)} emails non lus")
+    try:
+        messages = graph_mail.fetch_unread(mailbox=GRAPH_MAILBOX)
+    except Exception as exc:
+        logger.error(f"Erreur fetch_unread Graph : {exc}")
+        return MailHandlerResult(traites=0, non_matches=0, emails=[], erreurs=[str(exc)])
+
+    logger.info(f"mail_handler : {len(messages)} emails non lus")
 
     items: list[EmailItem] = []
     erreurs: list[str] = []
     non_matches = 0
 
-    for message_id, expediteur, sujet, corps in raw_emails:
+    for msg in messages:
+        message_id: str = msg.get("id", "")
+        expediteur: str = (msg.get("from", {}) or {}).get("emailAddress", {}).get("address", "")
+        sujet: str = msg.get("subject", "")
+        corps: str = (msg.get("body", {}) or {}).get("content", "")
+
         try:
             contact_id, contact_nom = identify_contact(supabase, expediteur)
             if contact_id is None:
@@ -247,9 +257,18 @@ def run(dry_run: bool = False) -> MailHandlerResult:
 
             type_demande = classify_request(ai_client, sujet, corps)
 
+            pieces_jointes = _process_attachments(
+                supabase, msg, contact_id, dossier_id=None, dry_run=dry_run
+            )
+
             journal_id = None
             if not dry_run:
                 journal_id = log_journal(supabase, contact_id, type_demande, sujet)
+                if message_id:
+                    try:
+                        graph_mail.mark_read(message_id)
+                    except Exception as exc:
+                        logger.warning(f"Impossible de marquer lu {message_id} : {exc}")
 
             items.append(
                 EmailItem(
@@ -261,15 +280,14 @@ def run(dry_run: bool = False) -> MailHandlerResult:
                     contact_nom=contact_nom,
                     type_demande=type_demande,
                     journal_id=journal_id,
+                    pieces_jointes=pieces_jointes,
                 )
             )
         except Exception as exc:
             logger.error(f"Erreur traitement email {message_id} : {exc}")
             erreurs.append(str(exc))
 
-    logger.info(
-        f"mail_handler terminé : {len(items)} traités, {non_matches} non matchés"
-    )
+    logger.info(f"mail_handler terminé : {len(items)} traités, {non_matches} non matchés")
     return MailHandlerResult(
         traites=len(items),
         non_matches=non_matches,
