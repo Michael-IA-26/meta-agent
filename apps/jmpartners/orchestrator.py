@@ -31,6 +31,7 @@ from apps.jmpartners.agents.notification_agent import NotificationAgent
 from apps.jmpartners.agents.relance_handler import RelanceResult
 from apps.jmpartners.agents.relance_handler import run as send_relance
 from apps.jmpartners.agents.report_builder import run as run_rapport_mensuel
+from apps.jmpartners.agents.sage_exporter import run as run_sage_export
 from apps.jmpartners.agents.tva_agent import TvaAgentResult
 from apps.jmpartners.agents.tva_agent import run as run_tva
 from apps.jmpartners.jobs import run_pending_jobs
@@ -288,8 +289,16 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
 
     # 10. File de jobs Lovable
     if not dry_run:
+        def _handle_export_sage(job: dict) -> None:
+            payload = job.get("payload") or {}
+            run_sage_export(
+                dossier_id=payload["dossier_id"],
+                mois=payload["mois"],
+                supabase=_supabase,
+            )
+
         try:
-            run_pending_jobs({}, supabase=_supabase)
+            run_pending_jobs({"export_sage": _handle_export_sage}, supabase=_supabase)
         except Exception as exc:
             logger.warning(f"Orchestrateur — jobs poller : {exc}")
 
