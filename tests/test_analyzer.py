@@ -60,9 +60,8 @@ def test_analyze_email_icp_injected_as_system():
     }
     icp_context = "## BASSE\nNotification automatique → inutile"
 
-    mock_client = MagicMock()
-    mock_client.messages.create.return_value = fake_response
-    with patch("apps.email_agent.analyzer._get_client", return_value=mock_client):
+    with patch("apps.email_agent.analyzer.client") as mock_client:
+        mock_client.messages.create.return_value = fake_response
         analyze_email(email, icp_context)
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
@@ -89,9 +88,8 @@ def test_analyze_email_no_icp_uses_base_system():
         "body": "Bonjour, nous souhaitons un devis.",
     }
 
-    mock_client = MagicMock()
-    mock_client.messages.create.return_value = fake_response
-    with patch("apps.email_agent.analyzer._get_client", return_value=mock_client):
+    with patch("apps.email_agent.analyzer.client") as mock_client:
+        mock_client.messages.create.return_value = fake_response
         analyze_email(email, icp_context="")
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
@@ -100,3 +98,10 @@ def test_analyze_email_no_icp_uses_base_system():
 
 if __name__ == "__main__":
     test_load_icp_found()
+    test_load_icp_not_found()
+    test_build_system_prompt_with_icp()
+    test_build_system_prompt_without_icp()
+    test_analyze_email_icp_injected_as_system()
+    test_analyze_email_no_icp_uses_base_system()
+    print()
+    print("6/6 tests passes !")
