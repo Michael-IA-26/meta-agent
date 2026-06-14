@@ -19,6 +19,7 @@ from apps.jmpartners.agents.declaration_is_agent import (
     DeclarationISAgent,
     DeclarationISAlert,
 )
+from apps.jmpartners.agents.document_analyzer import classify_document
 from apps.jmpartners.agents.document_analyzer import run as run_document_analyzer
 from apps.jmpartners.agents.document_checker import DocumentCheckerResult
 from apps.jmpartners.agents.document_checker import run as check_docs
@@ -165,7 +166,11 @@ def _process_documents(supabase, dry_run: bool = False) -> list[str]:
             if statut == "recu":
                 url = doc.get("url") or ""
                 type_doc = doc.get("type_document") or ""
+                nom = doc.get("nom") or ""
                 if not dry_run:
+                    if not type_doc:
+                        type_doc = classify_document(nom, "")
+                        supabase.table("documents").update({"type_document": type_doc}).eq("id", doc_id).execute()
                     run_document_analyzer(doc_id, url=url, type_document=type_doc)
                     supabase.table("documents").update({"statut": "analysé"}).eq("id", doc_id).execute()
                 logger.info(f"Orchestrateur — document {doc_id} : recu → analysé")

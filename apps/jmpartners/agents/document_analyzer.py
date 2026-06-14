@@ -17,6 +17,7 @@ __all__ = [
     "AnalyseIA",
     "DocumentAnalyzerResult",
     "_detect_media_type",
+    "classify_document",
     "get_anthropic_client",
     "get_supabase_client",
     "run",
@@ -101,6 +102,52 @@ def get_anthropic_client():
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY est requis — configure Doppler")
     return anthropic.Anthropic(api_key=api_key)
+
+
+# ── Classification de type ────────────────────────────────────────────────────
+
+_CLASSIFIABLE_TYPES = {"facture_achat", "facture_vente", "releve_bancaire", "autre"}
+_CLASSIFY_PROMPT = """\
+Tu es un classificateur de documents comptables.
+Nom du fichier : {filename}
+Extrait du texte : {sample}
+
+Classifie ce document dans UNE des catégories suivantes :
+- facture_achat  : facture d'un fournisseur (on achète)
+- facture_vente  : facture émise à un client (on vend)
+- releve_bancaire: relevé ou extrait de compte bancaire
+- autre          : tout autre document
+
+Réponds UNIQUEMENT avec le JSON : {{"type": "<categorie>"}}"""
+
+
+def classify_document(filename: str, sample_text: str) -> str:
+    """Classify a document type using a cheap Claude call.
+
+    Returns one of: facture_achat, facture_vente, releve_bancaire, autre.
+    Never raises — falls back to 'autre' on any error.
+    """
+    import json  # noqa: PLC0415
+
+    try:
+        client = get_anthropic_client()
+        prompt = _CLASSIFY_PROMPT.format(
+            filename=filename[:200],
+            sample=sample_text[:500],
+        )
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=32,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        block = msg.content[0]
+        raw = block.text if hasattr(block, "text") else ""
+        data = json.loads(raw.strip())
+        type_doc = data.get("type", "autre")
+        return type_doc if type_doc in _CLASSIFIABLE_TYPES else "autre"
+    except Exception as exc:
+        logger.warning(f"classify_document — fallback 'autre' : {exc}")
+        return "autre"
 
 
 # ── Utilitaires ───────────────────────────────────────────────────────────────
