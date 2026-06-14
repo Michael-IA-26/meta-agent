@@ -13,7 +13,8 @@ from apps.jmpartners.agents.document_checker import run as check_docs
 from apps.jmpartners.agents.echeance_agent import run as run_echeances
 from apps.jmpartners.agents.mail_handler import run as handle_mail
 from apps.jmpartners.agents.tva_agent import run as run_tva
-from apps.jmpartners.orchestrator import OrchestratorResult
+from apps.jmpartners.jobs import run_pending_jobs
+from apps.jmpartners.orchestrator import OrchestratorResult, get_supabase_client
 from apps.jmpartners.orchestrator import run as orchestrate
 
 logging.basicConfig(
@@ -40,6 +41,14 @@ def _imap_poll_minutes() -> int:
         return int(os.getenv("IMAP_POLL_MINUTES", "15"))
     except ValueError:
         return 15
+
+
+def _jobs_poll_seconds() -> int:
+    """Retourne l'intervalle de polling des jobs en secondes (défaut : 60)."""
+    try:
+        return int(os.getenv("JOBS_POLL_SECONDS", "60"))
+    except ValueError:
+        return 60
 
 
 def run_imap_poll(
@@ -73,6 +82,36 @@ def run_imap_poll(
                 break
         else:
             time.sleep(interval * 60)
+
+
+def run_jobs_poll(
+    stop_event: threading.Event | None = None,
+    poll_seconds: int | None = None,
+) -> None:
+    """Boucle infinie qui traite la file de jobs Supabase toutes les N secondes.
+
+    Args:
+        stop_event: si levé, la boucle s'arrête avant le prochain appel.
+        poll_seconds: intervalle en secondes (None = lit JOBS_POLL_SECONDS).
+    """
+    if stop_event is not None and stop_event.is_set():
+        return
+    interval = poll_seconds if poll_seconds is not None else _jobs_poll_seconds()
+    logger.info(f"Jobs poll démarré (intervalle : {interval} s)")
+    supabase = get_supabase_client()
+    while True:
+        if stop_event is not None and stop_event.is_set():
+            break
+        try:
+            run_pending_jobs({}, supabase=supabase)
+        except Exception as exc:
+            logger.error(f"Jobs poll — erreur : {exc}")
+        if stop_event is not None:
+            stop_event.wait(interval)
+            if stop_event.is_set():
+                break
+        else:
+            time.sleep(interval)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -173,24 +212,36 @@ def main() -> None:
         name="Rapport échéances fin de journée",
     )
 
+    # Shared stop event for background threads
+    stop_event = threading.Event()
+
     # Démarrage du polling IMAP en arrière-plan si configuré
-    imap_stop = threading.Event()
     imap_host = os.getenv("IMAP_HOST", "")
     if imap_host:
         imap_thread = threading.Thread(
             target=run_imap_poll,
-            kwargs={"stop_event": imap_stop},
+            kwargs={"stop_event": stop_event},
             daemon=True,
             name="imap-poll",
         )
         imap_thread.start()
         logger.info(f"IMAP poll démarré en arrière-plan ({_imap_poll_minutes()} min)")
 
+    # Démarrage du polling des jobs en arrière-plan
+    jobs_thread = threading.Thread(
+        target=run_jobs_poll,
+        kwargs={"stop_event": stop_event},
+        daemon=True,
+        name="jobs-poll",
+    )
+    jobs_thread.start()
+    logger.info(f"Jobs poll démarré en arrière-plan ({_jobs_poll_seconds()} s)")
+
     logger.info(f"Scheduler JM Partners démarré — cron principal : {cron}")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
-        imap_stop.set()
+        stop_event.set()
         logger.info("Scheduler arrêté")
 
 
