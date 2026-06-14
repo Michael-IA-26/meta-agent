@@ -135,26 +135,20 @@ def test_run_alerte_j15():
 
 
 def test_send_email_non_configure():
-    with patch.dict("os.environ", {"SMTP_USER": "", "SMTP_PASS": ""}):
+    with patch("apps.jmpartners.agents.acompte_is_agent.send_email", return_value=False):
         agent = AcompteISAgent()
         result = agent._send_email("dest@test.com", "sujet", "corps")
 
     assert result is False
 
 
-# ─── AcompteISAgent._send_email — erreur SMTP ────────────────────────────────
+# ─── AcompteISAgent._send_email — erreur mailer ──────────────────────────────
 
 
 def test_send_email_erreur_smtp():
-    with (
-        patch.dict(
-            "os.environ",
-            {"SMTP_USER": "user@test.com", "SMTP_PASS": "pass"},
-        ),
-        patch(
-            "apps.jmpartners.agents.acompte_is_agent.smtplib.SMTP",
-            side_effect=Exception("SMTP error"),
-        ),
+    with patch(
+        "apps.jmpartners.agents.acompte_is_agent.send_email",
+        return_value=False,
     ):
         agent = AcompteISAgent()
         result = agent._send_email("dest@test.com", "sujet", "corps")

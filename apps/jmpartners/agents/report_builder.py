@@ -10,11 +10,9 @@ from __future__ import annotations
 import calendar
 import logging
 import os
-import smtplib
-from email.mime.application import MIMEApplication
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from typing import TypedDict
+
+from apps.jmpartners.integrations.mailer import send_email
 
 __all__ = [
     "ReportBuilderResult",
@@ -193,41 +191,21 @@ def _send_email_rapport(
     raison_sociale: str,
     periode: str,
 ) -> None:
-    """Envoie le rapport PDF par SMTP."""
-    smtp_host = os.getenv("SMTP_HOST", "")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER", "")
-    smtp_password = os.getenv("SMTP_PASSWORD", "")
-
-    if not smtp_host or not smtp_user or not smtp_password:
-        logger.warning("report_builder — SMTP non configuré, email non envoyé")
-        return
-
-    msg = MIMEMultipart()
-    msg["From"] = smtp_user
-    msg["To"] = destinataire
-    msg["Subject"] = f"Rapport mensuel {raison_sociale} — {periode}"
-
+    """Envoie le rapport PDF via le mailer unifié."""
+    subject = f"Rapport mensuel {raison_sociale} — {periode}"
     body = (
         f"Bonjour,\n\n"
         f"Veuillez trouver ci-joint le rapport comptable mensuel de {raison_sociale} "
         f"pour la période {periode}.\n\n"
         f"Cordialement,\nJM Partners"
     )
-    msg.attach(MIMEText(body, "plain", "utf-8"))
-
-    attach = MIMEApplication(pdf_bytes, _subtype="pdf")
-    attach.add_header(
-        "Content-Disposition",
-        "attachment",
-        filename=f"rapport_{raison_sociale.replace(' ', '_')}_{periode}.pdf",
+    filename = f"rapport_{raison_sociale.replace(' ', '_')}_{periode}.pdf"
+    send_email(
+        destinataire,
+        subject,
+        body,
+        attachments=[(filename, pdf_bytes, "application/pdf")],
     )
-    msg.attach(attach)
-
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_password)
-        server.send_message(msg)
 
 
 # ── Persistance Storage ───────────────────────────────────────────────────────

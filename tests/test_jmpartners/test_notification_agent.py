@@ -243,16 +243,10 @@ def test_send_email_non_configure():
 
 
 def test_send_email_erreur_smtp():
-    """_send_email retourne False si SMTP lève une exception."""
-    with (
-        patch.dict(
-            "os.environ",
-            {"SMTP_USER": "user@test.com", "SMTP_PASS": "pass"},
-        ),
-        patch(
-            "apps.jmpartners.agents.notification_agent.smtplib.SMTP",
-            side_effect=Exception("connexion refusée"),
-        ),
+    """_send_email retourne False si le mailer échoue."""
+    with patch(
+        "apps.jmpartners.agents.notification_agent.send_email",
+        return_value=False,
     ):
         agent = NotificationAgent()
         result = agent._send_email("dest@test.fr", "Sujet", "Corps")

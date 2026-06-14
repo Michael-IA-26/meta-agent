@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import logging
 import os
-import smtplib
 from datetime import datetime, timedelta, timezone
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from typing import TypedDict, cast
 
 import httpx
 from postgrest import CountMethod
 from supabase import Client, create_client
+
+from apps.jmpartners.integrations.mailer import send_email
 
 __all__ = ["NotificationPayload", "NotificationAgent"]
 
@@ -20,10 +19,6 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 CABINET_ID = os.getenv("CABINET_ID", "")
@@ -105,26 +100,8 @@ class NotificationAgent:
             logger.error(f"notification_agent — erreur log journal : {exc}")
 
     def _send_email(self, destinataire: str, sujet: str, corps: str) -> bool:
-        """Envoie un email via SMTP."""
-        if not SMTP_USER or not SMTP_PASSWORD:
-            logger.warning("notification_agent — SMTP non configuré")
-            return False
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["From"] = SMTP_USER
-            msg["To"] = destinataire
-            msg["Subject"] = sujet
-            msg.attach(MIMEText(corps, "plain", "utf-8"))
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.sendmail(SMTP_USER, [destinataire], msg.as_string())
-            return True
-        except Exception as exc:
-            logger.error(
-                f"notification_agent — erreur SMTP vers {destinataire} : {exc}"
-            )
-            return False
+        """Envoie un email via le mailer unifié."""
+        return send_email(destinataire, sujet, corps)
 
     def _send_telegram(self, message: str) -> bool:
         """Envoie un message Telegram."""

@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 import msal
 
-__all__ = ["get_token", "fetch_unread", "decode_attachments", "mark_read"]
+__all__ = ["get_token", "fetch_unread", "decode_attachments", "mark_read", "send_mail"]
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,54 @@ def decode_attachments(message: dict[str, Any]) -> list[tuple[str, bytes]]:
         if content:
             results.append((att.get("name", "attachment"), base64.b64decode(content)))
     return results
+
+
+def send_mail(
+    to: str,
+    subject: str,
+    html: str,
+    attachments: list[tuple[str, bytes, str]] | None = None,
+    mailbox: str = "",
+) -> None:
+    """Send an email via Graph sendMail.
+
+    Args:
+        to: recipient email address.
+        subject: message subject.
+        html: HTML body content.
+        attachments: list of (filename, content_bytes, mimetype).
+        mailbox: sender mailbox (defaults to GRAPH_MAILBOX env var).
+    """
+    box = mailbox or os.environ.get("GRAPH_MAILBOX", "")
+    if not box:
+        raise ValueError("GRAPH_MAILBOX is not set")
+    token = get_token()
+    url = f"{_GRAPH_BASE}/users/{box}/sendMail"
+
+    att_payload = []
+    for fname, content, mime in (attachments or []):
+        att_payload.append({
+            "@odata.type": "#microsoft.graph.fileAttachment",
+            "name": fname,
+            "contentType": mime,
+            "contentBytes": base64.b64encode(content).decode(),
+        })
+
+    payload: dict[str, Any] = {
+        "message": {
+            "subject": subject,
+            "body": {"contentType": "HTML", "content": html},
+            "toRecipients": [{"emailAddress": {"address": to}}],
+            "attachments": att_payload,
+        }
+    }
+    resp = httpx.post(
+        url,
+        json=payload,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        timeout=30,
+    )
+    resp.raise_for_status()
 
 
 def mark_read(message_id: str, mailbox: str = "") -> None:
