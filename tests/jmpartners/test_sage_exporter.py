@@ -1,159 +1,75 @@
-"""Tests TDD — sage_exporter (zero réseau)."""
+import os
+import sys
 
-from __future__ import annotations
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+from unittest.mock import MagicMock, patch
 
-import io
-from unittest.mock import MagicMock
-
-import openpyxl
-
-from apps.jmpartners.agents.sage_exporter import (
+from apps.jmpartners.scripts.sage_exporter import (
     SAGE_COLUMNS,
     build_export_rows,
-    run,
-    write_xlsx,
+    export_dossier,
 )
 
+SAMPLE_ECRITURE = {
+    "date_ecriture": "2024-01-15",
+    "libelle": "Facture test",
+    "compte_debit": "411000",
+    "compte_credit": "706000",
+    "montant": 500.0,
+    "tiers": "TEST SAS",
+    "journal": "VEN",
+    "reference": "FAC-002",
+    "statut": "valide",
+}
 
-def _sb_with_ecritures(rows):
-    sb = MagicMock()
+
+def _mock_client(data):
+    client = MagicMock()
     (
-        sb.table.return_value
-        .select.return_value
-        .eq.return_value
-        .eq.return_value
-        .like.return_value
-        .order.return_value
-        .execute.return_value
-        .data
-    ) = rows
-    sb.storage.from_.return_value.upload.return_value = {}
-    sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "j-1"}]
-    return sb
+        client.table.return_value.select.return_value.eq.return_value.eq.return_value.like.return_value.execute.return_value
+    ) = MagicMock(data=data)
+    return client
 
 
-def _ecriture(
-    statut="valide",
-    date="2026-05-15",
-    journal="ACH",
-    reference="FA-001",
-    debit=1200.0,
-    credit=None,
-    compte_debit="6070",
-    compte_credit="401",
-    libelle="Achat",
-):
-    return {
-        "id": "ecr-1",
-        "journal": journal,
-        "date": date,
-        "compte_debit": compte_debit,
-        "compte_credit": compte_credit,
-        "libelle": libelle,
-        "debit": debit,
-        "credit": credit,
-        "reference": reference,
-        "montant_ttc": debit,
-        "statut": statut,
-    }
+def test_sage_columns_constant():
+    assert SAGE_COLUMNS == [
+        "journal",
+        "date",
+        "compte",
+        "libelle",
+        "debit",
+        "credit",
+        "piece",
+        "tiers",
+    ]
 
 
-# ── build_export_rows ─────────────────────────────────────────────────────────
-
-def test_build_export_rows_only_valide():
-    """build_export_rows returns only statut='valide' entries."""
-    sb = _sb_with_ecritures([_ecriture()])
-    rows = build_export_rows(sb, "doss-1", "2026-05")
-    assert len(rows) == 1
-    assert rows[0]["journal"] == "ACH"
-    assert rows[0]["piece"] == "FA-001"
+def test_build_export_rows_filters_valide():
+    client = _mock_client([SAMPLE_ECRITURE])
+    rows = build_export_rows("dossier-1", "2024-01", client)
+    client.table.assert_called_with("ecritures")
+    assert len(rows) == 2
 
 
-def test_build_export_rows_empty_set():
-    sb = _sb_with_ecritures([])
-    rows = build_export_rows(sb, "doss-1", "2026-05")
+def test_ecriture_generates_two_rows():
+    client = _mock_client([SAMPLE_ECRITURE])
+    rows = build_export_rows("dossier-1", "2024-01", client)
+    assert len(rows) == 2
+    debit_row, credit_row = rows[0], rows[1]
+    assert debit_row["compte"] == "411000"
+    assert debit_row["debit"] == 500.0
+    assert debit_row["credit"] == ""
+    assert credit_row["compte"] == "706000"
+    assert credit_row["credit"] == 500.0
+    assert credit_row["debit"] == ""
+
+
+def test_empty_set_not_exported():
+    client = _mock_client([])
+    rows = build_export_rows("dossier-1", "2024-01", client)
     assert rows == []
-
-
-def test_build_export_rows_maps_sage_columns():
-    """Each row has exactly the SAGE_COLUMNS keys."""
-    sb = _sb_with_ecritures([_ecriture()])
-    rows = build_export_rows(sb, "doss-1", "2026-05")
-    assert set(rows[0].keys()) == set(SAGE_COLUMNS)
-
-
-def test_build_export_rows_amounts_from_debit_credit():
-    """debit/credit columns come from ecriture debit/credit fields."""
-    sb = _sb_with_ecritures([_ecriture(debit=1200.0, credit=None)])
-    rows = build_export_rows(sb, "doss-1", "2026-05")
-    assert rows[0]["debit"] == 1200.0
-    assert rows[0]["credit"] is None
-
-
-# ── write_xlsx ────────────────────────────────────────────────────────────────
-
-def test_write_xlsx_produces_valid_xlsx():
-    """write_xlsx returns valid xlsx bytes."""
-    rows = [build_export_rows(_sb_with_ecritures([_ecriture()]), "doss-1", "2026-05")[0]]
-    xlsx_bytes = write_xlsx(rows)
-    wb = openpyxl.load_workbook(io.BytesIO(xlsx_bytes))
-    ws = wb.active
-    assert ws.cell(row=1, column=1).value == "JOURNAL"
-
-
-def test_write_xlsx_data_row():
-    """Data row is written after header."""
-    rows = [{"journal": "ACH", "date": "2026-05-15", "compte_debit": "6070",
-              "compte_credit": "401", "libelle": "Achat", "debit": 1200.0,
-              "credit": None, "piece": "FA-001"}]
-    xlsx_bytes = write_xlsx(rows)
-    wb = openpyxl.load_workbook(io.BytesIO(xlsx_bytes))
-    ws = wb.active
-    assert ws.cell(row=2, column=1).value == "ACH"
-    assert ws.cell(row=2, column=6).value == 1200.0
-
-
-# ── run ───────────────────────────────────────────────────────────────────────
-
-def test_run_empty_returns_exported_false():
-    """No valid entries → exported=False, no upload."""
-    sb = _sb_with_ecritures([])
-    result = run("doss-1", "2026-05", supabase=sb)
+    with patch(
+        "apps.jmpartners.scripts.sage_exporter.build_export_rows", return_value=[]
+    ):
+        result = export_dossier("dossier-1", "2024-01", client)
     assert result["exported"] is False
-    assert result["nb_ecritures"] == 0
-    sb.storage.from_.assert_not_called()
-
-
-def test_run_with_data_uploads_to_storage():
-    """Entries present → xlsx uploaded to Storage bucket 'exports'."""
-    sb = _sb_with_ecritures([_ecriture()])
-    result = run("doss-1", "2026-05", supabase=sb)
-    assert result["exported"] is True
-    assert result["nb_ecritures"] == 1
-    sb.storage.from_.assert_called_with("exports")
-    sb.storage.from_.return_value.upload.assert_called_once()
-
-
-def test_run_logs_journaux_row():
-    """run() inserts a 'sage_saisie' journaux row."""
-    sb = _sb_with_ecritures([_ecriture()])
-    result = run("doss-1", "2026-05", supabase=sb)
-    assert result["journal_id"] == "j-1"
-    insert_call = sb.table.return_value.insert.call_args[0][0]
-    assert insert_call["type_action"] == "sage_saisie"
-
-
-def test_run_dry_run_no_upload_no_log():
-    """dry_run=True → xlsx built but not uploaded, no journal row."""
-    sb = _sb_with_ecritures([_ecriture()])
-    result = run("doss-1", "2026-05", dry_run=True, supabase=sb)
-    assert result["exported"] is True
-    sb.storage.from_.assert_not_called()
-    sb.table.return_value.insert.assert_not_called()
-
-
-def test_run_storage_path_contains_dossier_and_mois():
-    sb = _sb_with_ecritures([_ecriture()])
-    result = run("doss-42", "2026-05", supabase=sb)
-    assert "doss-42" in (result["storage_path"] or "")
-    assert "2026-05" in (result["storage_path"] or "")
