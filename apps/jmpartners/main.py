@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 
 from apps.jmpartners.agents.document_checker import run as check_docs
@@ -97,14 +98,32 @@ def main() -> None:
         logger.error("APScheduler non installé. Utilisez --once pour un run unique.")
         sys.exit(1)
 
+    graph_configured = bool(os.getenv("GRAPH_TENANT_ID"))
+    if not graph_configured:
+        logger.warning(
+            "GRAPH_TENANT_ID absent — collecte mail désactivée dans le scheduler. "
+            "Configurez GRAPH_TENANT_ID / GRAPH_CLIENT_ID / GRAPH_CLIENT_SECRET pour activer."
+        )
+
     scheduler = BlockingScheduler(timezone="Europe/Paris")
-    scheduler.add_job(
-        orchestrate,
-        CronTrigger(hour=8, minute=0, day_of_week="mon-fri"),
-        kwargs={"dry_run": dry_run},
-        id="cycle_matin",
-        name="Cycle quotidien matin",
-    )
+
+    if graph_configured:
+        scheduler.add_job(
+            orchestrate,
+            CronTrigger(hour=8, minute=0, day_of_week="mon-fri"),
+            kwargs={"dry_run": dry_run},
+            id="cycle_matin",
+            name="Cycle quotidien matin (mail + TVA + échéances)",
+        )
+    else:
+        scheduler.add_job(
+            run_echeances,
+            CronTrigger(hour=8, minute=15, day_of_week="mon-fri"),
+            kwargs={"dry_run": dry_run},
+            id="echeances_matin",
+            name="Rapport échéances matin (sans mail)",
+        )
+
     scheduler.add_job(
         run_echeances,
         CronTrigger(hour=17, minute=30, day_of_week="mon-fri"),
@@ -113,7 +132,9 @@ def main() -> None:
         name="Rapport échéances fin de journée",
     )
 
-    logger.info("Scheduler JM Partners démarré (lun-ven 08h00 + 17h30)")
+    logger.info(
+        "Scheduler JM Partners démarré — mail_poll=%s (lun-ven)", "on" if graph_configured else "off"
+    )
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):

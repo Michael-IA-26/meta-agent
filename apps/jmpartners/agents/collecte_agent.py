@@ -98,7 +98,7 @@ class CollecteAgent:
                 )
 
                 # Insérer en base
-                row = supabase.table("documents").insert({
+                supabase.table("documents").insert({
                     "cabinet_id": self.cabinet_id,
                     "dossier_id": self.dossier_id or None,
                     "nom_fichier": pdf_path.name,
