@@ -18,6 +18,8 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --no-dev
 
+ENV PATH="/app/.venv/bin:$PATH"
+
 COPY apps/ ./apps/
 COPY packages/ ./packages/
 
@@ -28,4 +30,4 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD python3.11 -c "import fastapi; print('OK')" || exit 1
 
-CMD ["uv", "run", "uvicorn", "apps.jmpartners.dashboard:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "apps.jmpartners.dashboard:app", "--host", "0.0.0.0", "--port", "8080"]

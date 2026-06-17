@@ -1016,8 +1016,7 @@ async def relancer_dossier(dossier_id: str) -> JSONResponse:
     except ImportError:
         pass
     except Exception as exc:
-        logger.error("RelanceHandler erreur pour %s: %s", dossier_id, exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.warning("RelanceHandler erreur pour %s, fallback: %s", dossier_id, exc)
 
     # Fallback : utilise les fonctions run() existantes
     try:

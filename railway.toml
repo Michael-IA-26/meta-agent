@@ -9,6 +9,7 @@ dockerfilePath = "Dockerfile.leadcommercial-dashboard"
 
 [services.jmpartners-dashboard]
 dockerfilePath = "Dockerfile.jmpartners-dashboard"
+startCommand = "uvicorn apps.jmpartners.dashboard:app --host 0.0.0.0 --port $PORT"
 
 [services.jmpartners]
 dockerfilePath = "Dockerfile.jmpartners"
