@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import logging
 import os
+from collections import Counter
 from datetime import date, timedelta
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel
 
-__all__ = ["app"]
+__all__ = ["app", "create_app"]
 
 logger = logging.getLogger(__name__)
 
+# Module-level constants kept for backward-compat with existing test patches.
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
@@ -86,6 +90,30 @@ _MOCK_DOSSIERS: list[dict[str, Any]] = [
         "alertes": [],
     },
 ]
+
+
+# ---------------------------------------------------------------------------
+# Request models
+# ---------------------------------------------------------------------------
+
+
+class IngestMailRequest(BaseModel):
+    dry_run: bool = True
+
+
+class RunCycleRequest(BaseModel):
+    dry_run: bool = True
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_cors_origins() -> list[str]:
+    """Lit CORS_ALLOWED_ORIGINS à l'appel (jamais en cache module)."""
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    return [o.strip() for o in raw.split(",") if o.strip()]
 
 
 def _next_tva_deadlines() -> list[dict[str, Any]]:
@@ -204,7 +232,6 @@ def _fetch_dossiers_from_supabase() -> list[dict[str, Any]]:
         deadline_val = row.get("deadline")
         alertes = _compute_alertes(deadline_val)
 
-        # Fetch documents for this dossier
         docs_manquants: list[str] = []
         docs_presents: list[str] = []
         try:
@@ -238,6 +265,35 @@ def _fetch_dossiers_from_supabase() -> list[dict[str, Any]]:
         }
         dossiers.append(dossier)
     return dossiers
+
+
+def _urgence_niveau(jours: int) -> str | None:
+    """Retourne le niveau d'urgence selon le nombre de jours restants."""
+    if jours <= 3:
+        return "J-3"
+    if jours <= 7:
+        return "J-7"
+    if jours <= 15:
+        return "J-15"
+    return None
+
+
+def _run_cycle_internal(dry_run: bool) -> dict[str, Any]:
+    """Exécute un cycle orchestrateur et retourne un dict normalisé.
+
+    Safety guarantee: when dry_run=True (the default), orchestrator.run
+    receives dry_run=True which gates steps 4-7 (cloture, acomptes_is,
+    bilans, declarations_is, Sage export jobs) — no irreversible action fires.
+    """
+    from apps.jmpartners.orchestrator import run as orchestrate  # noqa: PLC0415
+
+    result = orchestrate(dry_run=dry_run)
+    return {
+        "dry_run": dry_run,
+        "result": result,
+        "statut": "ok",
+        "erreurs": result.get("erreurs", []),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -277,7 +333,6 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
       color: var(--text);
       min-height: 100vh;
     }
-    /* Header */
     header {
       background: var(--primary);
       color: white;
@@ -298,12 +353,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     }
     .cabinet-name { font-size: 1.15rem; font-weight: 600; letter-spacing: .3px; }
     .header-right { display: flex; align-items: center; gap: 16px; font-size: .85rem; opacity: .85; }
-    #header-date { font-weight: 500; }
-
-    /* Main */
     main { padding: 2rem; max-width: 1400px; margin: 0 auto; }
-
-    /* KPI Cards */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -318,11 +368,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
       display: flex; align-items: center; gap: 1rem;
       box-shadow: 0 1px 3px rgba(0,0,0,.06);
     }
-    .kpi-icon {
-      width: 44px; height: 44px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; flex-shrink: 0;
-    }
+    .kpi-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
     .kpi-icon.blue { background: #eff6ff; }
     .kpi-icon.orange { background: var(--orange-bg); }
     .kpi-icon.red { background: var(--red-bg); }
@@ -330,206 +376,54 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     .kpi-info { flex: 1; }
     .kpi-value { font-size: 2rem; font-weight: 700; line-height: 1; }
     .kpi-label { font-size: .8rem; color: var(--text-muted); margin-top: 2px; }
-
-    /* Section titles */
-    .section-title {
-      font-size: 1rem; font-weight: 600;
-      color: var(--primary);
-      margin-bottom: 1rem;
-      display: flex; align-items: center; gap: 8px;
-    }
-
-    /* Kanban */
-    .kanban {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
+    .section-title { font-size: 1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+    .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
     @media (max-width: 900px) { .kanban { grid-template-columns: 1fr; } }
-    .kanban-col {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,.06);
-    }
-    .kanban-col-header {
-      padding: .75rem 1rem;
-      font-size: .85rem; font-weight: 600;
-      display: flex; align-items: center; justify-content: space-between;
-    }
+    .kanban-col { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .kanban-col-header { padding: .75rem 1rem; font-size: .85rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
     .kanban-col-header.col-missing { background: #fef2f2; color: var(--red); border-bottom: 2px solid #fca5a5; }
     .kanban-col-header.col-waiting { background: #fff7ed; color: var(--orange); border-bottom: 2px solid #fdba74; }
     .kanban-col-header.col-complete { background: #f0fdf4; color: var(--green); border-bottom: 2px solid #86efac; }
-    .kanban-badge {
-      background: rgba(0,0,0,.12);
-      border-radius: 20px;
-      padding: 1px 8px;
-      font-size: .75rem;
-    }
+    .kanban-badge { background: rgba(0,0,0,.12); border-radius: 20px; padding: 1px 8px; font-size: .75rem; }
     .kanban-cards { padding: .5rem; display: flex; flex-direction: column; gap: .5rem; min-height: 80px; }
-    .kanban-card {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: .75rem;
-      font-size: .83rem;
-    }
+    .kanban-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: .75rem; font-size: .83rem; }
     .kanban-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
     .kanban-card-name { font-weight: 600; }
-    .kanban-card-type {
-      background: var(--primary);
-      color: white;
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-size: .7rem;
-      text-transform: uppercase;
-    }
+    .kanban-card-type { background: var(--primary); color: white; border-radius: 4px; padding: 1px 6px; font-size: .7rem; text-transform: uppercase; }
     .kanban-card-docs { color: var(--text-muted); font-size: .78rem; }
     .kanban-card-deadline { font-size: .75rem; color: var(--text-muted); margin-top: 4px; }
-    .alert-badge {
-      display: inline-block;
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-size: .7rem;
-      font-weight: 600;
-      margin-right: 4px;
-    }
+    .alert-badge { display: inline-block; border-radius: 4px; padding: 1px 6px; font-size: .7rem; font-weight: 600; margin-right: 4px; }
     .alert-j15 { background: #fef9c3; color: var(--yellow); }
     .alert-j7  { background: #ffedd5; color: var(--orange); }
     .alert-j3  { background: #fee2e2; color: var(--red); }
-    .relance-btn {
-      margin-top: 6px;
-      background: var(--primary-light);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 3px 10px;
-      font-size: .75rem;
-      cursor: pointer;
-      transition: opacity .2s;
-    }
+    .relance-btn { margin-top: 6px; background: var(--primary-light); color: white; border: none; border-radius: 4px; padding: 3px 10px; font-size: .75rem; cursor: pointer; transition: opacity .2s; }
     .relance-btn:hover { opacity: .85; }
-
-    /* Bottom grid */
-    .bottom-grid {
-      display: grid;
-      grid-template-columns: 1fr 340px;
-      gap: 1rem;
-    }
+    .bottom-grid { display: grid; grid-template-columns: 1fr 340px; gap: 1rem; }
     @media (max-width: 1100px) { .bottom-grid { grid-template-columns: 1fr; } }
-
-    /* Calendar */
-    .calendar-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,.06);
-    }
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
-      margin-top: .75rem;
-    }
-    .cal-day-name {
-      text-align: center; font-size: .7rem;
-      font-weight: 600; color: var(--text-muted);
-      padding: 4px 0;
-    }
-    .cal-day {
-      border: 1px solid transparent;
-      border-radius: 6px;
-      padding: 4px;
-      min-height: 52px;
-      font-size: .7rem;
-      position: relative;
-      transition: background .15s;
-    }
+    .calendar-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: .75rem; }
+    .cal-day-name { text-align: center; font-size: .7rem; font-weight: 600; color: var(--text-muted); padding: 4px 0; }
+    .cal-day { border: 1px solid transparent; border-radius: 6px; padding: 4px; min-height: 52px; font-size: .7rem; position: relative; transition: background .15s; }
     .cal-day:hover { background: var(--bg); }
     .cal-day.today { border-color: var(--primary-light); background: #eff6ff; }
     .cal-day.other-month { opacity: .35; }
-    .cal-day-num {
-      font-weight: 600;
-      font-size: .75rem;
-      color: var(--text);
-      margin-bottom: 2px;
-    }
-    .cal-badge {
-      display: block;
-      border-radius: 3px;
-      padding: 1px 3px;
-      font-size: .62rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 2px;
-    }
+    .cal-day-num { font-weight: 600; font-size: .75rem; color: var(--text); margin-bottom: 2px; }
+    .cal-badge { display: block; border-radius: 3px; padding: 1px 3px; font-size: .62rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
     .cal-badge.tva-j15 { background: #fef9c3; color: #854d0e; }
     .cal-badge.tva-j7  { background: #ffedd5; color: #9a3412; }
     .cal-badge.tva-j3  { background: #fee2e2; color: #991b1b; }
     .cal-badge.is-j15  { background: #dbeafe; color: #1e40af; }
     .cal-badge.is-j7   { background: #e0e7ff; color: #3730a3; }
     .cal-badge.is-j3   { background: #ede9fe; color: #5b21b6; }
-
-    /* Dry run panel */
-    .dryrun-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,.06);
-      display: flex;
-      flex-direction: column;
-      gap: .75rem;
-    }
+    .dryrun-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); display: flex; flex-direction: column; gap: .75rem; }
     .dryrun-desc { font-size: .85rem; color: var(--text-muted); }
-    .dryrun-btn {
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: var(--radius);
-      padding: .75rem 1.25rem;
-      font-size: .9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background .2s;
-    }
+    .dryrun-btn { background: var(--primary); color: white; border: none; border-radius: var(--radius); padding: .75rem 1.25rem; font-size: .9rem; font-weight: 600; cursor: pointer; transition: background .2s; }
     .dryrun-btn:hover { background: var(--primary-light); }
     .dryrun-btn:disabled { opacity: .55; cursor: default; }
-    #dryrun-output {
-      background: #1e2d40;
-      color: #a8c8e8;
-      border-radius: 6px;
-      padding: .75rem;
-      font-size: .78rem;
-      font-family: "SFMono-Regular", Consolas, monospace;
-      white-space: pre-wrap;
-      min-height: 80px;
-      display: none;
-    }
-
-    /* Loading / error */
+    #dryrun-output { background: #1e2d40; color: #a8c8e8; border-radius: 6px; padding: .75rem; font-size: .78rem; font-family: "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; min-height: 80px; display: none; }
     .loading { text-align: center; padding: 2rem; color: var(--text-muted); font-size: .9rem; }
-    .error-msg {
-      background: var(--red-bg); color: var(--red);
-      border: 1px solid #fca5a5; border-radius: 6px;
-      padding: .75rem 1rem; font-size: .85rem;
-    }
-
-    /* Toast */
-    #toast {
-      position: fixed; bottom: 1.5rem; right: 1.5rem;
-      background: var(--primary); color: white;
-      padding: .7rem 1.2rem; border-radius: var(--radius);
-      font-size: .85rem; opacity: 0;
-      transition: opacity .3s;
-      pointer-events: none;
-      z-index: 1000;
-    }
+    .error-msg { background: var(--red-bg); color: var(--red); border: 1px solid #fca5a5; border-radius: 6px; padding: .75rem 1rem; font-size: .85rem; }
+    #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--primary); color: white; padding: .7rem 1.2rem; border-radius: var(--radius); font-size: .85rem; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 1000; }
     #toast.visible { opacity: 1; }
   </style>
 </head>
@@ -541,549 +435,395 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
   <div class="header-right">
     <span id="header-date"></span>
-    <span>Dashboard v1.0 · Beta 8 juin</span>
+    <span>Dashboard v2.0</span>
   </div>
 </header>
-
 <main>
-  <!-- KPI Section -->
   <div class="kpi-grid" id="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-icon blue">📁</div>
-      <div class="kpi-info">
-        <div class="kpi-value" id="kpi-actifs">—</div>
-        <div class="kpi-label">Dossiers actifs</div>
-      </div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon orange">⚠️</div>
-      <div class="kpi-info">
-        <div class="kpi-value" id="kpi-alertes">—</div>
-        <div class="kpi-label">Alertes J-7</div>
-      </div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon red">🔴</div>
-      <div class="kpi-info">
-        <div class="kpi-value" id="kpi-urgents">—</div>
-        <div class="kpi-label">Urgences J-3</div>
-      </div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon green">📅</div>
-      <div class="kpi-info">
-        <div class="kpi-value" id="kpi-echeances">—</div>
-        <div class="kpi-label">Échéances 7 jours</div>
-      </div>
-    </div>
+    <div class="kpi-card"><div class="kpi-icon blue">📁</div><div class="kpi-info"><div class="kpi-value" id="kpi-actifs">—</div><div class="kpi-label">Dossiers actifs</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon orange">⚠️</div><div class="kpi-info"><div class="kpi-value" id="kpi-alertes">—</div><div class="kpi-label">Alertes J-7</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon red">🔴</div><div class="kpi-info"><div class="kpi-value" id="kpi-urgents">—</div><div class="kpi-label">Urgences J-3</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon green">📅</div><div class="kpi-info"><div class="kpi-value" id="kpi-echeances">—</div><div class="kpi-label">Échéances 7 jours</div></div></div>
   </div>
-
-  <!-- Kanban -->
-  <div class="section-title">
-    <span>Vue Kanban — Dossiers</span>
-  </div>
+  <div class="section-title"><span>Vue Kanban — Dossiers</span></div>
   <div class="kanban" id="kanban">
-    <div class="kanban-col">
-      <div class="kanban-col-header col-missing">
-        <span>Documents manquants</span>
-        <span class="kanban-badge" id="badge-missing">0</span>
-      </div>
-      <div class="kanban-cards" id="col-missing"></div>
-    </div>
-    <div class="kanban-col">
-      <div class="kanban-col-header col-waiting">
-        <span>En attente</span>
-        <span class="kanban-badge" id="badge-waiting">0</span>
-      </div>
-      <div class="kanban-cards" id="col-waiting"></div>
-    </div>
-    <div class="kanban-col">
-      <div class="kanban-col-header col-complete">
-        <span>Complet</span>
-        <span class="kanban-badge" id="badge-complete">0</span>
-      </div>
-      <div class="kanban-cards" id="col-complete"></div>
-    </div>
+    <div class="kanban-col"><div class="kanban-col-header col-missing"><span>Documents manquants</span><span class="kanban-badge" id="badge-missing">0</span></div><div class="kanban-cards" id="col-missing"></div></div>
+    <div class="kanban-col"><div class="kanban-col-header col-waiting"><span>En attente</span><span class="kanban-badge" id="badge-waiting">0</span></div><div class="kanban-cards" id="col-waiting"></div></div>
+    <div class="kanban-col"><div class="kanban-col-header col-complete"><span>Complet</span><span class="kanban-badge" id="badge-complete">0</span></div><div class="kanban-cards" id="col-complete"></div></div>
   </div>
-
-  <!-- Bottom: Calendar + Dry Run -->
   <div class="bottom-grid">
     <div class="calendar-card">
       <div class="section-title">Calendrier des 30 prochains jours</div>
       <div id="calendar-legend" style="font-size:.75rem;color:var(--text-muted);margin-bottom:.5rem;">
         <span style="background:#fef9c3;color:#854d0e;border-radius:3px;padding:1px 5px;margin-right:6px;">TVA J-15</span>
-        <span style="background:#ffedd5;color:#9a3412;border-radius:3px;padding:1px 5px;margin-right:6px;">TVA J-7</span>
         <span style="background:#fee2e2;color:#991b1b;border-radius:3px;padding:1px 5px;margin-right:6px;">TVA J-3</span>
         <span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:1px 5px;margin-right:6px;">IS J-15</span>
-        <span style="background:#e0e7ff;color:#3730a3;border-radius:3px;padding:1px 5px;margin-right:6px;">IS J-7</span>
         <span style="background:#ede9fe;color:#5b21b6;border-radius:3px;padding:1px 5px;">IS J-3</span>
       </div>
       <div class="calendar-grid" id="cal-grid"></div>
     </div>
-
     <div class="dryrun-card">
       <div class="section-title">Simulation du cycle</div>
-      <p class="dryrun-desc">
-        Lance un cycle complet (mail → relances → TVA → échéances)
-        en mode <strong>dry-run</strong> : aucun email envoyé, aucune
-        écriture en base.
-      </p>
-      <button class="dryrun-btn" id="dryrun-btn" onclick="runDryRun()">
-        ▶ Simuler le cycle (dry-run)
-      </button>
+      <p class="dryrun-desc">Lance un cycle complet en mode <strong>dry-run</strong> : aucun email envoyé, aucune écriture en base.</p>
+      <button class="dryrun-btn" id="dryrun-btn" onclick="runDryRun()">▶ Simuler le cycle (dry-run)</button>
       <pre id="dryrun-output"></pre>
     </div>
   </div>
 </main>
-
 <div id="toast"></div>
-
 <script>
-  // ---- Utilities ----
-  function showToast(msg, duration = 3000) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('visible');
-    setTimeout(() => t.classList.remove('visible'), duration);
-  }
-
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso + 'T00:00:00');
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-  }
-
-  // ---- Header date ----
-  document.getElementById('header-date').textContent =
-    new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-
-  // ---- Kanban card builder ----
-  function buildCard(d) {
-    const alerteHtml = (d.alertes || []).map(a => {
-      const cls = a === 'J-3' ? 'alert-j3' : (a === 'J-7' ? 'alert-j7' : 'alert-j15');
-      return `<span class="alert-badge ${cls}">${a}</span>`;
-    }).join('');
-
-    const manqHtml = d.documents_manquants && d.documents_manquants.length
-      ? `<div class="kanban-card-docs">Manquants : ${d.documents_manquants.slice(0,3).join(', ')}${d.documents_manquants.length > 3 ? ' +…' : ''}</div>`
-      : '';
-
-    const deadlineHtml = d.deadline
-      ? `<div class="kanban-card-deadline">Deadline : ${fmtDate(d.deadline)}</div>`
-      : '';
-
-    return `
-      <div class="kanban-card">
-        <div class="kanban-card-header">
-          <span class="kanban-card-name">${d.contact_nom || d.contact_id || d.id}</span>
-          <span class="kanban-card-type">${d.type}</span>
-        </div>
-        ${alerteHtml ? `<div>${alerteHtml}</div>` : ''}
-        ${manqHtml}
-        ${deadlineHtml}
-        ${d.documents_manquants && d.documents_manquants.length
-          ? `<button class="relance-btn" onclick="relancer('${d.id}')">Relancer</button>`
-          : ''}
-      </div>`;
-  }
-
-  // ---- Load dossiers ----
-  async function loadDossiers() {
-    const [missingEl, waitingEl, completeEl] = [
-      document.getElementById('col-missing'),
-      document.getElementById('col-waiting'),
-      document.getElementById('col-complete')
-    ];
-    missingEl.innerHTML = '<div class="loading">Chargement…</div>';
-    try {
-      const resp = await fetch('/api/dossiers');
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const dossiers = await resp.json();
-
-      let missing = [], waiting = [], complete = [];
-      dossiers.forEach(d => {
-        if (d.documents_manquants && d.documents_manquants.length > 0) missing.push(d);
-        else if (d.statut === 'actif' && (!d.documents_manquants || !d.documents_manquants.length)) complete.push(d);
-        else waiting.push(d);
-      });
-      // Heuristic: dossiers with no missing docs but deadline soon → waiting
-      complete.forEach((d, i) => {
-        if (d.deadline) {
-          const days = Math.ceil((new Date(d.deadline) - new Date()) / 86400000);
-          if (days <= 15 && days > 0) { waiting.push(d); complete.splice(i, 1); }
-        }
-      });
-
-      missingEl.innerHTML = missing.length ? missing.map(buildCard).join('') : '<div class="loading">Aucun</div>';
-      waitingEl.innerHTML = waiting.length ? waiting.map(buildCard).join('') : '<div class="loading">Aucun</div>';
-      completeEl.innerHTML = complete.length ? complete.map(buildCard).join('') : '<div class="loading">Aucun</div>';
-
-      document.getElementById('badge-missing').textContent = missing.length;
-      document.getElementById('badge-waiting').textContent = waiting.length;
-      document.getElementById('badge-complete').textContent = complete.length;
-
-      // KPIs
-      document.getElementById('kpi-actifs').textContent = dossiers.length;
-      const j7 = dossiers.filter(d => (d.alertes || []).includes('J-7') || (d.alertes || []).includes('J-3')).length;
-      const j3 = dossiers.filter(d => (d.alertes || []).includes('J-3')).length;
-      document.getElementById('kpi-alertes').textContent = j7;
-      document.getElementById('kpi-urgents').textContent = j3;
-
-    } catch (e) {
-      missingEl.innerHTML = `<div class="error-msg">Erreur : ${e.message}</div>`;
-      waitingEl.innerHTML = '';
-      completeEl.innerHTML = '';
-    }
-  }
-
-  // ---- Load echeances + calendar ----
-  async function loadEcheances() {
-    try {
-      const resp = await fetch('/api/echeances');
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-
-      const echeances = data.echeances || [];
-      const dans7j = echeances.filter(e => e.jours_restants <= 7).length;
-      document.getElementById('kpi-echeances').textContent = dans7j;
-
-      buildCalendar(echeances);
-    } catch (e) {
-      console.error('Erreur écheances:', e);
-    }
-  }
-
-  // ---- Calendar builder ----
-  function buildCalendar(echeances) {
-    const grid = document.getElementById('cal-grid');
-    const today = new Date();
-    today.setHours(0,0,0,0);
-
-    // Day names
-    const days = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-    let html = days.map(d => `<div class="cal-day-name">${d}</div>`).join('');
-
-    // Build 5 weeks starting from Monday of current week
-    const startOfWeek = new Date(today);
-    const dow = (today.getDay() + 6) % 7; // Mon=0
-    startOfWeek.setDate(today.getDate() - dow);
-
-    // Build echeance map by date
-    const echeanceMap = {};
-    echeances.forEach(e => {
-      if (!echeanceMap[e.deadline]) echeanceMap[e.deadline] = [];
-      echeanceMap[e.deadline].push(e);
-    });
-
-    const endDate = new Date(today);
-    endDate.setDate(today.getDate() + 30);
-
-    for (let i = 0; i < 35; i++) {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + i);
-      const iso = d.toISOString().slice(0,10);
-      const isToday = d.getTime() === today.getTime();
-      const inRange = d >= today && d <= endDate;
-      const otherMonth = d.getMonth() !== today.getMonth() && !inRange;
-      let cls = 'cal-day';
-      if (isToday) cls += ' today';
-      if (otherMonth) cls += ' other-month';
-
-      let badges = '';
-      if (echeanceMap[iso]) {
-        echeanceMap[iso].forEach(e => {
-          const t = e.type.toLowerCase();
-          const j = e.jours_restants;
-          const badgeCls = `${t}-${j <= 3 ? 'j3' : (j <= 7 ? 'j7' : 'j15')}`;
-          badges += `<span class="cal-badge ${badgeCls}">${e.type} ${e.label ? e.label.split(' ')[1] || '' : ''}</span>`;
-        });
-      }
-
-      html += `<div class="${cls}">
-        <div class="cal-day-num">${d.getDate()}</div>
-        ${badges}
-      </div>`;
-    }
-    grid.innerHTML = html;
-  }
-
-  // ---- Relance ----
-  async function relancer(dossierId) {
-    try {
-      const resp = await fetch(`/api/relancer/${dossierId}`, { method: 'POST' });
-      const data = await resp.json();
-      showToast(data.message || 'Relance envoyée');
-    } catch (e) {
-      showToast('Erreur lors de la relance');
-    }
-  }
-
-  // ---- Dry Run ----
-  async function runDryRun() {
-    const btn = document.getElementById('dryrun-btn');
-    const output = document.getElementById('dryrun-output');
-    btn.disabled = true;
-    btn.textContent = '⏳ Simulation en cours…';
-    output.style.display = 'block';
-    output.textContent = 'Lancement du cycle dry-run…\\n';
-    try {
-      const resp = await fetch('/api/dry-run', { method: 'POST' });
-      const data = await resp.json();
-      output.textContent = JSON.stringify(data, null, 2);
-      showToast('Simulation terminée');
-    } catch (e) {
-      output.textContent = 'Erreur : ' + e.message;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '▶ Simuler le cycle (dry-run)';
-    }
-  }
-
-  // ---- Init ----
-  loadDossiers();
-  loadEcheances();
+  function showToast(msg, duration=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('visible');setTimeout(()=>t.classList.remove('visible'),duration);}
+  function fmtDate(iso){if(!iso)return'—';const d=new Date(iso+'T00:00:00');return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});}
+  document.getElementById('header-date').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  function buildCard(d){const alerteHtml=(d.alertes||[]).map(a=>{const cls=a==='J-3'?'alert-j3':(a==='J-7'?'alert-j7':'alert-j15');return`<span class="alert-badge ${cls}">${a}</span>`;}).join('');const manqHtml=d.documents_manquants&&d.documents_manquants.length?`<div class="kanban-card-docs">Manquants : ${d.documents_manquants.slice(0,3).join(', ')}${d.documents_manquants.length>3?' +…':''}</div>`:'';const deadlineHtml=d.deadline?`<div class="kanban-card-deadline">Deadline : ${fmtDate(d.deadline)}</div>`:'';return`<div class="kanban-card"><div class="kanban-card-header"><span class="kanban-card-name">${d.contact_nom||d.id}</span><span class="kanban-card-type">${d.type}</span></div>${alerteHtml?`<div>${alerteHtml}</div>`:''}${manqHtml}${deadlineHtml}${d.documents_manquants&&d.documents_manquants.length?`<button class="relance-btn" onclick="relancer('${d.id}')">Relancer</button>`:''}</div>`;}
+  async function loadDossiers(){const[missingEl,waitingEl,completeEl]=['col-missing','col-waiting','col-complete'].map(id=>document.getElementById(id));missingEl.innerHTML='<div class="loading">Chargement…</div>';try{const resp=await fetch('/api/dossiers');if(!resp.ok)throw new Error(`HTTP ${resp.status}`);const dossiers=await resp.json();let missing=[],waiting=[],complete=[];dossiers.forEach(d=>{if(d.documents_manquants&&d.documents_manquants.length>0)missing.push(d);else complete.push(d);});missingEl.innerHTML=missing.length?missing.map(buildCard).join(''):'<div class="loading">Aucun</div>';waitingEl.innerHTML='<div class="loading">Aucun</div>';completeEl.innerHTML=complete.length?complete.map(buildCard).join(''):'<div class="loading">Aucun</div>';document.getElementById('badge-missing').textContent=missing.length;document.getElementById('badge-waiting').textContent=0;document.getElementById('badge-complete').textContent=complete.length;document.getElementById('kpi-actifs').textContent=dossiers.length;const j7=dossiers.filter(d=>(d.alertes||[]).some(a=>a==='J-7'||a==='J-3')).length;const j3=dossiers.filter(d=>(d.alertes||[]).includes('J-3')).length;document.getElementById('kpi-alertes').textContent=j7;document.getElementById('kpi-urgents').textContent=j3;}catch(e){missingEl.innerHTML=`<div class="error-msg">Erreur : ${e.message}</div>`;}}
+  async function loadEcheances(){try{const resp=await fetch('/api/echeances');if(!resp.ok)throw new Error(`HTTP ${resp.status}`);const data=await resp.json();const echeances=data.echeances||[];document.getElementById('kpi-echeances').textContent=echeances.filter(e=>e.jours_restants<=7).length;buildCalendar(echeances);}catch(e){console.error('Erreur écheances:',e);}}
+  function buildCalendar(echeances){const grid=document.getElementById('cal-grid');const today=new Date();today.setHours(0,0,0,0);const days=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];let html=days.map(d=>`<div class="cal-day-name">${d}</div>`).join('');const startOfWeek=new Date(today);const dow=(today.getDay()+6)%7;startOfWeek.setDate(today.getDate()-dow);const echeanceMap={};echeances.forEach(e=>{if(!echeanceMap[e.deadline])echeanceMap[e.deadline]=[];echeanceMap[e.deadline].push(e);});const endDate=new Date(today);endDate.setDate(today.getDate()+30);for(let i=0;i<35;i++){const d=new Date(startOfWeek);d.setDate(startOfWeek.getDate()+i);const iso=d.toISOString().slice(0,10);const isToday=d.getTime()===today.getTime();const inRange=d>=today&&d<=endDate;const otherMonth=d.getMonth()!==today.getMonth()&&!inRange;let cls='cal-day';if(isToday)cls+=' today';if(otherMonth)cls+=' other-month';let badges='';if(echeanceMap[iso]){echeanceMap[iso].forEach(e=>{const t=e.type.toLowerCase();const j=e.jours_restants;const badgeCls=`${t}-${j<=3?'j3':(j<=7?'j7':'j15')}`;badges+=`<span class="cal-badge ${badgeCls}">${e.type}</span>`;});}html+=`<div class="${cls}"><div class="cal-day-num">${d.getDate()}</div>${badges}</div>`;}grid.innerHTML=html;}
+  async function relancer(dossierId){try{const resp=await fetch(`/api/relancer/${dossierId}`,{method:'POST'});const data=await resp.json();showToast(data.message||'Relance envoyée');}catch(e){showToast('Erreur lors de la relance');}}
+  async function runDryRun(){const btn=document.getElementById('dryrun-btn');const output=document.getElementById('dryrun-output');btn.disabled=true;btn.textContent='⏳ Simulation en cours…';output.style.display='block';output.textContent='Lancement du cycle dry-run…\\n';try{const resp=await fetch('/api/dry-run',{method:'POST'});const data=await resp.json();output.textContent=JSON.stringify(data,null,2);showToast('Simulation terminée');}catch(e){output.textContent='Erreur : '+e.message;}finally{btn.disabled=false;btn.textContent='▶ Simuler le cycle (dry-run)';}}
+  loadDossiers();loadEcheances();
 </script>
 </body>
 </html>"""
 
 
 # ---------------------------------------------------------------------------
-# FastAPI app
+# App factory
 # ---------------------------------------------------------------------------
 
-app = FastAPI(
-    title="JM Partners Dashboard",
-    description="Dashboard de gestion des dossiers et échéances — JM Partners",
-    version="1.0.0",
-)
 
+def create_app() -> FastAPI:
+    """Crée et configure l'application FastAPI avec CORS et tous les endpoints.
 
-@app.get("/", response_class=HTMLResponse)
-async def root() -> HTMLResponse:
-    """Retourne le dashboard HTML."""
-    return HTMLResponse(content=_HTML_TEMPLATE)
-
-
-@app.get("/api/dossiers")
-async def get_dossiers() -> JSONResponse:
-    """Retourne tous les dossiers actifs avec alertes documents manquants."""
-    if _supabase_available():
-        try:
-            dossiers = _fetch_dossiers_from_supabase()
-            return JSONResponse(content=dossiers)
-        except Exception as exc:
-            logger.warning(f"Supabase unavailable, using mock data: {exc}")
-
-    return JSONResponse(content=_MOCK_DOSSIERS)
-
-
-def _urgence_niveau(jours: int) -> str | None:
-    """Retourne le niveau d'urgence selon le nombre de jours restants."""
-    if jours <= 3:
-        return "J-3"
-    if jours <= 7:
-        return "J-7"
-    if jours <= 15:
-        return "J-15"
-    return None
-
-
-@app.get("/api/echeances")
-async def get_echeances() -> JSONResponse:
-    """Retourne les échéances TVA + IS des 30 prochains jours."""
-    today = date.today()
-    horizon = today + timedelta(days=30)
-    echeances: list[dict[str, Any]] = []
-    supabase_used = False
-
-    try:
-        client = _get_supabase_client()
-
-        # Déclarations TVA depuis Supabase
-        resp_tva = (
-            client.table("declarations_tva")
-            .select("id, dossier_id, periode, statut, deadline, montant_tva")
-            .gte("deadline", today.isoformat())
-            .lte("deadline", horizon.isoformat())
-            .neq("statut", "valide")
-            .execute()
-        )
-        for row in resp_tva.data or []:
-            dl_str = row.get("deadline")
-            if not dl_str:
-                continue
-            try:
-                dl = date.fromisoformat(str(dl_str))
-            except ValueError:
-                continue
-            jours = (dl - today).days
-            echeances.append(
-                {
-                    "type": "TVA",
-                    "label": f"TVA {row.get('periode', '')}",
-                    "deadline": dl_str,
-                    "jours_restants": jours,
-                    "urgence": _urgence_niveau(jours),
-                    "niveau": _urgence_niveau(jours),
-                    "couleur": "rouge"
-                    if jours <= 3
-                    else ("orange" if jours <= 7 else "jaune"),
-                }
-            )
-
-        # Acomptes IS depuis Supabase
-        resp_is = (
-            client.table("acomptes_is")
-            .select("id, dossier_id, exercice, statut, deadline, montant")
-            .gte("deadline", today.isoformat())
-            .lte("deadline", horizon.isoformat())
-            .neq("statut", "paye")
-            .execute()
-        )
-        for row in resp_is.data or []:
-            dl_str = row.get("deadline")
-            if not dl_str:
-                continue
-            try:
-                dl = date.fromisoformat(str(dl_str))
-            except ValueError:
-                continue
-            jours = (dl - today).days
-            echeances.append(
-                {
-                    "type": "IS",
-                    "label": f"Acompte IS {row.get('exercice', '')}",
-                    "deadline": dl_str,
-                    "jours_restants": jours,
-                    "urgence": _urgence_niveau(jours),
-                    "niveau": _urgence_niveau(jours),
-                    "couleur": "rouge"
-                    if jours <= 3
-                    else ("orange" if jours <= 7 else "jaune"),
-                }
-            )
-
-        supabase_used = True
-    except Exception as exc:
-        logger.warning(
-            "Supabase indisponible pour écheances, fallback algorithmique: %s", exc
-        )
-
-    # Fallback sur calcul algorithmique si tables vides ou Supabase down
-    if not supabase_used or not echeances:
-        echeances = []
-        echeances.extend(_next_tva_deadlines())
-        echeances.extend(_next_is_deadlines())
-
-    echeances.sort(key=lambda e: e["jours_restants"])
-
-    rouge = sum(1 for e in echeances if e["jours_restants"] <= 3)
-    orange = sum(1 for e in echeances if 3 < e["jours_restants"] <= 7)
-    jaune = sum(1 for e in echeances if 7 < e["jours_restants"] <= 15)
-
-    return JSONResponse(
-        content={
-            "total": len(echeances),
-            "rouge": rouge,
-            "orange": orange,
-            "jaune": jaune,
-            "echeances": echeances,
-        }
+    Lit CORS_ALLOWED_ORIGINS à l'appel (jamais en cache module) pour que les
+    tests puissent surcharger l'env avant d'appeler create_app().
+    """
+    _app = FastAPI(
+        title="JM Partners Dashboard",
+        description="Dashboard de gestion des dossiers et échéances — JM Partners",
+        version="2.0.0",
     )
 
+    origins = _parse_cors_origins()
+    _app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+        allow_credentials=True,
+    )
 
-@app.post("/api/relancer/{dossier_id}")
-async def relancer_dossier(dossier_id: str) -> JSONResponse:
-    """Déclenche une relance pour un dossier."""
-    cabinet_id = os.getenv("CABINET_ID", "")
+    # ------------------------------------------------------------------
+    # Static routes
+    # ------------------------------------------------------------------
 
-    # Tente d'utiliser RelanceHandler si disponible
-    try:
-        from apps.jmpartners.agents.relance_handler import (  # type: ignore[attr-defined]  # noqa: PLC0415
-            RelanceHandler,
-        )
+    @_app.get("/", response_class=HTMLResponse)
+    async def root() -> HTMLResponse:
+        return HTMLResponse(content=_HTML_TEMPLATE)
 
-        handler = RelanceHandler(cabinet_id=cabinet_id)
-        handler.run(dossier_id)
+    @_app.get("/health")
+    async def health() -> JSONResponse:
+        return JSONResponse(content={"statut": "ok", "service": "jmpartners-dashboard"})
+
+    # ------------------------------------------------------------------
+    # Dossiers
+    # ------------------------------------------------------------------
+
+    @_app.get("/api/dossiers")
+    async def get_dossiers() -> JSONResponse:
+        """Retourne tous les dossiers actifs avec alertes documents manquants."""
+        if _supabase_available():
+            try:
+                dossiers = _fetch_dossiers_from_supabase()
+                return JSONResponse(content=dossiers)
+            except Exception as exc:
+                logger.warning("Supabase unavailable, using mock data: %s", exc)
+        return JSONResponse(content=_MOCK_DOSSIERS)
+
+    # ------------------------------------------------------------------
+    # Documents (Task 2)
+    # ------------------------------------------------------------------
+
+    @_app.get("/api/documents")
+    async def get_documents(dossier_id: str | None = None) -> JSONResponse:
+        """Retourne les documents avec leur statut pipeline (recu/analysé/presaisi).
+
+        Args:
+            dossier_id: Filtre optionnel par dossier.
+        """
+        try:
+            client = _get_supabase_client()
+            query = (
+                client.table("documents")
+                .select("id, nom, statut, source, dossier_id, created_at")
+                .order("created_at", desc=True)
+            )
+            if dossier_id:
+                query = query.eq("dossier_id", dossier_id)
+            resp = query.execute()
+            docs: list[dict[str, Any]] = list(resp.data or [])
+            par_statut: dict[str, int] = dict(Counter(d.get("statut", "") for d in docs))
+            return JSONResponse(
+                content={
+                    "total": len(docs),
+                    "par_statut": par_statut,
+                    "documents": docs,
+                }
+            )
+        except Exception as exc:
+            logger.warning("GET /api/documents — Supabase indisponible: %s", exc)
+            return JSONResponse(
+                content={"total": 0, "par_statut": {}, "documents": []}
+            )
+
+    # ------------------------------------------------------------------
+    # Échéances
+    # ------------------------------------------------------------------
+
+    @_app.get("/api/echeances")
+    async def get_echeances() -> JSONResponse:
+        """Retourne les échéances TVA + IS des 30 prochains jours."""
+        today = date.today()
+        horizon = today + timedelta(days=30)
+        echeances: list[dict[str, Any]] = []
+        supabase_used = False
+
+        try:
+            client = _get_supabase_client()
+
+            resp_tva = (
+                client.table("declarations_tva")
+                .select("id, dossier_id, periode, statut, deadline, montant_tva")
+                .gte("deadline", today.isoformat())
+                .lte("deadline", horizon.isoformat())
+                .neq("statut", "valide")
+                .execute()
+            )
+            for row in resp_tva.data or []:
+                dl_str = row.get("deadline")
+                if not dl_str:
+                    continue
+                try:
+                    dl = date.fromisoformat(str(dl_str))
+                except ValueError:
+                    continue
+                jours = (dl - today).days
+                echeances.append(
+                    {
+                        "type": "TVA",
+                        "label": f"TVA {row.get('periode', '')}",
+                        "deadline": dl_str,
+                        "jours_restants": jours,
+                        "urgence": _urgence_niveau(jours),
+                        "niveau": _urgence_niveau(jours),
+                        "couleur": "rouge" if jours <= 3 else ("orange" if jours <= 7 else "jaune"),
+                    }
+                )
+
+            resp_is = (
+                client.table("acomptes_is")
+                .select("id, dossier_id, exercice, statut, deadline, montant")
+                .gte("deadline", today.isoformat())
+                .lte("deadline", horizon.isoformat())
+                .neq("statut", "paye")
+                .execute()
+            )
+            for row in resp_is.data or []:
+                dl_str = row.get("deadline")
+                if not dl_str:
+                    continue
+                try:
+                    dl = date.fromisoformat(str(dl_str))
+                except ValueError:
+                    continue
+                jours = (dl - today).days
+                echeances.append(
+                    {
+                        "type": "IS",
+                        "label": f"Acompte IS {row.get('exercice', '')}",
+                        "deadline": dl_str,
+                        "jours_restants": jours,
+                        "urgence": _urgence_niveau(jours),
+                        "niveau": _urgence_niveau(jours),
+                        "couleur": "rouge" if jours <= 3 else ("orange" if jours <= 7 else "jaune"),
+                    }
+                )
+
+            supabase_used = True
+        except Exception as exc:
+            logger.warning("Supabase indisponible pour écheances, fallback algorithmique: %s", exc)
+
+        if not supabase_used or not echeances:
+            echeances = []
+            echeances.extend(_next_tva_deadlines())
+            echeances.extend(_next_is_deadlines())
+
+        echeances.sort(key=lambda e: e["jours_restants"])
+
+        rouge = sum(1 for e in echeances if e["jours_restants"] <= 3)
+        orange = sum(1 for e in echeances if 3 < e["jours_restants"] <= 7)
+        jaune = sum(1 for e in echeances if 7 < e["jours_restants"] <= 15)
+
         return JSONResponse(
             content={
-                "dossier_id": dossier_id,
-                "status": "relance_envoyee",
+                "total": len(echeances),
+                "rouge": rouge,
+                "orange": orange,
+                "jaune": jaune,
+                "echeances": echeances,
             }
         )
-    except ImportError:
-        pass
-    except Exception as exc:
-        logger.error("RelanceHandler erreur pour %s: %s", dossier_id, exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    # Fallback : utilise les fonctions run() existantes
-    try:
-        from apps.jmpartners.agents.document_checker import (
-            run as check_docs,  # noqa: PLC0415
-        )
-        from apps.jmpartners.agents.relance_handler import (
-            run as send_relance,  # noqa: PLC0415
-        )
+    # ------------------------------------------------------------------
+    # Relancer
+    # ------------------------------------------------------------------
 
-        doc_result = check_docs(dossier_id, dry_run=False)
-        relance_result = send_relance(doc_result, dry_run=False)
-        return JSONResponse(
-            content={
-                "dossier_id": dossier_id,
-                "statut": relance_result.get("statut", "ok"),
-                "message": f"Relance envoyée pour le dossier {dossier_id}",
-                "details": relance_result,
-            }
-        )
-    except Exception as exc:
-        logger.warning("Relance failed for %s, using mock: %s", dossier_id, exc)
-        return JSONResponse(
-            content={
-                "dossier_id": dossier_id,
-                "statut": "mock",
-                "message": f"Relance simulée pour le dossier {dossier_id} (config email absente)",
-            }
-        )
+    @_app.post("/api/relancer/{dossier_id}")
+    async def relancer_dossier(dossier_id: str) -> JSONResponse:
+        """Déclenche une relance pour un dossier."""
+        cabinet_id = os.getenv("CABINET_ID", "")
 
+        try:
+            from apps.jmpartners.agents.relance_handler import (  # type: ignore[attr-defined]  # noqa: PLC0415
+                RelanceHandler,
+            )
 
-@app.post("/api/dry-run")
-async def dry_run() -> JSONResponse:
-    """Simule le cycle complet sans envoi ni écriture."""
-    try:
-        from apps.jmpartners.orchestrator import run as orchestrate  # noqa: PLC0415
+            handler = RelanceHandler(cabinet_id=cabinet_id)
+            handler.run(dossier_id)
+            return JSONResponse(
+                content={"dossier_id": dossier_id, "status": "relance_envoyee"}
+            )
+        except ImportError:
+            pass
+        except Exception as exc:
+            logger.error("RelanceHandler erreur pour %s: %s", dossier_id, exc)
 
-        result = orchestrate(dry_run=True)
-        return JSONResponse(
-            content={
-                "dry_run": True,
-                "result": result,
-                "statut": "ok",
-                "erreurs": result.get("erreurs", []),
-            }
-        )
-    except Exception as exc:
-        logger.warning("Orchestrateur dry-run failed, using mock: %s", exc)
-        return JSONResponse(
-            content={
-                "dry_run": True,
-                "result": {
-                    "mail": {"emails": [], "statut": "ok"},
-                    "relances": [],
-                    "tva": {"declarations_analysees": 3, "alertes": 1, "statut": "ok"},
-                    "echeances": {
-                        "echeances_total": 4,
-                        "rouge": 1,
-                        "orange": 2,
-                        "vert": 1,
+        try:
+            from apps.jmpartners.agents.document_checker import (
+                run as check_docs,  # noqa: PLC0415
+            )
+            from apps.jmpartners.agents.relance_handler import (
+                run as send_relance,  # noqa: PLC0415
+            )
+
+            doc_result = check_docs(dossier_id, dry_run=False)
+            relance_result = send_relance(doc_result, dry_run=False)
+            return JSONResponse(
+                content={
+                    "dossier_id": dossier_id,
+                    "statut": relance_result.get("statut", "ok"),
+                    "message": f"Relance envoyée pour le dossier {dossier_id}",
+                    "details": relance_result,
+                }
+            )
+        except Exception as exc:
+            logger.warning("Relance failed for %s, using mock: %s", dossier_id, exc)
+            return JSONResponse(
+                content={
+                    "dossier_id": dossier_id,
+                    "statut": "mock",
+                    "message": f"Relance simulée pour le dossier {dossier_id} (config email absente)",
+                }
+            )
+
+    # ------------------------------------------------------------------
+    # Ingest mail (Task 3)
+    # ------------------------------------------------------------------
+
+    @_app.post("/api/ingest-mail")
+    async def ingest_mail(request: IngestMailRequest = IngestMailRequest()) -> JSONResponse:
+        """Déclenche la collecte des emails Outlook sur demande depuis Lovable.
+
+        Safety: dry_run=True par défaut — aucun effet de bord si non précisé.
+        """
+        dry_run = request.dry_run
+        try:
+            from apps.jmpartners.agents.mail_handler import (
+                run as mail_run,  # noqa: PLC0415
+            )
+
+            result = mail_run(dry_run=dry_run)
+            return JSONResponse(
+                content={
+                    "dry_run": dry_run,
+                    "traites": result["traites"],
+                    "non_matches": result["non_matches"],
+                    "erreurs": result["erreurs"],
+                    "statut": "ok",
+                }
+            )
+        except Exception as exc:
+            logger.warning("ingest-mail erreur: %s", exc)
+            return JSONResponse(
+                content={
+                    "dry_run": dry_run,
+                    "statut": "error",
+                    "traites": 0,
+                    "erreurs": [str(exc)],
+                }
+            )
+
+    # ------------------------------------------------------------------
+    # Run cycle (Task 4)
+    # ------------------------------------------------------------------
+
+    @_app.post("/api/run-cycle")
+    async def run_cycle(request: RunCycleRequest = RunCycleRequest()) -> JSONResponse:
+        """Exécute le cycle orchestrateur complet sur demande depuis Lovable.
+
+        Safety guarantee: dry_run=True par défaut. Avec dry_run=True,
+        orchestrator.run gate les étapes 4-7 (cloture, acomptes_is, bilans,
+        declarations_is, Sage export jobs) — aucune opération irréversible.
+        Passer dry_run=false explicitement pour déclencher un vrai cycle.
+        """
+        dry_run = request.dry_run
+        try:
+            payload = _run_cycle_internal(dry_run=dry_run)
+            return JSONResponse(content=payload)
+        except Exception as exc:
+            logger.warning("run-cycle erreur: %s", exc)
+            return JSONResponse(
+                content={
+                    "dry_run": dry_run,
+                    "statut": "error",
+                    "result": None,
+                    "erreurs": [str(exc)],
+                }
+            )
+
+    # ------------------------------------------------------------------
+    # Dry-run (backward compat — délègue à run-cycle)
+    # ------------------------------------------------------------------
+
+    @_app.post("/api/dry-run")
+    async def dry_run_compat() -> JSONResponse:
+        """Backward-compat alias pour POST /api/run-cycle avec dry_run=True."""
+        try:
+            payload = _run_cycle_internal(dry_run=True)
+            return JSONResponse(content=payload)
+        except Exception as exc:
+            logger.warning("Orchestrateur dry-run failed, using mock: %s", exc)
+            return JSONResponse(
+                content={
+                    "dry_run": True,
+                    "result": {
+                        "mail": {"emails": [], "statut": "ok"},
+                        "relances": [],
+                        "tva": {"declarations_analysees": 3, "alertes": 1, "statut": "ok"},
+                        "echeances": {"echeances_total": 4, "rouge": 1, "orange": 2, "vert": 1},
+                        "erreurs": [],
                     },
+                    "statut": "mock",
+                    "message": "Simulation complète (mode démo)",
                     "erreurs": [],
-                },
-                "statut": "mock",
-                "message": "Simulation complète (mode démo)",
-                "erreurs": [],
-            }
-        )
+                }
+            )
+
+    return _app
+
+
+# Module-level app instance for Railway / uvicorn.
+app = create_app()
 
 
 if __name__ == "__main__":
