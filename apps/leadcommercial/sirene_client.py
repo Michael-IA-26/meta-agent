@@ -1,5 +1,7 @@
 import logging
 import os
+import threading
+import time
 from datetime import datetime, timedelta
 
 import httpx
@@ -8,6 +10,11 @@ logger = logging.getLogger(__name__)
 
 SIRENE_TOKEN = os.getenv("SIRENE_API_TOKEN", "")
 SIRENE_BASE_URL = "https://api.insee.fr/api-sirene/3.11"
+
+# Plan public INSEE : 30 req/min → 1 req toutes les 2 secondes minimum.
+_rate_lock = threading.Lock()
+_last_call_time: float = 0.0
+_MIN_INTERVAL = 2.0
 
 DEPT_IDF = ["75", "77", "78", "91", "92", "93", "94", "95"]
 FORMES_JURIDIQUES = ["5710", "5720", "5499"]  # SAS, SASU, EURL
@@ -29,6 +36,16 @@ CHAMPS = ",".join(
 )
 
 
+def _throttle() -> None:
+    global _last_call_time
+    with _rate_lock:
+        elapsed = time.monotonic() - _last_call_time
+        wait = _MIN_INTERVAL - elapsed
+        if wait > 0:
+            time.sleep(wait)
+        _last_call_time = time.monotonic()
+
+
 def get_headers() -> dict:
     return {
         "X-INSEE-Api-Key-Integration": SIRENE_TOKEN,
@@ -44,6 +61,8 @@ def build_query(date: str | None = None) -> str:
 def fetch_new_companies(max_results: int = 20, date: str | None = None) -> list[dict]:
     if not SIRENE_TOKEN:
         raise ValueError("SIRENE_API_TOKEN manquant — configure Doppler")
+
+    _throttle()
 
     query = build_query(date)
     params = {"q": query, "nombre": str(max_results), "champs": CHAMPS}
