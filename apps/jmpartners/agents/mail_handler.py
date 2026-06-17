@@ -7,12 +7,12 @@ import imaplib
 import logging
 import os
 from email.header import decode_header
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import anthropic
 from supabase import Client, create_client
 
-__all__ = ["MailHandlerResult", "EmailItem", "run"]
+__all__ = ["MailHandlerResult", "EmailItem", "run", "resolve_dossier_for_contact"]
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +203,37 @@ def log_journal(
     except Exception as exc:
         logger.error(f"Erreur log journal : {exc}")
     return None
+
+
+def resolve_dossier_for_contact(supabase: Any, contact_id: str | None) -> str | None:
+    """Retourne le dossier_id si le contact a exactement un dossier en_cours.
+
+    Returns None when contact_id is None, when there are 0 or 2+ active dossiers,
+    or when Supabase is unavailable (logs a warning).
+    """
+    if contact_id is None:
+        return None
+    try:
+        resp = (
+            supabase.table("dossiers")
+            .select("id")
+            .eq("contact_id", contact_id)
+            .eq("statut", "en_cours")
+            .execute()
+        )
+        rows = resp.data or []
+        if len(rows) == 1:
+            return str(rows[0]["id"])
+        if len(rows) > 1:
+            logger.warning(
+                "resolve_dossier_for_contact: contact %s a %d dossiers actifs — ambigu, dossier_id=None",
+                contact_id,
+                len(rows),
+            )
+        return None
+    except Exception as exc:
+        logger.warning("resolve_dossier_for_contact: Supabase erreur — %s", exc)
+        return None
 
 
 def run(dry_run: bool = False) -> MailHandlerResult:
