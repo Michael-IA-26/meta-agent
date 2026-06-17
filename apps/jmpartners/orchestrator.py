@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 def get_supabase_client():  # type: ignore[return]
     """Retourne un client Supabase si configuré, sinon None."""
     from supabase import create_client  # noqa: PLC0415
+
     url = os.getenv("SUPABASE_URL", "")
     key = os.getenv("SUPABASE_SERVICE_KEY", "")
     if not url or not key:
@@ -55,6 +56,7 @@ def get_supabase_client():  # type: ignore[return]
 def _notify_agent_error(agent_name: str, error: str) -> None:
     """Envoie une notification Telegram si configuré (silencieux sinon)."""
     import httpx  # noqa: PLC0415
+
     token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
     if not token or not chat_id:
@@ -81,17 +83,19 @@ def _log_orchestrator_run(
     if supabase is None:
         return
     try:
-        supabase.table("journaux").insert({
-            "type_action": "orchestrator_run",
-            "statut": "ok" if agents_ko == 0 else "erreur",
-            "contenu": f"{agents_ok} agents OK, {agents_ko} KO, durée {duree:.1f}s",
-            "metadata": {
-                "duree_secondes": round(duree, 2),
-                "agents_ok": agents_ok,
-                "agents_ko": agents_ko,
-                "erreurs": erreurs,
-            },
-        }).execute()
+        supabase.table("journaux").insert(
+            {
+                "type_action": "orchestrator_run",
+                "statut": "ok" if agents_ko == 0 else "erreur",
+                "contenu": f"{agents_ok} agents OK, {agents_ko} KO, durée {duree:.1f}s",
+                "metadata": {
+                    "duree_secondes": round(duree, 2),
+                    "agents_ok": agents_ok,
+                    "agents_ko": agents_ko,
+                    "erreurs": erreurs,
+                },
+            }
+        ).execute()
     except Exception as exc:
         logger.warning(f"Orchestrateur — impossible de logguer dans journaux : {exc}")
 
@@ -170,15 +174,21 @@ def _process_documents(supabase, dry_run: bool = False) -> list[str]:
                 if not dry_run:
                     if not type_doc:
                         type_doc = classify_document(nom, "")
-                        supabase.table("documents").update({"type_document": type_doc}).eq("id", doc_id).execute()
+                        supabase.table("documents").update(
+                            {"type_document": type_doc}
+                        ).eq("id", doc_id).execute()
                     run_document_analyzer(doc_id, url=url, type_document=type_doc)
-                    supabase.table("documents").update({"statut": "analysé"}).eq("id", doc_id).execute()
+                    supabase.table("documents").update({"statut": "analysé"}).eq(
+                        "id", doc_id
+                    ).execute()
                 logger.info(f"Orchestrateur — document {doc_id} : recu → analysé")
 
             elif statut == "analysé":
                 if not dry_run:
                     run_ecriture_generator(doc_id)
-                    supabase.table("documents").update({"statut": "presaisi"}).eq("id", doc_id).execute()
+                    supabase.table("documents").update({"statut": "presaisi"}).eq(
+                        "id", doc_id
+                    ).execute()
                 logger.info(f"Orchestrateur — document {doc_id} : analysé → presaisi")
 
         except Exception as exc:
@@ -294,6 +304,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
 
     # 10. File de jobs Lovable
     if not dry_run:
+
         def _handle_export_sage(job: dict) -> None:
             payload = job.get("payload") or {}
             run_sage_export(
@@ -318,7 +329,7 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
                     .eq("statut", "en_cours")
                     .execute()
                 )
-                for _doss in (_dossiers_resp.data or []):
+                for _doss in _dossiers_resp.data or []:
                     run_rapport_mensuel(mois=_periode, dossier_id=_doss["id"])
         except Exception as exc:
             logger.error(f"Orchestrateur — erreur report_builder : {exc}")
@@ -341,3 +352,15 @@ def run(dry_run: bool = False, cabinet_id: str = "jmpartners") -> OrchestratorRe
         declarations_is=declarations_is,
         erreurs=erreurs,
     )
+
+
+class Orchestrator:
+    """Class-based harness for driving a single document through the pipeline."""
+
+    def __init__(self, client, anthropic_key: str) -> None:
+        self.client = client
+        self.anthropic_key = anthropic_key
+
+    def _process_documents(self, document_id: str) -> dict:
+        """Drive a document through recu->analysé->presaisi pipeline."""
+        raise NotImplementedError
