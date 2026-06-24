@@ -106,6 +106,7 @@ def test_effectif_tranches_inclut_zero_et_nn():
     tranches = r.effectif_tranches()
 
     assert "NN" in tranches, "NN (non renseigné) doit être dans les tranches autorisées"
+    assert "" in tranches, "chaîne vide (effectif None → '') doit être dans les tranches autorisées"
     assert "00" in tranches, "00 (0 salarié) doit être dans les tranches autorisées"
     assert "12" in tranches, "12 (20-49 sal.) doit être dans les tranches autorisées"
     # Hors plage
@@ -122,4 +123,5 @@ def test_effectif_tranches_exclu_nn_quand_false():
     tranches = r.effectif_tranches()
 
     assert "NN" not in tranches
+    assert "" not in tranches
     assert "00" in tranches

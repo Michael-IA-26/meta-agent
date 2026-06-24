@@ -92,7 +92,7 @@ class CriteresRecherche(BaseModel):
             return []  # pas de filtre effectif — tout passe
         codes = effectif_codes(self.effectif_min, self.effectif_max)
         if self.inclure_effectif_non_renseigne:
-            codes = ["NN"] + codes
+            codes = ["NN", ""] + codes
         return codes
 
 
