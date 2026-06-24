@@ -16,9 +16,11 @@ class CompanyRaw(TypedDict):
     denomination: str
     forme_juridique: str | None
     code_naf: str | None
+    code_postal: str
     dept: str
     commune: str | None
     date_creation: str | None
+    effectif: str
 
 
 class SireneInput(TypedDict):
@@ -26,6 +28,9 @@ class SireneInput(TypedDict):
 
     max_results: int
     date: str | None
+    code_postal: str | None
+    date_from: str | None
+    date_to: str | None
 
 
 def fetch_idf_companies(params: SireneInput) -> list[CompanyRaw]:
@@ -39,6 +44,9 @@ def fetch_idf_companies(params: SireneInput) -> list[CompanyRaw]:
     companies = fetch_and_parse_idf(
         max_results=params["max_results"],
         date=params["date"],
+        code_postal=params.get("code_postal"),
+        date_from=params.get("date_from"),
+        date_to=params.get("date_to"),
     )
-    logger.info("sirene_fetcher: %d entreprises IDF recues", len(companies))
+    logger.info("sirene_fetcher: %d entreprises recues", len(companies))
     return companies  # type: ignore[return-value]

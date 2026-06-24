@@ -32,6 +32,7 @@ CHAMPS = ",".join(
         "codePostalEtablissement",
         "libelleCommuneEtablissement",
         "dateCreationEtablissement",
+        "trancheEffectifsUniteLegale",
     ]
 )
 
@@ -53,18 +54,38 @@ def get_headers() -> dict:
     }
 
 
-def build_query(date: str | None = None) -> str:
-    target_date = date or (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    return f"dateCreationEtablissement:{target_date} AND etablissementSiege:true"
+def build_query(
+    date: str | None = None,
+    code_postal: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> str:
+    if date_from:
+        _to = date_to or datetime.now().strftime("%Y-%m-%d")
+        date_part = f"dateCreationEtablissement:[{date_from} TO {_to}]"
+    else:
+        target_date = date or (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        date_part = f"dateCreationEtablissement:{target_date}"
+
+    query = f"{date_part} AND etablissementSiege:true"
+    if code_postal:
+        query += f" AND codePostalEtablissement:{code_postal}"
+    return query
 
 
-def fetch_new_companies(max_results: int = 20, date: str | None = None) -> list[dict]:
+def fetch_new_companies(
+    max_results: int = 20,
+    date: str | None = None,
+    code_postal: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> list[dict]:
     if not SIRENE_TOKEN:
         raise ValueError("SIRENE_API_TOKEN manquant — configure Doppler")
 
     _throttle()
 
-    query = build_query(date)
+    query = build_query(date=date, code_postal=code_postal, date_from=date_from, date_to=date_to)
     params = {"q": query, "nombre": str(max_results), "champs": CHAMPS}
 
     try:
@@ -112,15 +133,33 @@ def parse_company(etab: dict) -> dict:
         "denomination": _get_denomination(ul),
         "forme_juridique": ul.get("categorieJuridiqueUniteLegale"),
         "code_naf": ul.get("activitePrincipaleUniteLegale"),
+        "code_postal": code_postal,
         "dept": dept,
         "commune": adresse.get("libelleCommuneEtablissement"),
         "date_creation": etab.get("dateCreationEtablissement"),
+        "effectif": ul.get("trancheEffectifsUniteLegale") or "",
     }
 
 
-def fetch_and_parse_idf(max_results: int = 100, date: str | None = None) -> list[dict]:
-    etablissements = fetch_new_companies(max_results=max_results, date=date)
+def fetch_and_parse_idf(
+    max_results: int = 100,
+    date: str | None = None,
+    code_postal: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> list[dict]:
+    etablissements = fetch_new_companies(
+        max_results=max_results,
+        date=date,
+        code_postal=code_postal,
+        date_from=date_from,
+        date_to=date_to,
+    )
     companies = [parse_company(e) for e in etablissements]
+    if code_postal:
+        # Already filtered at API level; still log
+        logger.info(f"Sirene: {len(companies)} etablissements pour CP {code_postal}")
+        return companies
     idf = [c for c in companies if c["dept"] in DEPT_IDF]
     logger.info(f"Sirene: {len(idf)}/{len(companies)} etablissements en IDF")
     return idf
