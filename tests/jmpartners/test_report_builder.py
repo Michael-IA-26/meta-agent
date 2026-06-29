@@ -11,12 +11,12 @@ import pytest
 def _ecritures(mois: str = "2026-05"):
     """Écritures d'un mois normal."""
     return [
-        {"compte": "7070", "libelle": "Vente A", "date": f"{mois}-05", "credit": 8000.0, "debit": None},
-        {"compte": "7070", "libelle": "Vente B", "date": f"{mois}-20", "credit": 4000.0, "debit": None},
-        {"compte": "6070", "libelle": "Achat fournitures", "date": f"{mois}-10", "credit": None, "debit": 2000.0},
-        {"compte": "6110", "libelle": "Loyer", "date": f"{mois}-01", "credit": None, "debit": 1500.0},
-        {"compte": "512",  "libelle": "Banque", "date": f"{mois}-31", "credit": 1000.0, "debit": None},
-        {"compte": "44571","libelle": "TVA collectée", "date": f"{mois}-31", "credit": 2400.0, "debit": None},
+        {"compte_debit": "411",   "compte_credit": "7070",  "montant": 8000.0, "libelle": "Vente A",           "date_ecriture": f"{mois}-05"},
+        {"compte_debit": "411",   "compte_credit": "7070",  "montant": 4000.0, "libelle": "Vente B",           "date_ecriture": f"{mois}-20"},
+        {"compte_debit": "6070",  "compte_credit": "401",   "montant": 2000.0, "libelle": "Achat fournitures", "date_ecriture": f"{mois}-10"},
+        {"compte_debit": "6110",  "compte_credit": "401",   "montant": 1500.0, "libelle": "Loyer",             "date_ecriture": f"{mois}-01"},
+        {"compte_debit": "512",   "compte_credit": "580",   "montant": 1000.0, "libelle": "Banque",            "date_ecriture": f"{mois}-31"},
+        {"compte_debit": "411",   "compte_credit": "44571", "montant": 2400.0, "libelle": "TVA collectée",     "date_ecriture": f"{mois}-31"},
     ]
 
 
@@ -28,8 +28,8 @@ def _ecritures_zero():
 def _ecritures_solde_negatif():
     """Charges > produits → résultat négatif."""
     return [
-        {"compte": "7070", "libelle": "Vente", "date": "2026-05-05", "credit": 1000.0, "debit": None},
-        {"compte": "6070", "libelle": "Achat", "date": "2026-05-10", "credit": None, "debit": 5000.0},
+        {"compte_debit": "411",  "compte_credit": "7070", "montant": 1000.0, "libelle": "Vente", "date_ecriture": "2026-05-05"},
+        {"compte_debit": "6070", "compte_credit": "401",  "montant": 5000.0, "libelle": "Achat", "date_ecriture": "2026-05-10"},
     ]
 
 

@@ -70,16 +70,16 @@ def _compute_ca3_lignes(ecritures: list[dict]) -> CA3Lignes:
     ca_ht = 0.0
 
     for e in ecritures:
-        compte = str(e.get("compte") or "")
-        credit = float(e.get("credit") or 0)
-        debit = float(e.get("debit") or 0)
+        compte_d = str(e.get("compte_debit") or "")
+        compte_c = str(e.get("compte_credit") or "")
+        montant = float(e.get("montant") or 0)
 
-        if compte == "44571":
-            tva_collectee += credit
-        elif compte == "44566":
-            tva_deductible += debit
-        elif compte.startswith("70"):
-            ca_ht += credit
+        if compte_c == "44571":
+            tva_collectee += montant
+        elif compte_d == "44566":
+            tva_deductible += montant
+        elif compte_c.startswith("70"):
+            ca_ht += montant
 
     solde = tva_collectee - tva_deductible
     credit_tva = abs(solde) if solde < 0 else 0.0

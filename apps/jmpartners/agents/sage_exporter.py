@@ -54,13 +54,13 @@ def build_export_rows(supabase, dossier_id: str, periode: str) -> list[dict[str,
         resp = (
             supabase.table("ecritures")
             .select(
-                "id, journal, date, compte_debit, compte_credit, libelle, "
-                "debit, credit, reference, montant_ttc, statut"
+                "id, journal, date_ecriture, compte_debit, compte_credit, libelle, "
+                "montant, reference, montant_ttc, statut"
             )
             .eq("dossier_id", dossier_id)
             .eq("statut", "valide")
-            .like("date", f"{periode}%")
-            .order("date")
+            .like("date_ecriture", f"{periode}%")
+            .order("date_ecriture")
             .execute()
         )
     except Exception as exc:
@@ -70,12 +70,12 @@ def build_export_rows(supabase, dossier_id: str, periode: str) -> list[dict[str,
     for e in resp.data or []:
         rows.append({
             "journal": e.get("journal") or "",
-            "date": e.get("date") or "",
+            "date": e.get("date_ecriture") or "",
             "compte_debit": e.get("compte_debit") or "",
             "compte_credit": e.get("compte_credit") or "",
             "libelle": e.get("libelle") or "",
-            "debit": e.get("debit"),
-            "credit": e.get("credit"),
+            "debit": e.get("montant"),
+            "credit": e.get("montant"),
             "piece": e.get("reference") or "",
         })
     return rows

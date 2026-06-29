@@ -11,34 +11,34 @@ import pytest
 def _ecritures_normales():
     """Mois normal : TVA collectée 2000€, TVA déductible 500€ → solde 1500€."""
     return [
-        {"compte": "44571", "credit": 2000.0, "debit": None},   # TVA collectée
-        {"compte": "44566", "debit": 500.0, "credit": None},    # TVA déductible
-        {"compte": "7070", "credit": 8000.0, "debit": None},    # Produits
-        {"compte": "6070", "debit": 3000.0, "credit": None},    # Charges
+        {"compte_debit": "411",   "compte_credit": "44571", "montant": 2000.0},  # TVA collectée
+        {"compte_debit": "44566", "compte_credit": "401",   "montant": 500.0},   # TVA déductible
+        {"compte_debit": "411",   "compte_credit": "7070",  "montant": 8000.0},  # Produits
+        {"compte_debit": "6070",  "compte_credit": "401",   "montant": 3000.0},  # Charges
     ]
 
 
 def _ecritures_solde_negatif():
     """TVA déductible > collectée → crédit de TVA."""
     return [
-        {"compte": "44571", "credit": 300.0, "debit": None},
-        {"compte": "44566", "debit": 1200.0, "credit": None},
+        {"compte_debit": "411",   "compte_credit": "44571", "montant": 300.0},
+        {"compte_debit": "44566", "compte_credit": "401",   "montant": 1200.0},
     ]
 
 
 def _ecritures_exoneration():
     """Pas de TVA collectée ni déductible."""
     return [
-        {"compte": "7070", "credit": 5000.0, "debit": None},
+        {"compte_debit": "411", "compte_credit": "7070", "montant": 5000.0},
     ]
 
 
 def _ecritures_prorata():
     """TVA partiellement déductible (prorata 60%)."""
     return [
-        {"compte": "44571", "credit": 1000.0, "debit": None},
-        {"compte": "44566", "debit": 600.0, "credit": None},   # déjà proratisé
-        {"compte": "44567", "debit": 400.0, "credit": None},   # TVA non déductible
+        {"compte_debit": "411",   "compte_credit": "44571", "montant": 1000.0},
+        {"compte_debit": "44566", "compte_credit": "401",   "montant": 600.0},   # déjà proratisé
+        {"compte_debit": "44567", "compte_credit": "401",   "montant": 400.0},   # TVA non déductible
     ]
 
 

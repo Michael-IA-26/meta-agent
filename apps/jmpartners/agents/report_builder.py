@@ -70,18 +70,18 @@ def _compute_soldes(ecritures: list[dict]) -> Soldes:
     par_compte: dict[str, float] = {}
 
     for e in ecritures:
-        compte = str(e.get("compte") or "")
-        credit = float(e.get("credit") or 0)
-        debit = float(e.get("debit") or 0)
-        montant = credit - debit  # positif = créditeur
+        compte_d = str(e.get("compte_debit") or "")
+        compte_c = str(e.get("compte_credit") or "")
+        montant = float(e.get("montant") or 0)
 
-        # Accumulation par compte
-        par_compte[compte] = par_compte.get(compte, 0.0) + montant
+        # Net par compte : côté crédit positif, côté débit négatif
+        par_compte[compte_c] = par_compte.get(compte_c, 0.0) + montant
+        par_compte[compte_d] = par_compte.get(compte_d, 0.0) - montant
 
-        if compte.startswith("70"):
-            produits += credit
-        elif compte.startswith("6"):
-            charges += debit
+        if compte_c.startswith("70"):
+            produits += montant
+        elif compte_d.startswith("6"):
+            charges += montant
 
     return Soldes(
         produits=round(produits, 2),
@@ -155,14 +155,14 @@ def _generate_pdf_rapport(
 
     # Tableau des écritures (max 50 lignes)
     story.append(Paragraph("<b>Détail des écritures</b>", styles["Heading2"]))
-    ecr_data = [["Date", "Compte", "Libellé", "Débit (€)", "Crédit (€)"]]
+    ecr_data = [["Date", "Cpte débit", "Cpte crédit", "Libellé", "Montant (€)"]]
     for e in ecritures[:50]:
         ecr_data.append([
-            str(e.get("date", "")),
-            str(e.get("compte", "")),
+            str(e.get("date_ecriture", "")),
+            str(e.get("compte_debit", "")),
+            str(e.get("compte_credit", "")),
             str(e.get("libelle", ""))[:40],
-            f"{e.get('debit') or 0:,.2f}" if e.get("debit") else "",
-            f"{e.get('credit') or 0:,.2f}" if e.get("credit") else "",
+            f"{e.get('montant') or 0:,.2f}",
         ])
     if len(ecritures) > 50:
         ecr_data.append(["...", "", f"+ {len(ecritures) - 50} écriture(s)", "", ""])
