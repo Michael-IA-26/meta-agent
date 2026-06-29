@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from apps.jmpartners.agents.mail_handler import run
+from apps.jmpartners.agents.mail_handler import resolve_or_create_dossier, run
 
 
 def _graph_env(monkeypatch):
@@ -166,3 +166,97 @@ def test_boite_vide_retourne_zero_traites(monkeypatch):
 
     assert result["traites"] == 0
     assert result["erreurs"] == []
+
+
+# ── Tests resolve_or_create_dossier ───────────────────────────────────────────
+
+def test_resolve_or_create_retourne_id_si_dossier_existe():
+    """Quand un dossier existe, on retourne son id sans INSERT."""
+    sb = MagicMock()
+    (sb.table.return_value.select.return_value
+     .eq.return_value.order.return_value.limit.return_value
+     .execute.return_value.data) = [{"id": "dossier-42"}]
+
+    assert resolve_or_create_dossier(sb, "contact-1") == "dossier-42"
+    sb.table.return_value.insert.assert_not_called()
+
+
+def test_resolve_or_create_cree_dossier_si_aucun_existant():
+    """Quand aucun dossier n'existe, un INSERT est déclenché et l'id créé est retourné."""
+    sb = MagicMock()
+    (sb.table.return_value.select.return_value
+     .eq.return_value.order.return_value.limit.return_value
+     .execute.return_value.data) = []
+    sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "dossier-new"}]
+
+    result = resolve_or_create_dossier(sb, "contact-1")
+
+    assert result == "dossier-new"
+    sb.table.return_value.insert.assert_called_once()
+    payload = sb.table.return_value.insert.call_args[0][0]
+    assert payload["contact_id"] == "contact-1"
+    assert payload["type"] == "tva"
+    assert payload["statut"] == "en_cours"
+    assert "exercice" in payload
+
+
+def test_resolve_or_create_retourne_none_si_insert_echoue():
+    """Si l'INSERT dossier échoue, on retourne None."""
+    sb = MagicMock()
+    (sb.table.return_value.select.return_value
+     .eq.return_value.order.return_value.limit.return_value
+     .execute.return_value.data) = []
+    sb.table.return_value.insert.return_value.execute.side_effect = Exception("DB error")
+
+    assert resolve_or_create_dossier(sb, "contact-1") is None
+
+
+def test_run_contact_avec_dossier_resolu_appelle_process_attachments(monkeypatch):
+    """Si le dossier est résolu/créé, _process_attachments est appelé avec le bon dossier_id."""
+    _graph_env(monkeypatch)
+
+    with (
+        patch("apps.jmpartners.agents.mail_handler.graph_mail.fetch_unread",
+              return_value=[_msg()]),
+        patch("apps.jmpartners.agents.mail_handler.get_supabase_client"),
+        patch("apps.jmpartners.agents.mail_handler.get_anthropic_client"),
+        patch("apps.jmpartners.agents.mail_handler.identify_contact",
+              return_value=("contact-1", "SARL Dupont")),
+        patch("apps.jmpartners.agents.mail_handler.resolve_or_create_dossier",
+              return_value="dossier-42"),
+        patch("apps.jmpartners.agents.mail_handler.classify_request", return_value="autre"),
+        patch("apps.jmpartners.agents.mail_handler.log_journal", return_value="j-1"),
+        patch("apps.jmpartners.agents.mail_handler.graph_mail.mark_read"),
+        patch("apps.jmpartners.agents.mail_handler._process_attachments",
+              return_value=2) as mock_attach,
+    ):
+        result = run(dry_run=False)
+
+    mock_attach.assert_called_once()
+    _, call_kwargs = mock_attach.call_args
+    assert call_kwargs["dossier_id"] == "dossier-42"
+    assert result["emails"][0]["pieces_jointes"] == 2
+
+
+def test_run_echec_creation_dossier_skip_pieces_jointes(monkeypatch):
+    """Si resolve_or_create_dossier retourne None (échec INSERT), les pièces jointes sont ignorées."""
+    _graph_env(monkeypatch)
+
+    with (
+        patch("apps.jmpartners.agents.mail_handler.graph_mail.fetch_unread",
+              return_value=[_msg()]),
+        patch("apps.jmpartners.agents.mail_handler.get_supabase_client"),
+        patch("apps.jmpartners.agents.mail_handler.get_anthropic_client"),
+        patch("apps.jmpartners.agents.mail_handler.identify_contact",
+              return_value=("contact-1", "SARL Dupont")),
+        patch("apps.jmpartners.agents.mail_handler.resolve_or_create_dossier", return_value=None),
+        patch("apps.jmpartners.agents.mail_handler.classify_request", return_value="autre"),
+        patch("apps.jmpartners.agents.mail_handler.log_journal", return_value="j-1"),
+        patch("apps.jmpartners.agents.mail_handler.graph_mail.mark_read"),
+        patch("apps.jmpartners.agents.mail_handler._process_attachments") as mock_attach,
+    ):
+        result = run(dry_run=False)
+
+    mock_attach.assert_not_called()
+    assert result["emails"][0]["pieces_jointes"] == 0
+    assert result["traites"] == 1

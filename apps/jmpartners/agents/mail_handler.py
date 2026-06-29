@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import json
 import logging
@@ -13,7 +14,7 @@ from supabase import Client, create_client
 
 from apps.jmpartners.integrations import graph_mail
 
-__all__ = ["MailHandlerResult", "EmailItem", "run"]
+__all__ = ["MailHandlerResult", "EmailItem", "resolve_or_create_dossier", "run"]
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,54 @@ def identify_contact(
     except Exception as exc:
         logger.warning(f"Erreur matching contact : {exc}")
     return None, None
+
+
+def resolve_or_create_dossier(supabase: Client, contact_id: str) -> str | None:
+    """Retourne l'id du dossier le plus récent du contact.
+
+    Si aucun dossier n'existe, en crée un minimal (type='tva', exercice=année courante).
+    Retourne None uniquement si la création échoue.
+    """
+    try:
+        resp = (
+            supabase.table("dossiers")
+            .select("id")
+            .eq("contact_id", contact_id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            return cast(dict, resp.data[0])["id"]
+    except Exception as exc:
+        logger.error(f"resolve_or_create_dossier — lecture échouée pour contact {contact_id} : {exc}")
+        return None
+
+    # Aucun dossier → création automatique
+    try:
+        exercice = str(datetime.date.today().year)
+        resp_ins = (
+            supabase.table("dossiers")
+            .insert({
+                "contact_id": contact_id,
+                "type": "tva",
+                "exercice": exercice,
+                "statut": "en_cours",
+            })
+            .execute()
+        )
+        if resp_ins.data:
+            dossier_id = cast(dict, resp_ins.data[0])["id"]
+            logger.info(
+                f"resolve_or_create_dossier — dossier auto-créé pour contact "
+                f"{contact_id} : {dossier_id}"
+            )
+            return dossier_id
+    except Exception as exc:
+        logger.error(
+            f"resolve_or_create_dossier — création échouée pour contact {contact_id} : {exc}"
+        )
+    return None
 
 
 def classify_request(client: anthropic.Anthropic, sujet: str, corps: str) -> str:
@@ -179,7 +228,7 @@ def _upload_and_insert(
         {
             "nom": filename,
             "hash": sha256_hash,
-            "statut": "recu",
+            "statut": "en_attente_ocr",
             "source": "outlook",
             "dossier_id": dossier_id,
             "contact_id": contact_id,
@@ -255,11 +304,23 @@ def run(dry_run: bool = False) -> MailHandlerResult:
                 non_matches += 1
                 logger.info(f"Contact non trouvé pour {expediteur}")
 
+            dossier_id: str | None = None
+            if contact_id is not None:
+                dossier_id = resolve_or_create_dossier(supabase, contact_id)
+                if dossier_id is None:
+                    logger.warning(
+                        f"mail_handler — impossible de résoudre/créer un dossier pour "
+                        f"contact {contact_id} ({contact_nom}), pièces jointes ignorées"
+                    )
+
             type_demande = classify_request(ai_client, sujet, corps)
 
-            pieces_jointes = _process_attachments(
-                supabase, msg, contact_id, dossier_id=None, dry_run=dry_run
-            )
+            if dossier_id is not None:
+                pieces_jointes = _process_attachments(
+                    supabase, msg, contact_id, dossier_id=dossier_id, dry_run=dry_run
+                )
+            else:
+                pieces_jointes = 0
 
             journal_id = None
             if not dry_run:
