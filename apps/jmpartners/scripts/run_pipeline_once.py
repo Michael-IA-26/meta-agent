@@ -21,7 +21,7 @@ def create_supabase_client():
 
 def build_document_row(url: str, dossier_id: str) -> dict:
     """Return a document row dict ready for insertion."""
-    return {"url": url, "dossier_id": dossier_id, "statut": "recu"}
+    return {"url_storage": url, "dossier_id": dossier_id, "statut": "en_attente_ocr"}
 
 
 def run(file_path: str, dossier_id: str, confirm: bool) -> None:

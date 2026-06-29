@@ -223,10 +223,10 @@ def run(
 
         resp_ecr = (
             supabase.table("ecritures")
-            .select("compte, debit, credit")
+            .select("compte_debit, compte_credit, montant")
             .eq("dossier_id", dossier_id)
-            .gte("date", date_debut)
-            .lte("date", date_fin)
+            .gte("date_ecriture", date_debut)
+            .lte("date_ecriture", date_fin)
             .execute()
         )
         ecritures = resp_ecr.data or []

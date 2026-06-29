@@ -85,7 +85,7 @@ def _log_orchestrator_run(
     try:
         supabase.table("journaux").insert(
             {
-                "type_action": "orchestrator_run",
+                "type_action": "verification_documents",
                 "statut": "ok" if agents_ko == 0 else "erreur",
                 "contenu": f"{agents_ok} agents OK, {agents_ko} KO, durée {duree:.1f}s",
                 "metadata": {
@@ -154,8 +154,8 @@ def _process_documents(supabase, dry_run: bool = False) -> list[str]:
     try:
         resp = (
             supabase.table("documents")
-            .select("id, url, type_document, statut")
-            .in_("statut", ["recu", "analysé"])
+            .select("id, url_storage, type_document, statut")
+            .in_("statut", ["en_attente_ocr", "a_trier"])
             .execute()
         )
         docs = resp.data or []
@@ -167,8 +167,8 @@ def _process_documents(supabase, dry_run: bool = False) -> list[str]:
         doc_id: str = doc["id"]
         statut: str = doc.get("statut", "")
         try:
-            if statut == "recu":
-                url = doc.get("url") or ""
+            if statut == "en_attente_ocr":
+                url = doc.get("url_storage") or ""
                 type_doc = doc.get("type_document") or ""
                 nom = doc.get("nom") or ""
                 if not dry_run:
@@ -178,18 +178,18 @@ def _process_documents(supabase, dry_run: bool = False) -> list[str]:
                             {"type_document": type_doc}
                         ).eq("id", doc_id).execute()
                     run_document_analyzer(doc_id, url=url, type_document=type_doc)
-                    supabase.table("documents").update({"statut": "analysé"}).eq(
+                    supabase.table("documents").update({"statut": "a_trier"}).eq(
                         "id", doc_id
                     ).execute()
-                logger.info(f"Orchestrateur — document {doc_id} : recu → analysé")
+                logger.info(f"Orchestrateur — document {doc_id} : en_attente_ocr → a_trier")
 
-            elif statut == "analysé":
+            elif statut == "a_trier":
                 if not dry_run:
                     run_ecriture_generator(doc_id)
-                    supabase.table("documents").update({"statut": "presaisi"}).eq(
+                    supabase.table("documents").update({"statut": "a_saisir_sage"}).eq(
                         "id", doc_id
                     ).execute()
-                logger.info(f"Orchestrateur — document {doc_id} : analysé → presaisi")
+                logger.info(f"Orchestrateur — document {doc_id} : a_trier → a_saisir_sage")
 
         except Exception as exc:
             logger.error(f"Orchestrateur — pipeline document {doc_id} : {exc}")
