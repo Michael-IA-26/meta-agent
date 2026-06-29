@@ -86,21 +86,20 @@ def test_facture_achat_mappe_compte_401_60x_44566():
 
     ecritures = _build_ecritures_facture_achat(_analyse_facture_achat(), "2026-05-15")
 
-    comptes = {e["compte"] for e in ecritures}
-    assert "401" in comptes  # Fournisseurs
-    assert any(c.startswith("60") for c in comptes)  # Charges
-    assert "44566" in comptes  # TVA déductible
+    assert any(e["compte_credit"] == "401" for e in ecritures)
+    assert any(e["compte_debit"].startswith("60") for e in ecritures)
+    assert any(e["compte_debit"] == "44566" for e in ecritures)
 
 
 def test_facture_achat_balance_zero():
-    """Les débits et crédits d'une facture achat doivent s'équilibrer."""
+    """Chaque mouvement est équilibré — somme des montants = TTC."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_facture_achat
 
     ecritures = _build_ecritures_facture_achat(_analyse_facture_achat(1000.0, 200.0), "2026-05-15")
 
-    total_debit = sum(e.get("debit", 0) or 0 for e in ecritures)
-    total_credit = sum(e.get("credit", 0) or 0 for e in ecritures)
-    assert abs(total_debit - total_credit) < 0.01, f"Déséquilibre : D={total_debit} C={total_credit}"
+    assert ecritures, "Aucune écriture générée"
+    total = sum(e["montant"] for e in ecritures)
+    assert abs(total - 1200.0) < 0.01, f"Somme montants ≠ TTC : {total}"
 
 
 def test_facture_vente_mappe_compte_411_70x_44571():
@@ -109,31 +108,29 @@ def test_facture_vente_mappe_compte_411_70x_44571():
 
     ecritures = _build_ecritures_facture_vente(_analyse_facture_vente(), "2026-05-20")
 
-    comptes = {e["compte"] for e in ecritures}
-    assert "411" in comptes  # Clients
-    assert any(c.startswith("70") for c in comptes)  # Produits
-    assert "44571" in comptes  # TVA collectée
+    assert any(e["compte_debit"] == "411" for e in ecritures)
+    assert any(e["compte_credit"].startswith("70") for e in ecritures)
+    assert any(e["compte_credit"] == "44571" for e in ecritures)
 
 
 def test_facture_vente_balance_zero():
-    """Les débits et crédits d'une facture vente doivent s'équilibrer."""
+    """Chaque mouvement est équilibré — somme des montants = TTC."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_facture_vente
 
     ecritures = _build_ecritures_facture_vente(_analyse_facture_vente(2000.0, 400.0), "2026-05-20")
 
-    total_debit = sum(e.get("debit", 0) or 0 for e in ecritures)
-    total_credit = sum(e.get("credit", 0) or 0 for e in ecritures)
-    assert abs(total_debit - total_credit) < 0.01
+    assert ecritures
+    total = sum(e["montant"] for e in ecritures)
+    assert abs(total - 2400.0) < 0.01
 
 
 def test_releve_bancaire_mappe_compte_512():
-    """Relevé bancaire : utilise le compte 512 (banque)."""
+    """Relevé bancaire : utilise le compte 512 (banque) en compte_debit."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_releve
 
     ecritures = _build_ecritures_releve(_analyse_releve_bancaire(), "2026-05-31")
 
-    comptes = {e["compte"] for e in ecritures}
-    assert "512" in comptes
+    assert any(e["compte_debit"] == "512" for e in ecritures)
 
 
 def test_facture_achat_sans_tva_pas_de_44566():
@@ -145,49 +142,48 @@ def test_facture_achat_sans_tva_pas_de_44566():
 
     ecritures = _build_ecritures_facture_achat(analyse, "2026-05-15")
 
-    comptes = {e["compte"] for e in ecritures}
-    assert "44566" not in comptes
+    assert not any(e.get("compte_debit") == "44566" for e in ecritures)
 
 
 def test_facture_vente_multi_tva_balance_zero():
-    """Facture vente multi-TVA : les écritures s'équilibrent."""
+    """Facture vente multi-TVA : somme des montants = TTC."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_facture_vente
 
     analyse = _analyse_facture_vente_multi_tva()
     ecritures = _build_ecritures_facture_vente(analyse, "2026-05-22")
 
-    total_debit = sum(e.get("debit", 0) or 0 for e in ecritures)
-    total_credit = sum(e.get("credit", 0) or 0 for e in ecritures)
-    assert abs(total_debit - total_credit) < 0.01
+    assert ecritures
+    total = sum(e["montant"] for e in ecritures)
+    assert abs(total - 1750.0) < 0.01
 
 
 # ── Tests : structure des écritures ───────────────────────────────────────────
 
 def test_ecriture_has_required_fields():
-    """Chaque écriture doit avoir compte, libelle, date, et debit ou credit."""
+    """Chaque écriture doit avoir compte_debit, compte_credit, montant, libelle, date_ecriture."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_facture_achat
 
     ecritures = _build_ecritures_facture_achat(_analyse_facture_achat(), "2026-05-15")
 
     for e in ecritures:
-        assert "compte" in e
+        assert "compte_debit" in e and e["compte_debit"]
+        assert "compte_credit" in e and e["compte_credit"]
+        assert "montant" in e and e["montant"] > 0
         assert "libelle" in e
-        assert "date" in e
-        assert "debit" in e or "credit" in e
-        assert e["compte"]  # non vide
+        assert "date_ecriture" in e
 
 
 def test_ecriture_tiers_in_libelle():
-    """Le tiers doit apparaître dans le libellé de l'écriture principale."""
+    """Le tiers doit apparaître dans le libellé du mouvement principal."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_facture_achat
 
     ecritures = _build_ecritures_facture_achat(
         _analyse_facture_achat(tiers="Fournisseur Test SARL"), "2026-05-15"
     )
 
-    # L'écriture 401 (fournisseur) doit mentionner le tiers
-    e401 = [e for e in ecritures if e["compte"] == "401"][0]
-    assert "Fournisseur Test SARL" in e401["libelle"]
+    # Le mouvement charge (6070/401) doit mentionner le tiers
+    e_main = next(e for e in ecritures if e["compte_credit"] == "401" and e["compte_debit"].startswith("60"))
+    assert "Fournisseur Test SARL" in e_main["libelle"]
 
 
 def test_ecriture_reference_in_libelle():
@@ -308,35 +304,36 @@ def test_run_dry_run_ne_persiste_pas(monkeypatch):
 
 # ── Tests : cas limites comptables ───────────────────────────────────────────
 
-def test_facture_achat_montant_ttc_correct(monkeypatch):
-    """Le total 401 doit être égal au TTC de la facture."""
+def test_facture_achat_montant_ttc_correct():
+    """La somme des montants côté 401 doit être égale au TTC de la facture."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_facture_achat
 
     ecritures = _build_ecritures_facture_achat(_analyse_facture_achat(1000.0, 200.0), "2026-05-15")
 
-    e401 = next(e for e in ecritures if e["compte"] == "401")
-    assert abs(e401["credit"] - 1200.0) < 0.01
+    total_401 = sum(e["montant"] for e in ecritures if e["compte_credit"] == "401")
+    assert abs(total_401 - 1200.0) < 0.01
 
 
 def test_facture_vente_montant_411_correct():
-    """Le total 411 doit être égal au TTC de la facture."""
+    """La somme des montants côté 411 doit être égale au TTC de la facture."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_facture_vente
 
     ecritures = _build_ecritures_facture_vente(_analyse_facture_vente(2000.0, 400.0), "2026-05-20")
 
-    e411 = next(e for e in ecritures if e["compte"] == "411")
-    assert abs(e411["debit"] - 2400.0) < 0.01
+    total_411 = sum(e["montant"] for e in ecritures if e["compte_debit"] == "411")
+    assert abs(total_411 - 2400.0) < 0.01
 
 
 def test_releve_bancaire_balance_zero():
-    """Les écritures d'un relevé bancaire doivent s'équilibrer."""
+    """Le relevé bancaire génère un mouvement 512/580 pour le montant du solde."""
     from apps.jmpartners.agents.ecriture_generator import _build_ecritures_releve
 
     ecritures = _build_ecritures_releve(_analyse_releve_bancaire(15230.50), "2026-05-31")
 
-    total_debit = sum(e.get("debit", 0) or 0 for e in ecritures)
-    total_credit = sum(e.get("credit", 0) or 0 for e in ecritures)
-    assert abs(total_debit - total_credit) < 0.01
+    assert ecritures, "Aucune écriture générée"
+    assert ecritures[0]["compte_debit"] == "512"
+    assert ecritures[0]["compte_credit"] == "580"
+    assert abs(ecritures[0]["montant"] - 15230.50) < 0.01
 
 
 def test_run_retourne_result_avec_bonne_structure(monkeypatch):
@@ -424,10 +421,135 @@ def test_score_confiance_low_sets_statut_a_valider():
 
 
 def test_debit_credit_balance_still_holds():
-    """Enrichment does not break debit==credit invariant."""
+    """Enrichment préserve le schéma compte_debit/compte_credit/montant et la somme = TTC."""
     analyse = _analyse_facture_achat(montant_ht=1000.0, montant_tva=200.0)
     ecritures = eg_mod._build_ecritures_facture_achat(analyse, "2026-05-15")
     enriched = eg_mod._enrich_ecritures(ecritures, "facture_achat", analyse, 1200.0)
-    total_debit = sum(float(e["debit"] or 0) for e in enriched)
-    total_credit = sum(float(e["credit"] or 0) for e in enriched)
-    assert abs(total_debit - total_credit) < 0.01
+    assert all("compte_debit" in e and "compte_credit" in e for e in enriched)
+    assert all(e["montant"] > 0 for e in enriched)
+    assert abs(sum(e["montant"] for e in enriched) - 1200.0) < 0.01
+
+
+# ── Tests TDD : contrat schéma table ecritures (à faire passer) ──────────────
+
+_SCHEMA_ECRITURES = frozenset({
+    "compte_debit", "compte_credit", "montant", "date_ecriture",
+    "libelle", "journal", "reference", "montant_ttc", "source",
+    "score_confiance", "statut", "dossier_id", "piece_justificative_id",
+})
+
+
+def test_rows_conformes_schema():
+    """Les clés des rows produites pour l'insert sont ⊆ du schéma table ecritures."""
+    analyse = _analyse_facture_achat(montant_ht=1000.0, montant_tva=200.0)
+    legs = eg_mod._build_ecritures_facture_achat(analyse, "2026-05-15")
+
+    rows = eg_mod._to_table_rows(
+        legs=legs,
+        date="2026-05-15",
+        journal="ACH",
+        reference="FA-2026-0542",
+        score=1.0,
+        statut="valide",
+        montant_ttc=1200.0,
+    )
+
+    assert rows, "_to_table_rows ne doit pas retourner une liste vide"
+    for row in rows:
+        assert "compte_debit" in row and row["compte_debit"], "compte_debit manquant ou vide"
+        assert "compte_credit" in row and row["compte_credit"], "compte_credit manquant ou vide"
+        assert "montant" in row and row["montant"] > 0, "montant manquant ou nul"
+        assert "date_ecriture" in row, "date_ecriture manquant"
+        unknown = set(row.keys()) - _SCHEMA_ECRITURES
+        assert not unknown, f"Clés hors-schéma table ecritures : {unknown}"
+
+
+def test_equilibre_achat():
+    """Facture achat HT 1000 / TVA 200 → 2 mouvements, 401 en compte_credit, somme montants = TTC."""
+    analyse = _analyse_facture_achat(montant_ht=1000.0, montant_tva=200.0)
+    legs = eg_mod._build_ecritures_facture_achat(analyse, "2026-05-15")
+
+    rows = eg_mod._to_table_rows(
+        legs=legs,
+        date="2026-05-15",
+        journal="ACH",
+        reference="FA-2026-0542",
+        score=1.0,
+        statut="valide",
+        montant_ttc=1200.0,
+    )
+
+    assert len(rows) == 2, f"Attendu 2 mouvements (6070/401 + 44566/401), obtenu {len(rows)}"
+    assert all(r["compte_credit"] == "401" for r in rows), (
+        f"401 doit être compte_credit sur tous les mouvements, obtenu : {[r['compte_credit'] for r in rows]}"
+    )
+
+    comptes_debit = {r["compte_debit"] for r in rows}
+    assert comptes_debit == {"6070", "44566"}, (
+        f"Attendu {{6070, 44566}} en compte_debit, obtenu {comptes_debit}"
+    )
+
+    montant_ht_row = next(r["montant"] for r in rows if r["compte_debit"] == "6070")
+    montant_tva_row = next(r["montant"] for r in rows if r["compte_debit"] == "44566")
+    assert abs(montant_ht_row - 1000.0) < 0.01, f"Mouvement 6070/401 : attendu 1000, obtenu {montant_ht_row}"
+    assert abs(montant_tva_row - 200.0) < 0.01, f"Mouvement 44566/401 : attendu 200, obtenu {montant_tva_row}"
+    assert abs(sum(r["montant"] for r in rows) - 1200.0) < 0.01, (
+        f"Somme montants ≠ TTC (1200) : {sum(r['montant'] for r in rows)}"
+    )
+
+
+def test_equilibre_vente():
+    """Facture vente HT 2000 / TVA 400 → 2 mouvements, 411 en compte_debit, somme montants = TTC."""
+    analyse = _analyse_facture_vente(montant_ht=2000.0, montant_tva=400.0)
+    legs = eg_mod._build_ecritures_facture_vente(analyse, "2026-05-20")
+
+    rows = eg_mod._to_table_rows(
+        legs=legs,
+        date="2026-05-20",
+        journal="VEN",
+        reference="FV-2026-0123",
+        score=1.0,
+        statut="valide",
+        montant_ttc=2400.0,
+    )
+
+    assert len(rows) == 2, f"Attendu 2 mouvements (411/7070 + 411/44571), obtenu {len(rows)}"
+    assert all(r["compte_debit"] == "411" for r in rows), (
+        f"411 doit être compte_debit sur tous les mouvements, obtenu : {[r['compte_debit'] for r in rows]}"
+    )
+
+    comptes_credit = {r["compte_credit"] for r in rows}
+    assert comptes_credit == {"7070", "44571"}, (
+        f"Attendu {{7070, 44571}} en compte_credit, obtenu {comptes_credit}"
+    )
+
+    montant_ht_row = next(r["montant"] for r in rows if r["compte_credit"] == "7070")
+    montant_tva_row = next(r["montant"] for r in rows if r["compte_credit"] == "44571")
+    assert abs(montant_ht_row - 2000.0) < 0.01, f"Mouvement 411/7070 : attendu 2000, obtenu {montant_ht_row}"
+    assert abs(montant_tva_row - 400.0) < 0.01, f"Mouvement 411/44571 : attendu 400, obtenu {montant_tva_row}"
+    assert abs(sum(r["montant"] for r in rows) - 2400.0) < 0.01, (
+        f"Somme montants ≠ TTC (2400) : {sum(r['montant'] for r in rows)}"
+    )
+
+
+def test_insert_echec_remonte_erreur(monkeypatch):
+    """Si supabase.insert lève une exception, run() doit retourner statut='erreur', pas 'ok'."""
+    from apps.jmpartners.agents import ecriture_generator as mod
+
+    monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_KEY", "key123")
+
+    analyse = _analyse_facture_achat()
+    mock_sb = _make_supabase_with_doc(analyse)
+    mock_sb.table.return_value.insert.return_value.execute.side_effect = RuntimeError(
+        "insert or update on table 'ecritures' violates foreign key constraint"
+    )
+
+    with patch.object(mod, "get_supabase_client", return_value=mock_sb):
+        result = mod.run("doc-1")
+
+    assert result["statut"] == "erreur", (
+        f"run() a retourné statut='{result['statut']}' au lieu de 'erreur' "
+        f"— l'exception d'insert ne doit plus être avalée silencieusement"
+    )
+    assert result["erreur"] is not None, "Le champ 'erreur' doit être renseigné en cas d'échec d'insert"

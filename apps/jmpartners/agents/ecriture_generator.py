@@ -19,6 +19,7 @@ __all__ = [
     "_build_ecritures_facture_achat",
     "_build_ecritures_facture_vente",
     "_build_ecritures_releve",
+    "_to_table_rows",
     "get_supabase_client",
     "run",
 ]
@@ -85,30 +86,22 @@ def _build_ecritures_facture_achat(analyse: dict, date: str) -> list[dict]:
                 break
         montant_ht = montant_ttc
 
-    ecritures = [
-        {
-            "compte": "401",
-            "libelle": f"Fournisseur {tiers} — {ref}".strip(" —"),
-            "date": date,
-            "credit": montant_ttc,
-            "debit": None,
-        },
-        {
-            "compte": "6070",
-            "libelle": f"Achat marchandises {ref}".strip(),
-            "date": date,
-            "debit": montant_ht,
-            "credit": None,
-        },
-    ]
-
+    ecritures = []
+    if montant_ht:
+        ecritures.append({
+            "compte_debit":  "6070",
+            "compte_credit": "401",
+            "montant":       round(montant_ht, 2),
+            "libelle":       f"Achat {tiers} — {ref}".strip(" —"),
+            "date_ecriture": date,
+        })
     if montant_tva and montant_tva > 0:
         ecritures.append({
-            "compte": "44566",
-            "libelle": f"TVA déductible {ref}".strip(),
-            "date": date,
-            "debit": montant_tva,
-            "credit": None,
+            "compte_debit":  "44566",
+            "compte_credit": "401",
+            "montant":       round(montant_tva, 2),
+            "libelle":       f"TVA déductible — {ref}".strip(" —"),
+            "date_ecriture": date,
         })
 
     return ecritures
@@ -136,30 +129,22 @@ def _build_ecritures_facture_vente(analyse: dict, date: str) -> list[dict]:
                 break
         montant_ht = montant_ttc
 
-    ecritures = [
-        {
-            "compte": "411",
-            "libelle": f"Client {tiers} — {ref}".strip(" —"),
-            "date": date,
-            "debit": montant_ttc,
-            "credit": None,
-        },
-        {
-            "compte": "7070",
-            "libelle": f"Vente marchandises {ref}".strip(),
-            "date": date,
-            "credit": montant_ht,
-            "debit": None,
-        },
-    ]
-
+    ecritures = []
+    if montant_ht:
+        ecritures.append({
+            "compte_debit":  "411",
+            "compte_credit": "7070",
+            "montant":       round(montant_ht, 2),
+            "libelle":       f"Vente {tiers} — {ref}".strip(" —"),
+            "date_ecriture": date,
+        })
     if montant_tva and montant_tva > 0:
         ecritures.append({
-            "compte": "44571",
-            "libelle": f"TVA collectée {ref}".strip(),
-            "date": date,
-            "credit": montant_tva,
-            "debit": None,
+            "compte_debit":  "411",
+            "compte_credit": "44571",
+            "montant":       round(montant_tva, 2),
+            "libelle":       f"TVA collectée — {ref}".strip(" —"),
+            "date_ecriture": date,
         })
 
     return ecritures
@@ -179,22 +164,15 @@ def _build_ecritures_releve(analyse: dict, date: str) -> list[dict]:
 
     tiers = (analyse.get("tiers") or ["Banque"])[0]
 
-    ecritures = [
-        {
-            "compte": "512",
-            "libelle": f"Banque {tiers} — relevé {date}",
-            "date": date,
-            "debit": solde,
-            "credit": None,
-        },
-        {
-            "compte": "580",
-            "libelle": f"Virement interne — relevé {date}",
-            "date": date,
-            "credit": solde,
-            "debit": None,
-        },
-    ]
+    ecritures = []
+    if solde:
+        ecritures.append({
+            "compte_debit":  "512",
+            "compte_credit": "580",
+            "montant":       round(solde, 2),
+            "libelle":       f"Banque {tiers} — relevé {date}",
+            "date_ecriture": date,
+        })
 
     return ecritures
 
@@ -231,10 +209,32 @@ def _enrich_ecritures(ecritures: list[dict], type_doc: str, analyse: dict, monta
 
 def _insert_ecritures(supabase, dossier_id: str, document_id: str, ecritures: list[dict]) -> None:
     rows = [
-        {**e, "dossier_id": dossier_id, "document_id": document_id}
+        {**e, "dossier_id": dossier_id, "piece_justificative_id": document_id}
         for e in ecritures
     ]
     supabase.table("ecritures").insert(rows).execute()
+
+
+def _to_table_rows(
+    legs: list[dict],
+    date: str,
+    journal: str,
+    reference: str,
+    score: float,
+    statut: str,
+    montant_ttc: float,
+) -> list[dict]:
+    """Merge ecritures (already compte_debit/compte_credit/montant) with table metadata."""
+    base = {
+        "date_ecriture": date,
+        "journal": journal,
+        "reference": reference,
+        "montant_ttc": montant_ttc,
+        "source": "ia",
+        "score_confiance": score,
+        "statut": statut,
+    }
+    return [{**base, **e} for e in legs]
 
 
 def _log_journal(supabase, dossier_id: str, document_id: str, nb: int, type_doc: str) -> None:
@@ -315,15 +315,7 @@ def run(document_id: str, dry_run: bool = False) -> EcritureGeneratorResult:
 
     try:
         ecritures = builder(analyse, date)
-        # Compute montant_ttc for enrichment (re-derive from built rows)
-        _ttc = 0.0
-        for e in ecritures:
-            if e.get("debit") and e.get("compte", "").startswith(("411", "401")):
-                _ttc = float(e["debit"] or 0)
-                break
-            if e.get("credit") and e.get("compte", "").startswith(("411", "401")):
-                _ttc = float(e["credit"] or 0)
-                break
+        _ttc = sum(float(e.get("montant", 0)) for e in ecritures)
         ecritures = _enrich_ecritures(ecritures, type_doc, analyse, _ttc)
     except Exception as exc:
         logger.error(f"ecriture_generator — génération échouée {document_id} : {exc}")
@@ -339,10 +331,26 @@ def run(document_id: str, dry_run: bool = False) -> EcritureGeneratorResult:
     # 4. Persistance (sauf dry_run)
     if not dry_run:
         try:
-            _insert_ecritures(supabase, dossier_id, document_id, ecritures)
-            _log_journal(supabase, dossier_id, document_id, len(ecritures), type_doc)
+            _first = ecritures[0] if ecritures else {}
+            table_rows = _to_table_rows(
+                legs=ecritures,
+                date=date,
+                journal=str(_first.get("journal", "")),
+                reference=str(_first.get("reference", "")),
+                score=float(_first.get("score_confiance", 0)),
+                statut=str(_first.get("statut", "a_presaisir")),
+                montant_ttc=float(_first.get("montant_ttc", _ttc)),
+            )
+            _insert_ecritures(supabase, dossier_id, document_id, table_rows)
+            _log_journal(supabase, dossier_id, document_id, len(table_rows), type_doc)
         except Exception as exc:
-            logger.warning(f"ecriture_generator — persistance échouée {document_id} : {exc}")
+            logger.error(f"ecriture_generator — persistance échouée {document_id} : {exc}")
+            return EcritureGeneratorResult(
+                document_id=document_id,
+                ecritures=ecritures,
+                statut="erreur",
+                erreur=f"Persistance échouée : {exc}",
+            )
 
     return EcritureGeneratorResult(
         document_id=document_id,

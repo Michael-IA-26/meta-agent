@@ -3,11 +3,7 @@
 from __future__ import annotations
 
 import threading
-import time
-from unittest.mock import MagicMock, call, patch
-
-import pytest
-
+from unittest.mock import MagicMock, patch
 
 # ── Helpers réutilisés ────────────────────────────────────────────────────────
 
@@ -117,6 +113,7 @@ def test_imap_poll_respecte_stop_event():
 
 def test_health_retourne_200():
     from fastapi.testclient import TestClient
+
     from apps.jmpartners.dashboard import app
     client = TestClient(app)
     resp = client.get("/health")
@@ -125,6 +122,7 @@ def test_health_retourne_200():
 
 def test_health_structure_minimale():
     from fastapi.testclient import TestClient
+
     from apps.jmpartners.dashboard import app
     client = TestClient(app)
     data = client.get("/health").json()
@@ -138,6 +136,7 @@ def test_health_statut_ok_sans_supabase(monkeypatch):
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_SERVICE_KEY", raising=False)
     from fastapi.testclient import TestClient
+
     from apps.jmpartners.dashboard import app
     data = TestClient(app).get("/health").json()
     assert data["statut"] == "ok"
@@ -146,6 +145,7 @@ def test_health_statut_ok_sans_supabase(monkeypatch):
 
 def test_health_agents_liste_les_10_agents():
     from fastapi.testclient import TestClient
+
     from apps.jmpartners.dashboard import app
     data = TestClient(app).get("/health").json()
     agents = data["agents"]
@@ -175,6 +175,7 @@ def test_health_dernier_run_depuis_journaux(monkeypatch):
 
     with patch("apps.jmpartners.dashboard._get_supabase_client", return_value=sb):
         from fastapi.testclient import TestClient
+
         from apps.jmpartners.dashboard import app
         data = TestClient(app).get("/health").json()
 

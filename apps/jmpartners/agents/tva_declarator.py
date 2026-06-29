@@ -101,12 +101,19 @@ def _generate_pdf_ca3(periode: str, dossier_id: str, lignes: CA3Lignes) -> bytes
     Raises:
         ImportError: Si reportlab n'est pas installé.
     """
-    from reportlab.lib.pagesizes import A4  # noqa: PLC0415
-    from reportlab.lib.units import cm  # noqa: PLC0415
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer  # noqa: PLC0415
-    from reportlab.lib.styles import getSampleStyleSheet  # noqa: PLC0415
-    from reportlab.lib import colors  # noqa: PLC0415
     import io  # noqa: PLC0415
+
+    from reportlab.lib import colors  # noqa: PLC0415
+    from reportlab.lib.pagesizes import A4  # noqa: PLC0415
+    from reportlab.lib.styles import getSampleStyleSheet  # noqa: PLC0415
+    from reportlab.lib.units import cm  # noqa: PLC0415
+    from reportlab.platypus import (  # noqa: PLC0415
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
