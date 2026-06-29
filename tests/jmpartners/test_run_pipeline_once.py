@@ -13,9 +13,9 @@ def test_document_row_builder_sets_statut_recu():
     row = build_document_row(
         url="storage://documents/test.pdf", dossier_id="dossier-123"
     )
-    assert row["statut"] == "recu"
+    assert row["statut"] == "en_attente_ocr"
     assert row["dossier_id"] == "dossier-123"
-    assert row["url"] == "storage://documents/test.pdf"
+    assert row["url_storage"] == "storage://documents/test.pdf"
 
 
 def test_run_without_confirm_exits_nonzero():

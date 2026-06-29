@@ -94,8 +94,8 @@ def _sb_with_docs(docs):
 
 
 def test_process_documents_classifies_and_persists_before_analysis():
-    """recu doc with no type_document → classify → persist type → then analyze."""
-    doc = {"id": "doc-1", "url": "https://x/doc.pdf", "type_document": None, "statut": "recu",
+    """en_attente_ocr doc with no type_document → classify → persist type → then analyze."""
+    doc = {"id": "doc-1", "url_storage": "https://x/doc.pdf", "type_document": None, "statut": "en_attente_ocr",
            "nom": "facture.pdf"}
     sb = _sb_with_docs([doc])
 
@@ -121,7 +121,7 @@ def test_process_documents_classifies_and_persists_before_analysis():
 
 def test_process_documents_persists_type_before_analyzer_called():
     """DB update of type_document must precede run_document_analyzer invocation."""
-    doc = {"id": "doc-1", "url": "u", "type_document": "", "statut": "recu", "nom": "f.pdf"}
+    doc = {"id": "doc-1", "url_storage": "u", "type_document": "", "statut": "en_attente_ocr", "nom": "f.pdf"}
     sb = _sb_with_docs([doc])
 
     sequence = []
@@ -142,8 +142,8 @@ def test_process_documents_persists_type_before_analyzer_called():
 
 
 def test_process_documents_skips_classification_when_type_exists():
-    """recu doc with existing type_document is NOT re-classified."""
-    doc = {"id": "doc-2", "url": "u", "type_document": "facture_achat", "statut": "recu",
+    """en_attente_ocr doc with existing type_document is NOT re-classified."""
+    doc = {"id": "doc-2", "url_storage": "u", "type_document": "facture_achat", "statut": "en_attente_ocr",
            "nom": "f.pdf"}
     sb = _sb_with_docs([doc])
 
@@ -159,7 +159,7 @@ def test_process_documents_skips_classification_when_type_exists():
 
 def test_process_documents_dry_run_no_classify_no_writes():
     """dry_run=True → no classify, no DB writes, no analyzer."""
-    doc = {"id": "doc-3", "url": "u", "type_document": None, "statut": "recu", "nom": "f.pdf"}
+    doc = {"id": "doc-3", "url_storage": "u", "type_document": None, "statut": "en_attente_ocr", "nom": "f.pdf"}
     sb = _sb_with_docs([doc])
 
     with (

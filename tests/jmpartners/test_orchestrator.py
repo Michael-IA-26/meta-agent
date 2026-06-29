@@ -420,9 +420,9 @@ def _mock_supabase_with_docs(docs):
 
 
 def test_process_documents_recu_triggers_analyzer_and_transition():
-    """Document 'recu' → document_analyzer appelé → statut mis à 'analysé'."""
+    """Document 'en_attente_ocr' → document_analyzer appelé → statut mis à 'a_trier'."""
     sb = _mock_supabase_with_docs([
-        {"id": "doc-1", "url": "https://x/doc.pdf", "type_document": "facture_achat", "statut": "recu"}
+        {"id": "doc-1", "url_storage": "https://x/doc.pdf", "type_document": "facture_achat", "statut": "en_attente_ocr"}
     ])
     with (
         patch("apps.jmpartners.orchestrator.run_document_analyzer") as mock_analyzer,
@@ -438,9 +438,9 @@ def test_process_documents_recu_triggers_analyzer_and_transition():
 
 
 def test_process_documents_analyse_triggers_generator_and_transition():
-    """Document 'analysé' → ecriture_generator appelé → statut mis à 'presaisi'."""
+    """Document 'a_trier' → ecriture_generator appelé → statut mis à 'a_saisir_sage'."""
     sb = _mock_supabase_with_docs([
-        {"id": "doc-2", "url": "", "type_document": "facture_vente", "statut": "analysé"}
+        {"id": "doc-2", "url_storage": "", "type_document": "facture_vente", "statut": "a_trier"}
     ])
     with (
         patch("apps.jmpartners.orchestrator.run_document_analyzer"),
@@ -471,8 +471,8 @@ def test_process_documents_presaisi_not_reprocessed():
 def test_process_documents_exception_on_one_does_not_stop_others():
     """Exception sur doc-1 n'empêche pas le traitement de doc-2."""
     sb = _mock_supabase_with_docs([
-        {"id": "doc-1", "url": "", "type_document": "facture_achat", "statut": "recu"},
-        {"id": "doc-2", "url": "", "type_document": "facture_vente", "statut": "analysé"},
+        {"id": "doc-1", "url_storage": "", "type_document": "facture_achat", "statut": "en_attente_ocr"},
+        {"id": "doc-2", "url_storage": "", "type_document": "facture_vente", "statut": "a_trier"},
     ])
     with (
         patch("apps.jmpartners.orchestrator.run_document_analyzer",
@@ -490,8 +490,8 @@ def test_process_documents_exception_on_one_does_not_stop_others():
 def test_process_documents_dry_run_no_writes():
     """dry_run=True → agents non appelés, pas de mise à jour statut."""
     sb = _mock_supabase_with_docs([
-        {"id": "doc-1", "url": "u", "type_document": "facture_achat", "statut": "recu"},
-        {"id": "doc-2", "url": "", "type_document": "facture_vente", "statut": "analysé"},
+        {"id": "doc-1", "url_storage": "u", "type_document": "facture_achat", "statut": "en_attente_ocr"},
+        {"id": "doc-2", "url_storage": "", "type_document": "facture_vente", "statut": "a_trier"},
     ])
     with (
         patch("apps.jmpartners.orchestrator.run_document_analyzer") as mock_a,
