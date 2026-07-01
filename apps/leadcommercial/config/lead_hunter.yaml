@@ -1,0 +1,19 @@
+# Configuration LeadHunter — run de référence
+# CLI > ce fichier > défauts Pydantic
+# IMPORTANT : --dry-run, --max-leads, --max-enrichments sont des flags de run, pas ici.
+
+recherche:
+  codes_postaux:
+    - "93300"
+  anciennete_jours: 30        # fenêtre glissante : créations des 30 derniers jours
+  naf_exclus: []              # ex: ["56.10A"] pour exclure la restauration rapide
+  effectif_min: 0             # 0 = inclut les entreprises sans salarié (tranche "00")
+  effectif_max: 49
+  inclure_effectif_non_renseigne: true  # "NN" = nouvelle entreprise sans effectif déclaré encore
+  formes_juridiques_incluses: []  # [] = toutes acceptées
+  formes_juridiques_exclues: []
+
+scoring:
+  chaud_min: 75
+  tiede_min: 50
+  exclu_max: 30
